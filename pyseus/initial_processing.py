@@ -5,6 +5,7 @@ import pdb
 import collections
 import multiprocessing
 import scipy
+import os
 import re
 import pandas as pd
 import numpy as np
@@ -19,8 +20,74 @@ from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 from scipy.stats import percentileofscore
 
+def czb_ms_processing(file_name, root, analysis, filter_rows=True, remove_dup_baits=True,
+    find_gene_names=True, Lfq_intensity=True, imputation='simple_bait', distance=1.8, width=0.3):
+    """
+    wrapper script for all the pre-processing up to pval calculations
+    """
 
-def process_raw_file(file_name, filter_rows=True, fix_col_names=True,
+    # make directory for analysis folder
+    analysis_dir = root + analysis
+
+    if not os.path.isdir(analysis_dir):
+        os.mkdir(analysis_dir)
+
+    
+    # raw file processing
+    raw = process_raw_file(file_name, filter_rows=filter_rows, remove_dup_baits=remove_dup_baits,
+       find_gene_names=find_gene_names)
+
+
+    # transform log2
+    if Lfq_intensity:
+        intensity = r'^LFQ intensity '
+    else:
+        intensity = r'^Intensity '
+
+    transformed = transform_intensities(raw, intensity_type=intensity)
+    print("Intensities Log2 Transformed.")
+
+    # remove LFQ intensity from col names
+    re = [intensity]
+    repl_re = ['']
+    col_names = list(transformed)
+    new_cols = new_col_names(col_names, re, repl_re)
+    renamed = rename_cols(transformed, col_names, new_cols)
+
+    intensity_re = r'_\d+$'
+    reg_exp = r'(.*_.*)_\d+$'
+
+    # group replicates
+    grouped_df = group_replicates(renamed, intensity_re=intensity_re, reg_exp=reg_exp)
+
+    # filter rows without triplicate data in at least one bait
+    filtered_df = filter_valids(grouped_df)
+    
+    # imputation
+    if imputation == 'simple_bait':
+        imputed = multi_impute(filtered_df, distance=distance, width=width)
+    print("Imputation complete.")
+    
+    imputed.to_pickle(analysis_dir + '/imputed_table.pkl')
+
+    # Save a list of baits
+    baits = list(set(imputed.columns.get_level_values('Baits').tolist()))
+    baits.remove('Info')
+    bait_df = pd.DataFrame()
+    bait_df['Baits'] = baits
+    bait_df = bait_df.sort_values('Baits').reset_index(drop=True)
+
+    bait_df.to_csv(analysis_dir + '/bait_list.csv', index=False)
+    bait_df.to_csv(analysis_dir + '/pval_exclusion_list.csv', index=False)
+    bait_df.to_csv(analysis_dir + '/plotting_exclusion_list.csv', index=False)
+
+
+
+
+
+    
+
+def process_raw_file(file_name, filter_rows=True, 
         remove_dup_baits=True, find_gene_names=True, verbose=True):
     """
     wrapper script that filters only important metadata and intensity columns,
@@ -80,12 +147,6 @@ def process_raw_file(file_name, filter_rows=True, fix_col_names=True,
     # filter unwanted columns from the df
     ms_df = ms_df[selected_cols]
 
-
-    # fix col_names
-    if fix_col_names:
-        fixed_intensity_cols = fix_cols(intensity_cols)
-        rename = {i: j for i, j in zip(intensity_cols, fixed_intensity_cols)}
-        ms_df.rename(columns=rename, inplace=True)
 
     # if there are duplicate columns, get max values between the columns
     if remove_dup_baits:
@@ -208,7 +269,7 @@ def filter_valids(grouped_df, verbose=True):
     filtered = filtered_df.shape[0]
 
     if verbose:
-        print("Removed invalid values. " + str(filtered) + " from "
+        print("Removed invalid rows. " + str(filtered) + " from "
               + str(unfiltered) + " rows remaining.")
 
     return filtered_df
@@ -538,40 +599,6 @@ def rename_cols(df, old_cols, new_cols):
     renamed = df.rename(columns=rename)
 
     return renamed
-
-
-def fix_cols(col_names, reps=3):
-    """Simple function: Sometimes the MS raw file has unnecessary string
-    after the replicate id, this fn will replace the string without that bit.
-
-    rtype: new_cols, list """
-
-    # import file and column names
-    # col_names = list(df)
-
-    # create a RE pattern to match the replicate id
-    rep_id = '(_0[1-' + str(reps) + ']_)'
-
-    # for every column name, find where the RE pattern is
-    # matching, and delete unnecessary string.
-    # return a new list of col_names
-
-    new_cols = []
-    for col in col_names:
-        # search for the RE
-        rep_search = re.search(rep_id, col)
-        # if there is a match, get an index start
-        if rep_search:
-            end = rep_search.end()
-            # make a new column name that deletes
-            # unncessary str
-            col = col[:end-1]
-
-        # append fixed (or intact) column name
-        new_cols.append(col)
-
-    # return the new column names
-    return new_cols
 
 
 def random_imputation_val(x, mean, std):

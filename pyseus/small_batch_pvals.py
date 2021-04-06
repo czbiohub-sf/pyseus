@@ -10,7 +10,7 @@ import random
 import re
 import pandas as pd
 import numpy as np
-import pyseus as pys
+from pyseus import initial_processing as pys
 from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -23,7 +23,8 @@ from scipy.stats import percentileofscore
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def pval_enrichment(imputed_df, manual_exclusion, std_enrich=True, mean=False):
+def pval_enrichment(imputed_df, manual_exclusion=False, exclusion_list=[], std_enrich=True,
+    mean=False, wildtype=False, wt_labels=[]):
     """ Calculate enrichment and pvals for each bait, no automatic removal
 
     rtype enrichment_df: pd DataFrame
@@ -40,7 +41,8 @@ def pval_enrichment(imputed_df, manual_exclusion, std_enrich=True, mean=False):
 
 
     multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total),
-        repeat(manual_exclusion), repeat(std_enrich), repeat(mean))
+        repeat(manual_exclusion), repeat(exclusion_list), repeat(std_enrich), repeat(mean),
+        repeat(wildtype), repeat(wt_labels))
 
     p = Pool()
     print("P-val calculations..")
@@ -65,7 +67,9 @@ def pval_enrichment(imputed_df, manual_exclusion, std_enrich=True, mean=False):
 
 
 
-def first_round_pval(bait, df, num, total, manual_exclusion, std_enrich=True, mean=False):
+def first_round_pval(bait, df, num, total, manual_exclusion=False, 
+    exclusion_list=[], std_enrich=True, mean=False, wildtype=False,
+    wt_labels=[]):
     """ A first round of pval calculations to remove any significant hits
     from negative controls """
 
@@ -78,25 +82,37 @@ def first_round_pval(bait, df, num, total, manual_exclusion, std_enrich=True, me
     temporary.drop('Info', level='Baits', inplace=True, axis=1)
     neg_control.drop('Info', level='Baits', inplace=True, axis=1)
 
+    if wildtype:
+        # only use wildtypes for negative control
+        neg_cols = [x[0] for x in list(neg_control)]
+        neg_cols = list(set(neg_cols))
+        new_neg_cols = []
+        for label in wt_labels:
+            for col in neg_cols:
+                if label in col:
+                    new_neg_cols.append(col)
+        new_neg_cols = list(set(new_neg_cols))
+
+        neg_control = neg_control[new_neg_cols]
+
+
     # retrieve all gene names in baits
     n_baits = list(set([x[0] for x in list(neg_control)]))
 
-    # n_bait_list composed of (real_col_name, gene_name)
-    n_bait_list = [(x, x.split('_', 1)[1]) for x in n_baits]
-
-    # filter every gene that shares the same root
-    bait_name = bait.split('_', 1)[1]
-
-    # identify all the genes that are in a corum set
-    corums = corum_genes(bait_name, manual_exclusion)
-
     same_group = []
-    same_group.append(bait)
-    for gene in n_bait_list:
-        if gene[1] in corums:
-            same_group.append(gene[0])
+    if manual_exclusion:
+        for exclude_gene in exclusion_list:
+            exclude_gene = exclude_gene.upper()
 
+            for gene in n_baits:
+                gene_up = gene.upper()
+                if exclude_gene in gene_up:
+                    same_group.append(gene)
 
+    if not wildtype:
+        same_group.append(bait)
+    
+    print(same_group)
     # Convert all values in same groups as np.nans
     for gene in same_group:
         neg_control[gene] = neg_control[gene].where(
