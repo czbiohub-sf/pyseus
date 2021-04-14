@@ -4,14 +4,14 @@ import sys
 import multiprocessing
 import os
 import re
-import textwrap
+import pickle
 import pandas as pd
 import numpy as np
 from itertools import repeat
 from multiprocessing import Pool
 
 
-def czb_initial_processing(file_name, root, analysis, intensity_type='LFQ intensity',
+def czb_initial_processing(root, analysis, intensity_type='LFQ intensity',
     bait_impute=True, distance=1.8, width=0.3, thresh=100):
     
     """
@@ -26,7 +26,7 @@ def czb_initial_processing(file_name, root, analysis, intensity_type='LFQ intens
         os.mkdir(analysis_dir)
     
     # Run all the processing methods
-    pyseus_tables = PyseusRawTables(file_name=file_name,
+    pyseus_tables = RawTables(root=root,
         analysis=analysis, intensity_type=intensity_type)
     pyseus_tables.filter_table()
     pyseus_tables.transform_intensities(func=np.log2)
@@ -36,27 +36,56 @@ def czb_initial_processing(file_name, root, analysis, intensity_type='LFQ intens
         pyseus_tables.bait_impute(distance=distance, width=width)
     else:
         pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
-    
-    # Save the class file in the analysis folder
-    
+    pyseus_tables.generate_export_bait_matrix()
+    pyseus_tables.save()
+    return pyseus_tables
 
 
-class PyseusRawTables:
+
+
+def load_raw_tables(file_dir):
     """
-    The Raw Tables class contain DataFrame objects and functions that cover
+    use pickle to load RawTables class
+    """
+    return pickle.load(open(file_dir, 'rb', -1))
+
+class RawTables:
+    """
+    Raw Tables class contains DataFrame objects, functions, and metadata that cover
     multiple pre-processing steps to create a final processed imputed table. 
     
     """
     
     # initiate raw table by importing from data directory
-    def __init__(self, file_name, analysis, intensity_type):
+    def __init__(self, root, analysis, intensity_type):
         
-        self.raw_table = pd.read_csv(file_name,
+        self.raw_table = pd.read_csv(root+'proteinGroups.txt',
             sep='\t', index_col=0, header=0, low_memory=False)
+        
+        # root directory
+        self.root = root
         # analysis string
         self.analysis = analysis
         # Specificastion of which intensity (raw or LFQ) to use
         self.intensity_type = intensity_type
+
+    def save(self, option_str=''):
+        """
+        save class to a designated directory
+        """
+        analysis_dir = self.root + self.analysis
+        if len(option_str) > 0:
+            option_str = '_' + option_str
+        file_dir = analysis_dir + "/preprocessed_tables" + option_str + '.pkl' 
+        if not os.path.isdir(analysis_dir):
+            print(analysis_dir)
+            print('Directory does not exist! Creating new directory')
+            os.mkdir(analysis_dir)
+
+        print("Saving to: " + file_dir)
+        with open(file_dir, 'wb') as file_:
+            pickle.dump(self, file_, -1)
+
       
     def filter_table(self, verbose=True):
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
@@ -125,7 +154,7 @@ class PyseusRawTables:
     def group_replicates(self, intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$'):
         """Group the replicates of intensities into replicate groups"""
         
-        reg_exp = self.intensity_type + reg_exp
+        reg_exp = self.intensity_type + ' ' + reg_exp
         try: 
             self.transformed_table
             transformed = self.transformed_table.copy()
@@ -306,6 +335,32 @@ class PyseusRawTables:
             imputed[col] = self.preimpute_table[col]      
 
         self.prey_imputed_table = imputed  
+    
+
+    def generate_export_bait_matrix(self):
+        """
+        Generates and creates a Boolean bait matrix that will be used for control
+        exclusion in p-val and enrichment analysis. 
+        """
+        grouped = self.grouped_table.copy()
+        baits = list(set(grouped.columns.get_level_values('Baits').to_list()))
+        baits.remove('Info')
+        baits.sort()
+        bait_df = pd.DataFrame()
+        bait_df['Baits'] = baits
+        bait_df.reset_index(drop=True, inplace=True)
+        self.bait_list = bait_df.copy()
+        bait_df['plot'] = True
+        bait_df.to_csv(self.root + self.analysis + '/plotting_exclusion_list.csv',
+            index=False)
+
+        # Create a boolean table
+        for bait in baits:
+            bait_df[bait] = True
+        self.bait_matrix = bait_df.copy()
+        self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',
+            index=False)
+
         
 def select_intensity_cols(orig_cols, intensity_type):
     """from table column names, return a list of only intensity cols
@@ -383,3 +438,5 @@ def random_imputation_val(x, mean, std):
         return np.random.normal(mean, std, 1)[0]
     else:
         return np.round(x, 4)
+
+
