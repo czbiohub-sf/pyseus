@@ -11,44 +11,6 @@ from itertools import repeat
 from multiprocessing import Pool
 
 
-def czb_initial_processing(root, analysis, intensity_type='LFQ intensity',
-    bait_impute=True, distance=1.8, width=0.3, thresh=100):
-    
-    """
-    wrapper script for all the pre-processing up to imputation using
-    PyseusRawTables Class. Saves and returns the PyseusRawTables in the
-    designated analysis directory
-    """
-    # make directory for analysis folder
-    analysis_dir = root + analysis
-
-    if not os.path.isdir(analysis_dir):
-        os.mkdir(analysis_dir)
-    
-    # Run all the processing methods
-    pyseus_tables = RawTables(root=root,
-        analysis=analysis, intensity_type=intensity_type)
-    pyseus_tables.filter_table()
-    pyseus_tables.transform_intensities(func=np.log2)
-    pyseus_tables.group_replicates(intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$')
-    pyseus_tables.remove_invalid_rows()
-    if bait_impute:
-        pyseus_tables.bait_impute(distance=distance, width=width)
-    else:
-        pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
-    pyseus_tables.generate_export_bait_matrix()
-    pyseus_tables.save()
-    return pyseus_tables
-
-
-
-
-def load_raw_tables(file_dir):
-    """
-    use pickle to load RawTables class
-    """
-    return pickle.load(open(file_dir, 'rb', -1))
-
 class RawTables:
     """
     Raw Tables class contains DataFrame objects, functions, and metadata that cover
@@ -68,6 +30,7 @@ class RawTables:
         self.analysis = analysis
         # Specificastion of which intensity (raw or LFQ) to use
         self.intensity_type = intensity_type
+    
 
     def save(self, option_str=''):
         """
@@ -361,6 +324,43 @@ class RawTables:
         self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',
             index=False)
 
+
+def czb_initial_processing(root, analysis, intensity_type='LFQ intensity',
+    bait_impute=True, distance=1.8, width=0.3, thresh=100):
+    
+    """
+    wrapper script for all the pre-processing up to imputation using
+    PyseusRawTables Class. Saves and returns the PyseusRawTables in the
+    designated analysis directory
+    """
+    # make directory for analysis folder
+    analysis_dir = root + analysis
+
+    if not os.path.isdir(analysis_dir):
+        os.mkdir(analysis_dir)
+    
+    # Run all the processing methods
+    pyseus_tables = RawTables(root=root,
+        analysis=analysis, intensity_type=intensity_type)
+    pyseus_tables.filter_table()
+    pyseus_tables.transform_intensities(func=np.log2)
+    pyseus_tables.group_replicates(intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$')
+    pyseus_tables.remove_invalid_rows()
+    if bait_impute:
+        pyseus_tables.bait_impute(distance=distance, width=width)
+    else:
+        pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
+    pyseus_tables.generate_export_bait_matrix()
+    pyseus_tables.save()
+    return pyseus_tables
+
+
+def load_raw_tables(file_dir):
+    """
+    use pickle to load RawTables class
+    """
+    return pickle.load(open(file_dir, 'rb', -1))
+
         
 def select_intensity_cols(orig_cols, intensity_type):
     """from table column names, return a list of only intensity cols
@@ -440,3 +440,41 @@ def random_imputation_val(x, mean, std):
         return np.round(x, 4)
 
 
+def rename_columns(df, RE, replacement_RE, repl_search=False):
+    """
+    change intensity column names to a readable format. More specifically,
+    search a column name from an input RE and substitute matches with another
+    input substitute strings or REs.
+        col_names: list, a list of column names from raw_df
+        RE: list, a list of regular expressions to search in column names
+        replacement_RE: list, a list of strs/REs that substitute the original expression
+        repl_search: boolean, if True, elements in replacement_RE are treated as regular
+            expressions used in search, and all specified groups are used in substitution
+
+    """
+    df = df.copy()
+    col_names = list(df)
+
+    # start a new col list
+    new_cols = []
+
+    # Loop through cols and make quaifying subs
+    for col in col_names:
+        for i in np.arange(len(RE)):
+            if re.search(RE[i], col, flags=re.IGNORECASE):
+                replacement = replacement_RE[i]
+                if (repl_search) & (len(replacement) > 1):
+                    rep_search = re.search(replacement, col,
+                                flags=re.IGNORECASE)
+                    replacement = ''
+                    for group in rep_search.groups():
+                        replacement += group
+
+                col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
+        new_cols.append(col)
+    
+    rename = {i: j for i, j in zip(col_names, new_cols)}
+
+    renamed = df.rename(columns=rename)
+
+    return renamed

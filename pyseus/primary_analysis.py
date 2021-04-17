@@ -137,16 +137,14 @@ class AnalysisTables:
 
         # iterate through each cluster to generate neg con group
         bait_list = [col[0] for col in list(imputed) if col[0] != 'Info']
-        bait_list = list(set(bait_list))
-        total = len(bait_list)
-        baitrange = list(np.arange(total))   
+        bait_list = list(set(bait_list))   
           
-        multi_args = zip(bait_list, repeat(imputed), baitrange, repeat(total),
-        repeat(exclusion), repeat(std_enrich), repeat(mean))
+        multi_args = zip(bait_list, repeat(imputed),
+        repeat(exclusion), repeat(std_enrich), repeat(mean), repeat(True))
 
         p = Pool()
         print("P-val calculations..")
-        outputs = p.starmap(simple_pval, multi_args)
+        outputs = p.starmap(calculate_pval, multi_args)
         p.close()
         p.join()
         print("Finished!")  
@@ -163,6 +161,59 @@ class AnalysisTables:
         master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
 
         self.simple_pval_table = master_df
+
+    def two_step_bootstrap_pval_enrichment(self, std_enrich=True, mean=False, thresh=0.001,
+        bootstrap_rep=100):
+        """
+        The two-step bootstrap pval/enrichment calculations does not use
+        an exclusion table of user defined controls. It automatically 
+        drops statistically significant outliers from the prey pool on the
+        first round, and uses the distribution with dropped outliers
+        to calculate bootstrapped null distribution. The null distribution
+        of the preys are then used in the second round for pval and enrichment
+        calculation. Uses multi-processing for faster runtime 
+        """
+
+        imputed = self.imputed_table.copy()
+        bait_list = [col[0] for col in list(imputed) if col[0] != 'Info']
+        bait_list = list(set(bait_list))
+
+        multi_args = zip(bait_list, repeat(imputed), repeat(None), repeat(std_enrich),
+            repeat(mean), repeat(False), repeat(True), repeat(False), repeat(thresh), repeat(False),
+            repeat(None))
+        
+        p = Pool()
+        print("First round p-val calculations..")
+        neg_dfs = p.starmap(calculate_pval, multi_args)
+        p.close()
+        p.join()
+        master_neg = pd.concat(neg_dfs, axis=1)
+        print("First round finished!")    
+
+        self.second_round_neg_control = master_neg.copy()
+        master_neg.reset_index(inplace=True, drop=True)
+
+        multi_args2 = zip(bait_list, repeat(imputed), repeat(None), repeat(std_enrich),
+            repeat(mean), repeat(False), repeat(False), repeat(True), repeat(thresh), repeat(True),
+            repeat(master_neg))
+        
+        print("Second round p-val calculations...")
+        p = Pool()
+        outputs = p.starmap(calculate_pval, multi_args2)
+
+        master_df = pd.concat(outputs, axis=1)
+        print("Second round finished!")
+
+        # join gene names to the df
+        gene_names = imputed[[('Info', 'Protein IDs'), ('Info', 'Gene names')]]
+        gene_names.set_index(('Info', 'Protein IDs'), drop=True, inplace=True)
+        gene_names.rename(columns={'Info': 'gene_names'}, inplace=True)
+        gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
+
+        master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
+
+        self.two_step_pval_table = master_df.copy() 
+
     
 
     def convert_to_standard_table(self, metrics=['pvals', 'enrichment'], interactors=False,
@@ -198,13 +249,15 @@ class AnalysisTables:
                 hits = target_pvs
                 hits.reset_index(inplace=True)
 
-
-            hits['target'] = target.upper()
+            hits['experiment'] = target.split('_')[0]
+            hits['target'] = target.split('_')[1]
             hits.rename(columns={'gene_names': 'prey'}, inplace=True)
             hits.reset_index(drop=True, inplace=True)
             all_hits.append(hits)
 
         all_hits = pd.concat(all_hits, axis=0)
+        col_order = ['experiment', 'target', 'prey', 'protein_ids'] + metrics 
+        all_hits = all_hits[col_order]
         
         if interactors:
             self.standard_interactors_table = all_hits
@@ -212,9 +265,11 @@ class AnalysisTables:
             self.standard_hits_table = all_hits
      
 
-def simple_pval(bait, df, num, total, exclusion, std_enrich=True, mean=False):
-    """ A first round of pval calculations to remove any significant hits
-    from negative controls """
+def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
+    simple=True, first_round=False, second_round=False, thresh=0.001, bagging=False,
+    second_round_neg_control=None):
+    """ General script for pval calculations - encompasses options for 
+    simple and two-step bootstrap calculations """
 
     df = df.copy()
     excluded = exclusion.copy()
@@ -224,54 +279,83 @@ def simple_pval(bait, df, num, total, exclusion, std_enrich=True, mean=False):
 
     # construct a negative control
     temporary = df.copy()
-    neg_control = df.copy()
     temporary.drop('Info', level='Baits', inplace=True, axis=1)
-    neg_control.drop('Info', level='Baits', inplace=True, axis=1)
- 
-    # Get a list of excluded genes
-    excluded = excluded[['Baits', bait]]
-    excluded = excluded[excluded[bait] == False]
+    if second_round:
+        neg_control = second_round_neg_control.copy()
+    else:
+        neg_control = df.copy()
+        neg_control.drop('Info', level='Baits', inplace=True, axis=1)
+    
+    if simple:
+        # Get a list of excluded genes
+        excluded = excluded[['Baits', bait]]
+        excluded = excluded[excluded[bait] == False]
 
-    if excluded.shape[0] > 0:
-        exclude_list = excluded['Baits'].to_list()
-      
-        # Convert all values in same groups as np.nans
-        for gene in exclude_list:
-            neg_control[gene] = neg_control[gene].where(
-                neg_control[gene] > 100, np.nan)
+        if excluded.shape[0] > 0:
+            exclude_list = excluded['Baits'].to_list()
+        
+            # Convert all values in same groups as np.nans
+            for gene in exclude_list:
+                neg_control[gene] = neg_control[gene].where(
+                    neg_control[gene] > 100, np.nan)
 
-    # calculate the p-values
+
 
     # combine values of replicates into one list
     bait_series = temporary[bait].values.tolist()
+
+    if first_round:
+        # copy a bait series that will be returned with removed hits
+        neg_series = temporary[bait].copy()
+        neg_series.index = gene_list
+        neg_series.columns = pd.MultiIndex.from_product([[bait], neg_series.columns])
 
     # add an index value to the list for locating neg_control indices
     for i in np.arange(len(bait_series)):
         bait_series[i].append(i)
 
-    # perform the p value calculations, with bagging replacement for np.nans
+    # perform the p value calculations
     pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
 
-    pval_series = pval_series.apply(get_pvals, args=[neg_control.T, std_enrich, mean])
+    if simple:
+        pval_series = pval_series.apply(get_pvals, args=[neg_control.T, std_enrich, mean])
+    else:
+        pval_series = pval_series.apply(get_pvals, args=[neg_control.T, std_enrich, mean, bagging])
 
     pvals, enrichment = pval_series.apply(lambda x: x[0]), pval_series.apply(lambda x: x[1])
     pvals.name = 'pvals'
     enrichment.name = 'enrichment'
 
-    # Find positive hits from enrichment and pval calculations
+    
     pe_df = pd.concat([pvals, enrichment], axis=1)
+
+    # Find positive hits from enrichment and pval calculations to exclude on second round
+    if first_round:
+
+        pe_df = pe_df[pe_df['enrichment'] > 0]
+        pe_df['hits'] = np.where((pe_df['pvals'] > thresh), True, False)
+
+        # Get genes names of all the hits
+        hits = set(pe_df[pe_df['hits']].index.tolist())
+
+        # Remove hits from the negative control
+        replicates = list(neg_series)
+
+        for rep in replicates:
+            for hit in hits:
+                neg_series[rep][hit] = np.nan
+        
+        return neg_series
+
 
     output = pd.concat([pe_df[['enrichment', 'pvals']]], keys=[bait],
         names=['baits', 'values'], axis=1)
-
-    if num % 20 == 0:
-        print(str(num) + ' / ' + str(total) + ' baits processed')
 
     return output
     
 
 
-def get_pvals(x, control_df, std_enrich, mean=False):
+def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_rep=100):
     """This is an auxillary function to calculate p values
     that is used in enrichment_pval_dfs function
 
@@ -279,8 +363,28 @@ def get_pvals(x, control_df, std_enrich, mean=False):
 
     # get the index to access the right set of control intensities
     row = x[-1]
-    neg_con = control_df[row].values.tolist()
-    pval = scipy.stats.ttest_ind(x[:-1], control_df[row].values.tolist(),
+    neg_con = np.array(control_df[row].values.tolist())
+
+    if bagging:
+        orig_len = len(neg_con)
+        con_dropped = tuple(neg_con[~np.isnan(neg_con)])
+        dropped_con = list(con_dropped)
+
+        # bootstrap sampling       
+        bagged_means = []
+        bagged_stds = []
+        for _ in bootstrap_rep:
+            bagged_con = np.random.choice(dropped_con, size=orig_len)
+            bagged_means.append(np.mean(bagged_con))
+            bagged_stds.append(np.std(bagged_con))
+        
+        bootstrap_mean = np.mean(bagged_means)
+        bootstrap_std = np.mean(bagged_stds)
+
+        neg_con = np.random.normal(loc=bootstrap_mean, scale=bootstrap_std, size=orig_len)
+
+
+    pval = scipy.stats.ttest_ind(x[:-1], neg_con,
     nan_policy='omit')[1]
 
     # negative log of the pvals
@@ -295,7 +399,6 @@ def get_pvals(x, control_df, std_enrich, mean=False):
         else:
             enrichment = (np.nanmedian(x[:-1]) - np.nanmedian(neg_con)) / std
 
-
     else:
         if mean:
             enrichment = (np.nanmean(x[:-1]) - np.nanmean(neg_con))
@@ -303,3 +406,16 @@ def get_pvals(x, control_df, std_enrich, mean=False):
             enrichment = (np.nanmedian(x[:-1]) - np.nanmedian(neg_con))
 
     return [pval, enrichment]
+
+
+def calc_thresh(enrich, fc_var1, fc_var2):
+    """simple function to get FCD thresh to recognize hits"""
+
+    if enrich < fc_var2:
+        return np.inf
+
+    elif (enrich == 0) & (fc_var2 == 0):
+        return np.inf
+
+    else:
+        return fc_var1 / (abs(enrich) - fc_var2)
