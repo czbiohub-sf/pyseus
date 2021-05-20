@@ -22,13 +22,13 @@ class RawTables:
     def __init__(self, root, analysis, intensity_type):
         
         self.raw_table = pd.read_csv(root+'proteinGroups.txt',
-            sep='\t', index_col=0, header=0, low_memory=False)
+            sep='\t', header=0, low_memory=False)
         
         # root directory
         self.root = root
         # analysis string
         self.analysis = analysis
-        # Specificastion of which intensity (raw or LFQ) to use
+        # Specification of which intensity (raw or LFQ) to use
         self.intensity_type = intensity_type
     
 
@@ -478,3 +478,37 @@ def rename_columns(df, RE, replacement_RE, repl_search=False):
     renamed = df.rename(columns=rename)
 
     return renamed
+
+
+def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
+    """For each bait group, calculate the median of the replicates
+    and returns a df of median values
+
+    rtype: median_df pd dataframe"""
+
+    imputed_df = imputed_df.copy()
+    # retrieve bait names
+    bait_names = [col[0] for col in list(imputed_df) if col[0] != 'Info']
+    bait_names = list(set(bait_names))
+    # initiate a new df for medians
+    median_df = pd.DataFrame()
+
+    # for each bait calculate medain across replicates and add
+    # to the new df
+    for bait in bait_names:
+        if mean:
+            bait_median = imputed_df[bait].mean(axis=1)
+        else:
+            bait_median = imputed_df[bait].median(axis=1)
+        new_col_name = col_str + bait
+        median_df[new_col_name] = bait_median
+
+    if save_info:
+        # get info columns into the new df
+        info = imputed_df['Info']
+        info_cols = list(info)
+
+        for col in info_cols:
+            median_df[col] = info[col]
+
+    return median_df

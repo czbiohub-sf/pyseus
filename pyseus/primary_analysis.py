@@ -7,9 +7,11 @@ import multiprocessing
 import itertools
 import scipy
 import random
+import pickle
 import re
 import pandas as pd
 import numpy as np
+import os
 # from pyseus import basic_processing as pys
 from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
@@ -263,7 +265,25 @@ class AnalysisTables:
             self.standard_interactors_table = all_hits
         else:
             self.standard_hits_table = all_hits
-     
+
+
+    def save(self, option_str=''):
+        """
+        save class to a designated directory
+        """
+        analysis_dir = self.root + self.analysis
+        if len(option_str) > 0:
+            option_str = '_' + option_str
+        file_dir = analysis_dir + "/pval_tables" + option_str + '.pkl' 
+        if not os.path.isdir(analysis_dir):
+            print(analysis_dir)
+            print('Directory does not exist! Creating new directory')
+            os.mkdir(analysis_dir)
+
+        print("Saving to: " + file_dir)
+        with open(file_dir, 'wb') as file_:
+            pickle.dump(self, file_, -1)
+
 
 def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     simple=True, first_round=False, second_round=False, thresh=0.001, bagging=False,
@@ -408,14 +428,16 @@ def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_re
     return [pval, enrichment]
 
 
-def calc_thresh(enrich, fc_var1, fc_var2):
+def calc_thresh(enrich, curvature, offset):
     """simple function to get FCD thresh to recognize hits"""
 
-    if enrich < fc_var2:
+    if enrich < offset:
         return np.inf
 
-    elif (enrich == 0) & (fc_var2 == 0):
+    elif (enrich == 0) & (offset == 0):
         return np.inf
 
     else:
-        return fc_var1 / (abs(enrich) - fc_var2)
+        return curvature / (abs(enrich) - offset)
+
+
