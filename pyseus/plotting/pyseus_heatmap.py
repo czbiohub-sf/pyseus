@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from pyseus import basic_processing as pys
 import plotly.offline
-import plotly.graph_objects as go
+from plotly import graph_objs as go
 import seaborn as sns
 import plotly.figure_factory as ff
 from scipy.cluster.hierarchy import linkage, leaves_list

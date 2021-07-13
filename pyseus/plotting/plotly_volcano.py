@@ -4,7 +4,7 @@ from numbers import Number
 import numpy as np
 import pandas as pd
 import plotly.offline
-import plotly.graph_objects as go
+from plotly import graph_objs as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import math
