@@ -11,7 +11,7 @@ import re
 import pandas as pd
 import numpy as np
 
-import primary_analysis as pa
+from pyseus import primary_analysis as pa
 
 from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
@@ -57,10 +57,9 @@ class Validation():
         enrichment = hits['enrichment']
 
         threshold = enrichment.apply(pa.calc_thresh, args=[curvature, offset])
-        hits['interaction'] = np.where(
-            (bait_pval > threshold) > True, False)
+        hits['interaction'] = np.where((bait_pval > threshold), True, False)
 
-        self.fixed_interaction_table = hits
+        self.interaction_table = hits
 
     def dynamic_fdr(self, perc=10, curvature=3, offset_seed=2.5):
         """

@@ -311,13 +311,14 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
         excluded = excluded[['Baits', bait]]
         excluded = excluded[excluded[bait] == False]
 
+        exclude_list = [bait]
         if excluded.shape[0] > 0:
-            exclude_list = excluded['Baits'].to_list()
+            exclude_list = exclude_list + excluded['Baits'].to_list()
         
-            # Convert all values in same groups as np.nans
-            for gene in exclude_list:
-                neg_control[gene] = neg_control[gene].where(
-                    neg_control[gene] > 100, np.nan)
+        # Convert all values in same groups as np.nans
+        for gene in exclude_list:
+            neg_control[gene] = neg_control[gene].where(
+                neg_control[gene] > 100, np.nan)
 
 
 

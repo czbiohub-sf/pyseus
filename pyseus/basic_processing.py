@@ -19,9 +19,9 @@ class RawTables:
     """
     
     # initiate raw table by importing from data directory
-    def __init__(self, root, analysis, intensity_type):
+    def __init__(self, root, analysis, intensity_type, pg_file='proteinGroups.txt'):
         
-        self.raw_table = pd.read_csv(root+'proteinGroups.txt',
+        self.raw_table = pd.read_csv(root+pg_file,
             sep='\t', header=0, low_memory=False)
         
         # root directory
@@ -313,8 +313,9 @@ class RawTables:
         bait_df['Baits'] = baits
         bait_df.reset_index(drop=True, inplace=True)
         self.bait_list = bait_df.copy()
-        bait_df['plot'] = True
-        bait_df.to_csv(self.root + self.analysis + '/plotting_exclusion_list.csv',
+        bait_df2 = bait_df.copy()
+        bait_df2['plot'] = True
+        bait_df2.to_csv(self.root + self.analysis + '/plotting_exclusion_list.csv',
             index=False)
 
         # Create a boolean table
@@ -325,8 +326,9 @@ class RawTables:
             index=False)
 
 
-def czb_initial_processing(root, analysis, intensity_type='LFQ intensity',
-    bait_impute=True, distance=1.8, width=0.3, thresh=100):
+def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
+    intensity_type='LFQ intensity', bait_impute=True, distance=1.8, width=0.3,
+    thresh=100):
     
     """
     wrapper script for all the pre-processing up to imputation using
@@ -341,7 +343,7 @@ def czb_initial_processing(root, analysis, intensity_type='LFQ intensity',
     
     # Run all the processing methods
     pyseus_tables = RawTables(root=root,
-        analysis=analysis, intensity_type=intensity_type)
+        analysis=analysis, intensity_type=intensity_type, pg_file=pg_file)
     pyseus_tables.filter_table()
     pyseus_tables.transform_intensities(func=np.log2)
     pyseus_tables.group_replicates(intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$')
@@ -438,6 +440,30 @@ def random_imputation_val(x, mean, std):
         return np.random.normal(mean, std, 1)[0]
     else:
         return np.round(x, 4)
+
+def sample_rename(col_names, RE, replacement_RE, repl_search=False):
+    """
+    method to change column names for previewing in notebook
+    """
+
+    # start a new col list
+    new_cols = []
+
+    # Loop through cols and make quaifying subs
+    for col in col_names:
+        for i in np.arange(len(RE)):
+            if re.search(RE[i], col, flags=re.IGNORECASE):
+                replacement = replacement_RE[i]
+                if (repl_search) & (len(replacement) > 1):
+                    rep_search = re.search(replacement, col,
+                                flags=re.IGNORECASE)
+                    replacement = ''
+                    for group in rep_search.groups():
+                        replacement += group
+
+                col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
+        new_cols.append(col)
+    return new_cols
 
 
 def rename_columns(df, RE, replacement_RE, repl_search=False):

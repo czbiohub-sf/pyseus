@@ -9,7 +9,7 @@ import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import math
 
-def simple_volcano(v_df, bait, fcd1, width=800, height=800):
+def simple_volcano(v_df, bait, fcd, width=800, height=800):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
     v_df.set_index(('gene_names', 'gene_names'), inplace=True)
@@ -17,7 +17,7 @@ def simple_volcano(v_df, bait, fcd1, width=800, height=800):
     # Specify the bait column
     bait_vals = v_df[bait]
     bait_vals['thresh'] = bait_vals['enrichment'].apply(calc_thresh,
-        args=[fcd1[0], fcd1[1]])
+        args=[fcd[0], fcd[1]])
     bait_vals['hits'] = np.where((bait_vals['pvals'] > bait_vals['thresh']), True, False)
     
 
@@ -32,9 +32,9 @@ def simple_volcano(v_df, bait, fcd1, width=800, height=800):
         ymax = 30
 
     # FCD plot calculation
-    x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
-        + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
-    y1 = fcd1[0] / (abs(x1) - fcd1[1])
+    x1 = np.array(list(np.linspace(-12, -1 * fcd[1] - 0.001, 200))
+        + list(np.linspace(fcd[1] + 0.001, 12, 200)))
+    y1 = fcd[0] / (abs(x1) - fcd[1])
     # x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
     #     + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
     # y2 = fcd2[0] / (abs(x2) - fcd2[1])
