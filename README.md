@@ -42,5 +42,9 @@ Notebooks are useful for streamlined analysis, often taking wrapper functions th
 
 #### change_sample_names.ipynb 
 This notebook allows easy manipulation of column names before raw processing. Pyseus works with intensity columns that are organized in <b>experiment_sample_replicate# </b>. For example <b>Glycine-Low-pH_LAMP1_2</b> would be organized as '<b>Glycine-Low-pH</b>' (<i>experiment</i>), '<b>LAMP1</b>' (<i>sample</i>), and '<b>2</b>' (<i>replicate #</i>). Dashes can be used as added descriptors for each section, but underscores need to be reserved for the separation. ex: 'Glycine_Low_pH_LAMP1_2 will not work as a sample title. 
-#### process_raw_file
-
+#### process_raw_file.ipynb
+This notebook allows users to process proteingroups file and calculate p-values and enrichments.
+#### plot_intensity_matrix.ipynb
+Users can view interactive graphs of the intensity matrix from imputed tables 
+#### volcano_plot.ipynb
+Users can select a specific sample (bait) to draw an interactive volcano plot
