@@ -211,7 +211,7 @@ class RawTables:
 
         self.preimpute_table = filtered_df
     
-    def bait_impute(self, distance=1.8, width=0.3):
+    def bait_impute(self, distance=1.8, width=0.3, local=True):
         """
         bait-imputation for sets of data without enough samples.
         This fx imputes a value from a normal distribution of the left-tail
@@ -235,8 +235,20 @@ class RawTables:
         bait_names = [col[0] for col in list(imputed) if col[0] != 'Info']
         baits = list(set(bait_names))
         bait_series = [imputed[bait].copy() for bait in baits]
+        if local:
+            global_mean = 0
+            global_stdev = 0
+
+        else:
+            # if not using columnwise imputation, calculate global mean and stdev
+            all_intensities = imputed[[col for col in list(imputed) if col[0] != 'Info']].copy()
+            global_mean = all_intensities.droplevel('Baits', axis=1).stack().mean()
+            global_stdev = all_intensities.droplevel('Baits', axis=1).stack().std()
+
+
+
         bait_params = zip(
-            bait_series, repeat(distance), repeat(width))
+            bait_series, repeat(distance), repeat(width), repeat(local), repeat(global_mean), repeat(global_stdev))
 
         # Use multiprocessing pool to parallel impute
         p = Pool()
@@ -328,7 +340,7 @@ class RawTables:
 
 def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
     intensity_type='LFQ intensity', bait_impute=True, distance=1.8, width=0.3,
-    thresh=100):
+    thresh=100, local=True):
     
     """
     wrapper script for all the pre-processing up to imputation using
@@ -349,7 +361,7 @@ def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
     pyseus_tables.group_replicates(intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$')
     pyseus_tables.remove_invalid_rows()
     if bait_impute:
-        pyseus_tables.bait_impute(distance=distance, width=width)
+        pyseus_tables.bait_impute(distance=distance, width=width, local=local)
     else:
         pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
     pyseus_tables.generate_export_bait_matrix()
@@ -386,15 +398,21 @@ def select_intensity_cols(orig_cols, intensity_type):
     return intensity_cols
 
 
-def pool_impute(bait_group, distance=1.8, width=0.3):
+def pool_impute(bait_group, distance=1.8, width=0.3, local=True, global_mean=0, global_stdev=0):
     """target for multiprocessing pool from multi_impute_nans"""
     all_vals = bait_group.stack()
     mean = all_vals.mean()
     stdev = all_vals.std()
+    
+    if local:
+        # get imputation distribution mean and stdev
+        imp_mean = mean - distance * stdev
+        imp_stdev = stdev * width
+    else:
+        # use global mean and stdev
+        imp_mean = global_mean
+        imp_stdev = global_stdev
 
-    # get imputation distribution mean and stdev
-    imp_mean = mean - distance * stdev
-    imp_stdev = stdev * width
 
     # copy a df of the group to impute values
     bait_df = bait_group.copy()
