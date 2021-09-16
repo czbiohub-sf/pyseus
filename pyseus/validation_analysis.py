@@ -33,15 +33,19 @@ class Validation():
     post-processing or validation methods
     """
 
-    def __init__(self, hit_table, corum, localization_table):
+    def __init__(self, hit_table, target_col, prey_col, corum, localization_table,
+        interaction_table=None):
         """
         initiate class with a hit table (without interactions called) and other 
         necessary tables required for precision-recall analysis =
         """
 
         self.hit_table = hit_table
+        self.target = target_col
+        self.prey = prey_col
         self.corum = corum
         self.localization_table = localization_table
+        self.interaction_table = interaction_table
     
     def static_fdr(self, curvature, offset):
         """
@@ -59,7 +63,19 @@ class Validation():
         threshold = enrichment.apply(pa.calc_thresh, args=[curvature, offset])
         hits['interaction'] = np.where((bait_pval > threshold), True, False)
 
-        self.interaction_table = hits
+        self.interaction_table = hits[hits['interaction']]
+
+    def pval_threshold(self, pval_thresh, metric='pvals'):
+        """
+        Call significant interactors based on p-val threshold.
+        Used primarily in context of generating aprecision-recall curve
+        """
+        hits = self.hit_table.copy()
+        bait_pval = hits[metric]
+        hits['interaction'] = np.where((bait_pval > pval_thresh), True, False)
+
+        self.interaction_table = hits[hits['interaction']]
+
 
     def dynamic_fdr(self, perc=10, curvature=3, offset_seed=2.5):
         """
@@ -98,7 +114,7 @@ class Validation():
         fdr_df['experiment'] = experiments
         fdr_df['target'] = baits
         fdr_df['fdr'] = fdr_full
-        fdr_df.set_index('bait', inplace=True)    
+        # fdr_df.set_index('bait', inplace=True)    
         
         ############ Have to reconcile proper hits table format #######
         new_groups = []
@@ -124,8 +140,183 @@ class Validation():
 
         interaction_table = pd.concat(new_groups)
         self.dynamic_fdr_table = fdr_df
-        self.interaction_table = interaction_table
+        self.interaction_table = interaction_table[interaction_table['interaction']]
 
+    def convert_to_unique_interactions(self, target_match=False, get_edge=False, edge='pvals'):
+        """
+        convert bait/prey interactions to unique, directionless interactions using gene names
+        """
+        dataset = self.interaction_table.copy()
+        target_col = self.target
+        prey_col = self.prey
+
+        # remove interactions where target and prey are the same proteins
+        if not target_match:
+            dataset = dataset[dataset[target_col] != dataset[prey_col]]
+        original = self.interaction_table.copy()
+
+        # combine values from two columns to a list and sort alphabetically
+        dataset = dataset[[target_col, prey_col]]
+        
+        # force values in target and prey columns to be string
+        dataset[target_col] = dataset[target_col].astype(str)
+        dataset[prey_col] = dataset[prey_col].astype(str)
+
+        combined = pd.Series(dataset.values.tolist())
+
+        combined = combined.apply(sorted)
+
+        combined_list = combined.to_list()
+
+        # Unzip the sorted interactions and create them into two lists
+        unzipped = list(zip(*combined_list))
+
+        first, second = unzipped[0], unzipped[1]
+
+        # Generate a sorted interaction dataframe and drop duplicates
+        interactions = pd.DataFrame()
+        interactions['prot_1'] = first
+        interactions['prot_2'] = second
+
+        interactions.drop_duplicates(inplace=True)
+
+        if get_edge:
+            vals = []
+            for i, row in interactions.iterrows():
+                prot_1 = row.prot_1
+                prot_2 = row.prot_2
+                prots = [prot_1, prot_2]
+                selection = original[
+                    (original[target_col].isin(prots)) & original[prey_col].isin(prots)]
+                max_edge = selection[edge].max()
+                vals.append(max_edge)
+            interactions[edge] = vals
+        interactions.reset_index(drop=True, inplace=True)
+
+        self.unique_interaction_table = interactions
+
+
+    def corum_interaction_coverage(self, distance=False, directional=False):
+        """
+        calculate db's coverage of possible corum interactions
+        if distance = True, an interaction is a true positive if a target's 
+        second neighbor is a corum interactor.
+        if directional = True, recall considers all possible corum interactors for each target
+        if directional = False, recall considers a corum interactor covered if the interaction appears
+        in either direction
+        """
+        target_col = self.target
+        prey_col = self.prey
+        network = self.interaction_table[[target_col, prey_col]]
+        corum = self.corum.copy()
+        
+        # get a list of all unique targets in the ppi network
+        targets = set(network[target_col].to_list())
+
+        # count all the corum interactions possible within targets if directional is False
+        if directional:
+            overlap_sum = 0
+        else:
+            overlap_corum = corum[(corum['prot_1'].isin(targets)) | (corum['prot_2'].isin(targets))]
+            overlap_sum = overlap_corum.shape[0]
+
+        coverage_sum = 0
+        for target in targets:
+            # get all the corum interactions possible with the targets
+            left_corum = corum[corum['prot_1'] == target]
+            right_corum = corum[corum['prot_2'] == target]
+
+            # if directional, add all the possible CORUM interaction counts
+            if directional:
+                overlap_sum += left_corum.shape[0] + right_corum.shape[0]
+
+            network_target = network[network[target_col] == target]
+            network_preys = set(network_target[prey_col].to_list())
+
+            left_covered = left_corum[left_corum['prot_2'].isin(network_preys)]
+            right_covered = right_corum[right_corum['prot_1'].isin(network_preys)]
+
+            # the distance option searches for second neighbors of a target, for the preys
+            # of the target that were corum interactors.
+            if distance:
+                left_preys = left_covered['prot_2'].to_list()
+                right_preys = right_covered['prot_1'].to_list()
+
+                left_targets = targets.intersection(left_preys)
+                right_targets = targets.intersection(right_preys)
+
+                new_targets = left_targets.union(right_targets)
+                new_targets.add(target)
+
+                expanded_target = network[network[target_col].isin(new_targets)]
+                expanded_preys = set(expanded_target[prey_col].to_list())
+
+                left_covered = left_corum[left_corum['prot_2'].isin(expanded_preys)]
+                right_covered = right_corum[right_corum['prot_1'].isin(expanded_preys)]
+
+
+            # calculate how many corum interactions were covered by the target in network
+            coverage_sum += left_covered.shape[0] + right_covered.shape[0]
+
+            if not directional:
+                # delete covered interactions
+                left_idxs = left_covered.index.to_list()
+                right_idxs = right_covered.index.to_list()
+                drop_idxs = left_idxs + right_idxs
+                corum.drop(drop_idxs, inplace=True)
+
+        self.recall = coverage_sum / overlap_sum
+
+
+    def colocalization_precision(self):
+        """
+        merge mnc_classifier from localization table
+        and return pandas df where target and prey are colocalized
+        """
+
+        # use unique interactions for co-localization analysis
+        try: 
+            network = self.unique_interaction_table.copy()
+        except AttributeError: 
+            self.convert_to_unique_interactions()
+            network = self.unique_interaction_table.copy()
+
+        target_col = 'prot_1'
+        prey_col = 'prot_2'
+
+        network = network[[target_col, prey_col]].copy()
+        # force string type
+        network[target_col] = network[target_col].astype(str)
+        network[prey_col] = network[prey_col].astype(str)
+
+        network = network[network[target_col] != network[prey_col]]
+        localization = self.localization_table.copy()
+
+        localization['mnc_classifier'] = localization['mnc_classifier'].apply(
+            lambda x: x.split('/'))
+
+        # make target and prey merges with localization data
+        # inner merge network data with localization on targets
+        merge1 = network.merge(localization.rename(
+            columns={'gene_names': target_col, 'mnc_classifier': 'target_localization'}),
+            on=target_col, how='inner')
+        # then inner merge the table with localization on preys
+        merge2 = merge1.merge(localization.rename(
+            columns={'gene_names': prey_col, 'mnc_classifier': 'prey_localization'}),
+            on=prey_col, how='inner')
+
+        # find interactions where there is at least one mutual localization between
+        # target and prey. Save the indices of the colocalized interactions
+        intersections = []
+        for i, row in merge2.iterrows():
+            target = set(row.target_localization)
+            prey = set(row.prey_localization)
+            if len(target.intersection(prey)) > 0:
+                intersections.append(i)
+            elif 'B' in target or 'B' in prey:
+                intersections.append(i)
+
+        self.precision =  merge2.loc[intersections].shape[0] / merge2.shape[0]
 
 def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
     """

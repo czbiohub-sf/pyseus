@@ -66,7 +66,7 @@ def prey_kmeans(imputed_df, k=20, method='single', ordering=True, verbose=True):
 
     # Create a median_df, taking median of all replicates
     median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
-    median_df.drop(columns=['Fasta headers', 'Protein names', 'Gene names',
+    median_df.drop(columns=['Protein names', 'Gene names',
     'Majority protein IDs'], inplace=True)
 
     # Protein IDs will be the reference to retrieve the correct order of preys
@@ -128,7 +128,7 @@ def bait_leaves(imputed_df, method='average', distance='euclidean', verbose=True
         start_time = time.time()
     # Create a median_df, taking median of all replicates
     median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
-    median_df.drop(columns=['Fasta headers', 'Protein names', 'Gene names',
+    median_df.drop(columns=['Protein names', 'Gene names',
     'Protein IDs', 'Majority protein IDs'],
         inplace=True)
 

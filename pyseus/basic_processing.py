@@ -76,7 +76,7 @@ class RawTables:
         # select necessary columns
         all_cols = list(ms_table)
         info_cols = ['Protein IDs', 'Majority protein IDs', 'Protein names',
-        'Gene names', 'Fasta headers']
+        'Gene names']
         intensity_cols = select_intensity_cols(all_cols, self.intensity_type)
 
         ms_table = ms_table[info_cols + intensity_cols]
