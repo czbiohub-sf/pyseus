@@ -49,7 +49,48 @@ class RawTables:
         with open(file_dir, 'wb') as file_:
             pickle.dump(self, file_, -1)
 
-      
+
+	def rename_columns(self, RE, replacement_RE, repl_search=False):
+		"""
+		change intensity column names to a readable format. More specifically,
+		search a column name from an input RE and substitute matches with another
+		input substitute strings or REs.
+			col_names: list, a list of column names from raw_df
+			RE: list, a list of regular expressions to search in column names
+			replacement_RE: list, a list of strs/REs that substitute the original expression
+			repl_search: boolean, if True, elements in replacement_RE are treated as regular
+				expressions used in search, and all specified groups are used in substitution
+
+		"""
+		df = self.filtered_table.copy()
+		intensity_cols = self.intensity_cols
+
+		# start a new col list
+		new_cols = []
+
+		# Loop through cols and make qualifying subs
+		for col in intensity_cols:
+			for i in np.arange(len(RE)):
+				if re.search(RE[i], col, flags=re.IGNORECASE):
+					replacement = replacement_RE[i]
+					if (repl_search) & (len(replacement) > 1):
+						rep_search = re.search(replacement, col,
+									flags=re.IGNORECASE)
+						replacement = ''
+						for group in rep_search.groups():
+							replacement += group
+
+					col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
+			new_cols.append(col)
+		
+		self.intensity_cols = new_cols
+		rename = {i: j for i, j in zip(intensity_cols, new_cols)}
+
+		renamed = df.rename(columns=rename)
+
+		self.filtered_table = renamed
+
+
     def filter_table(self, verbose=True):
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
@@ -482,46 +523,6 @@ def sample_rename(col_names, RE, replacement_RE, repl_search=False):
                 col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
         new_cols.append(col)
     return new_cols
-
-
-def rename_columns(df, RE, replacement_RE, repl_search=False):
-    """
-    change intensity column names to a readable format. More specifically,
-    search a column name from an input RE and substitute matches with another
-    input substitute strings or REs.
-        col_names: list, a list of column names from raw_df
-        RE: list, a list of regular expressions to search in column names
-        replacement_RE: list, a list of strs/REs that substitute the original expression
-        repl_search: boolean, if True, elements in replacement_RE are treated as regular
-            expressions used in search, and all specified groups are used in substitution
-
-    """
-    df = df.copy()
-    col_names = list(df)
-
-    # start a new col list
-    new_cols = []
-
-    # Loop through cols and make quaifying subs
-    for col in col_names:
-        for i in np.arange(len(RE)):
-            if re.search(RE[i], col, flags=re.IGNORECASE):
-                replacement = replacement_RE[i]
-                if (repl_search) & (len(replacement) > 1):
-                    rep_search = re.search(replacement, col,
-                                flags=re.IGNORECASE)
-                    replacement = ''
-                    for group in rep_search.groups():
-                        replacement += group
-
-                col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
-        new_cols.append(col)
-    
-    rename = {i: j for i, j in zip(col_names, new_cols)}
-
-    renamed = df.rename(columns=rename)
-
-    return renamed
 
 
 def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
