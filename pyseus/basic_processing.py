@@ -19,17 +19,25 @@ class RawTables:
     """
     
     # initiate raw table by importing from data directory
-    def __init__(self, root, analysis, intensity_type, pg_file='proteinGroups.txt'):
-        
-        self.raw_table = pd.read_csv(root+pg_file,
-            sep='\t', header=0, low_memory=False)
-        
-        # root directory
-        self.root = root
-        # analysis string
-        self.analysis = analysis
-        # Specification of which intensity (raw or LFQ) to use
+    def __init__(self, experiment_dir, pg_file='proteinGroups.txt', info_cols=None,
+            intensity_type='Intensity ', proteingroup=None, file_designated=False):
+        # set up root folders for the experiment and standard for comparison
+        self.root = experiment_dir
         self.intensity_type = intensity_type
+        if file_designated:
+            self.pg_table = proteingroup
+        else:
+            self.pg_table = pd.read_csv(
+                self.root + pg_file, sep='\t', low_memory=False)
+        if info_cols is None:
+            self.info_cols = [
+                'Protein IDs',
+                'Majority protein IDs',
+                'Protein names',
+                'Gene names']
+        else: 
+            self.info_cols = info_cols
+
     
 
     def save(self, option_str=''):
@@ -49,53 +57,11 @@ class RawTables:
         with open(file_dir, 'wb') as file_:
             pickle.dump(self, file_, -1)
 
-
-	def rename_columns(self, RE, replacement_RE, repl_search=False):
-		"""
-		change intensity column names to a readable format. More specifically,
-		search a column name from an input RE and substitute matches with another
-		input substitute strings or REs.
-			col_names: list, a list of column names from raw_df
-			RE: list, a list of regular expressions to search in column names
-			replacement_RE: list, a list of strs/REs that substitute the original expression
-			repl_search: boolean, if True, elements in replacement_RE are treated as regular
-				expressions used in search, and all specified groups are used in substitution
-
-		"""
-		df = self.filtered_table.copy()
-		intensity_cols = self.intensity_cols
-
-		# start a new col list
-		new_cols = []
-
-		# Loop through cols and make qualifying subs
-		for col in intensity_cols:
-			for i in np.arange(len(RE)):
-				if re.search(RE[i], col, flags=re.IGNORECASE):
-					replacement = replacement_RE[i]
-					if (repl_search) & (len(replacement) > 1):
-						rep_search = re.search(replacement, col,
-									flags=re.IGNORECASE)
-						replacement = ''
-						for group in rep_search.groups():
-							replacement += group
-
-					col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
-			new_cols.append(col)
-		
-		self.intensity_cols = new_cols
-		rename = {i: j for i, j in zip(intensity_cols, new_cols)}
-
-		renamed = df.rename(columns=rename)
-
-		self.filtered_table = renamed
-
-
     def filter_table(self, verbose=True):
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
-        
-        ms_table = self.raw_table.copy()
+
+        ms_table = self.pg_table.copy()
 
         pre_filter = ms_table.shape[0]
 
@@ -111,20 +77,65 @@ class RawTables:
         filtered = pre_filter - ms_table.shape[0]
         if verbose:
             print("Filtered " + str(filtered) + ' of '
-                  + str(pre_filter) + ' rows. Now '
-                  + str(ms_table.shape[0]) + ' rows.')
-        
+                    + str(pre_filter) + ' rows. Now '
+                    + str(ms_table.shape[0]) + ' rows.')
+
         # select necessary columns
         all_cols = list(ms_table)
-        info_cols = ['Protein IDs', 'Majority protein IDs', 'Protein names',
-        'Gene names']
+    
         intensity_cols = select_intensity_cols(all_cols, self.intensity_type)
 
+        info_cols = self.info_cols
+        self.intensity_cols = intensity_cols
         ms_table = ms_table[info_cols + intensity_cols]
 
 
         self.filtered_table = ms_table
     
+
+
+    def rename_columns(self, RE, replacement_RE, repl_search=False):
+        """
+        change intensity column names to a readable format. More specifically,
+        search a column name from an input RE and substitute matches with another
+        input substitute strings or REs.
+            col_names: list, a list of column names from raw_df
+            RE: list, a list of regular expressions to search in column names
+            replacement_RE: list, a list of strs/REs that substitute the original expression
+            repl_search: boolean, if True, elements in replacement_RE are treated as regular
+                expressions used in search, and all specified groups are used in substitution
+
+        """
+        df = self.filtered_table.copy()
+        intensity_cols = self.intensity_cols
+
+        # start a new col list
+        new_cols = []
+
+        # Loop through cols and make qualifying subs
+        for col in intensity_cols:
+            for i in np.arange(len(RE)):
+                if re.search(RE[i], col, flags=re.IGNORECASE):
+                    replacement = replacement_RE[i]
+                    if (repl_search) & (len(replacement) > 1):
+                        rep_search = re.search(replacement, col,
+                                    flags=re.IGNORECASE)
+                        replacement = ''
+                        for group in rep_search.groups():
+                            replacement += group
+
+                    col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
+            new_cols.append(col)
+
+        self.intensity_cols = new_cols
+        rename = {i: j for i, j in zip(intensity_cols, new_cols)}
+
+        renamed = df.rename(columns=rename)
+
+        self.filtered_table = renamed
+
+
+
     def transform_intensities(self, func=np.log2):
         """transform intensity values in the dataframe to a given function"""
         
@@ -137,8 +148,7 @@ class RawTables:
             return
 
         filtered = self.filtered_table.copy()
-        intensity_cols = select_intensity_cols(list(self.filtered_table),
-            intensity_type=self.intensity_type)
+        intensity_cols = self.intensity_cols
 
         # for each intensity column, transform the values
         for int_col in intensity_cols:
@@ -155,10 +165,9 @@ class RawTables:
         
         self.transformed_table = filtered
     
-    def group_replicates(self, intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$'):
+    def group_replicates(self, reg_exp=r'(.*_.*)_\d+$'):
         """Group the replicates of intensities into replicate groups"""
-        
-        reg_exp = self.intensity_type + ' ' + reg_exp
+
         try: 
             self.transformed_table
             transformed = self.transformed_table.copy()
@@ -178,21 +187,15 @@ class RawTables:
                 return
 
 
-       # get col names
+        # get col names
         col_names = list(transformed)
 
         # using a dictionary, group col names into replicate groups
         group_dict = {}
         for col in col_names:
-            # search REs of the replicate ID, and get the group names
-
-            # search if the col is for intensity values
-            intensity_search = re.search(intensity_re, col.lower(),
-                flags=re.IGNORECASE)
-
-            # if so, get the group name and add to the group dict
+            # if intensity col, get the group name and add to the group dict
             # use groups from re.search to customize group names
-            if intensity_search:
+            if col in self.intensity_cols:
                 group_search = re.search(reg_exp, col, flags=re.IGNORECASE)
                 group_name = ''
 
@@ -212,8 +215,9 @@ class RawTables:
         grouped.columns = grouped.columns.rename("Replicates", level=1) 
 
         self.grouped_table = grouped
-    
-    
+
+
+
     def remove_invalid_rows(self):
         """Remove rows that do not have at least one group that has values
         in all triplicates"""
