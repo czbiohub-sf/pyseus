@@ -20,7 +20,8 @@ class RawTables:
     
     # initiate raw table by importing from data directory
     def __init__(self, experiment_dir, pg_file='proteinGroups.txt', info_cols=None,
-            intensity_type='Intensity ', proteingroup=None, file_designated=False):
+            sample_cols=None, intensity_type='Intensity ', proteingroup=None,
+            file_designated=False):
         # set up root folders for the experiment and standard for comparison
         self.root = experiment_dir
         self.intensity_type = intensity_type
@@ -37,8 +38,7 @@ class RawTables:
                 'Gene names']
         else: 
             self.info_cols = info_cols
-
-    
+        self.sample_cols = sample_cols
 
     def save(self, option_str=''):
         """
@@ -57,7 +57,7 @@ class RawTables:
         with open(file_dir, 'wb') as file_:
             pickle.dump(self, file_, -1)
 
-    def filter_table(self, verbose=True):
+    def filter_table(self, select_intensity=True, verbose=True):
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
 
@@ -81,13 +81,15 @@ class RawTables:
                     + str(ms_table.shape[0]) + ' rows.')
 
         # select necessary columns
-        all_cols = list(ms_table)
-    
-        intensity_cols = select_intensity_cols(all_cols, self.intensity_type)
-
-        info_cols = self.info_cols
-        self.intensity_cols = intensity_cols
-        ms_table = ms_table[info_cols + intensity_cols]
+        if select_intensity:
+            all_cols = list(ms_table)
+            sample_cols = select_intensity_cols(all_cols, self.intensity_type)
+            info_cols = self.info_cols
+            self.sample_cols = sample_cols
+        else:
+            info_cols = self.info_cols
+            sample_cols = self.sample_cols
+        ms_table = ms_table[info_cols + sample_cols]
 
 
         self.filtered_table = ms_table
@@ -107,13 +109,13 @@ class RawTables:
 
         """
         df = self.filtered_table.copy()
-        intensity_cols = self.intensity_cols
+        sample_cols = self.sample_cols
 
         # start a new col list
         new_cols = []
 
         # Loop through cols and make qualifying subs
-        for col in intensity_cols:
+        for col in sample_cols:
             for i in np.arange(len(RE)):
                 if re.search(RE[i], col, flags=re.IGNORECASE):
                     replacement = replacement_RE[i]
@@ -127,8 +129,8 @@ class RawTables:
                     col = re.sub(RE[i], replacement, col, flags=re.IGNORECASE)
             new_cols.append(col)
 
-        self.intensity_cols = new_cols
-        rename = {i: j for i, j in zip(intensity_cols, new_cols)}
+        self.sample_cols = new_cols
+        rename = {i: j for i, j in zip(sample_cols, new_cols)}
 
         renamed = df.rename(columns=rename)
 
@@ -148,10 +150,10 @@ class RawTables:
             return
 
         filtered = self.filtered_table.copy()
-        intensity_cols = self.intensity_cols
+        sample_cols = self.sample_cols
 
         # for each intensity column, transform the values
-        for int_col in intensity_cols:
+        for int_col in sample_cols:
             # if transformation is log2, convert 0s to nans
             # (faster in one apply step than 2)
             if func == np.log2:
@@ -178,7 +180,6 @@ class RawTables:
             'method before grouping replicates.\n')
 
             try: 
-                self.filtered_table
                 print("Using filtered_table to group replicates.")
                 transformed = self.filtered_table.copy()
             except AttributeError:
@@ -191,34 +192,39 @@ class RawTables:
         col_names = list(transformed)
 
         # using a dictionary, group col names into replicate groups
+        sample_group_names = []
         group_dict = {}
         for col in col_names:
             # if intensity col, get the group name and add to the group dict
             # use groups from re.search to customize group names
-            if col in self.intensity_cols:
+            if col in self.sample_cols:
                 group_search = re.search(reg_exp, col, flags=re.IGNORECASE)
                 group_name = ''
 
                 for re_group in group_search.groups():
                     group_name += re_group
+                sample_group_names.append(group_name)
                 group_dict[col] = group_name
 
-            # if not, group into 'Info'
+            # if not, group into 'metadata'
             else:
-                group_dict[col] = 'Info'
+                group_dict[col] = 'metadata'
 
+        sample_groups = list(set(sample_group_names))
+        sample_groups.sort()
+        self.sample_groups = sample_groups
 
         # pd function to add the replicate group to the columns
         grouped = pd.concat(dict((*transformed.groupby(group_dict, 1),)), axis=1)
 
-        grouped.columns = grouped.columns.rename("Baits", level=0)
+        grouped.columns = grouped.columns.rename("Samples", level=0)
         grouped.columns = grouped.columns.rename("Replicates", level=1) 
 
         self.grouped_table = grouped
 
 
 
-    def remove_invalid_rows(self):
+    def remove_invalid_rows(self, verbose=True):
         """Remove rows that do not have at least one group that has values
         in all triplicates"""
 
@@ -234,7 +240,7 @@ class RawTables:
         unfiltered = self.grouped_table.shape[0]
 
         # Get a list of all groups in the df
-        group_list = list(set([col[0] for col in list(grouped) if col[0] != 'Info']))
+        group_list = list(set([col[0] for col in list(grouped) if col[0] != 'metadata']))
 
         # booleans for if there is a valid value
         filtered = grouped[group_list].apply(np.isnan)
@@ -251,8 +257,9 @@ class RawTables:
         filtered_df.reset_index(drop=True, inplace=True)
         filtered = filtered_df.shape[0]
 
-        print("Removed invalid rows. " + str(filtered) + " from "
-            + str(unfiltered) + " rows remaining.")
+        if verbose:
+            print("Removed invalid rows. " + str(filtered) + " from "
+                + str(unfiltered) + " rows remaining.")
 
         self.preimpute_table = filtered_df
     
@@ -270,14 +277,17 @@ class RawTables:
         try:
             imputed = self.preimpute_table.copy()
         except AttributeError:
-            print("group_replicates() and remove_invalid_rows() need to be run"\
-                "before imputation")
-            return
+            try: 
+                imputed = self.grouped_table.copy()
+            except AttributeError:
+                print('Please group replicates first using group_replicates()\
+                    method.')
+                return
         
         self.bait_impute_params = {'distance': distance, 'width': width}
 
-        # Retrieve all col names that are not classified as Info
-        bait_names = [col[0] for col in list(imputed) if col[0] != 'Info']
+        # Retrieve all col names that are not classified as metadata
+        bait_names = [col[0] for col in list(imputed) if col[0] != 'metadata']
         baits = list(set(bait_names))
         bait_series = [imputed[bait].copy() for bait in baits]
         if local:
@@ -286,9 +296,9 @@ class RawTables:
 
         else:
             # if not using columnwise imputation, calculate global mean and stdev
-            all_intensities = imputed[[col for col in list(imputed) if col[0] != 'Info']].copy()
-            global_mean = all_intensities.droplevel('Baits', axis=1).stack().mean()
-            global_stdev = all_intensities.droplevel('Baits', axis=1).stack().std()
+            all_intensities = imputed[[col for col in list(imputed) if col[0] != 'metadata']].copy()
+            global_mean = all_intensities.droplevel('Samples', axis=1).stack().mean()
+            global_stdev = all_intensities.droplevel('Samples', axis=1).stack().std()
 
 
 
@@ -328,12 +338,12 @@ class RawTables:
             return
         
         imputed = self.preimpute_table.copy()
-        imputed.drop(columns='Info', inplace=True)
+        imputed.drop(columns='metadata', inplace=True)
         imputed = imputed.T
         self.prey_impute_params = {'distance': distance, 'width': width,
             'thresh': thresh}
 
-        # Retrieve all col names that are not classified as Info
+        # Retrieve all col names that are not classified as metadata
         baits = list(imputed)
         bait_series = [imputed[bait].copy() for bait in baits]
         bait_params = zip(
@@ -350,7 +360,7 @@ class RawTables:
 
         imputed = imputed.T
 
-        info_cols = [x for x in list(self.preimpute_table) if x[0] == 'Info']
+        info_cols = [x for x in list(self.preimpute_table) if x[0] == 'metadata']
         for col in info_cols:
             imputed[col] = self.preimpute_table[col]      
 
@@ -363,11 +373,11 @@ class RawTables:
         exclusion in p-val and enrichment analysis. 
         """
         grouped = self.grouped_table.copy()
-        baits = list(set(grouped.columns.get_level_values('Baits').to_list()))
-        baits.remove('Info')
+        baits = list(set(grouped.columns.get_level_values('Samples').to_list()))
+        baits.remove('metadata')
         baits.sort()
         bait_df = pd.DataFrame()
-        bait_df['Baits'] = baits
+        bait_df['Samples'] = baits
         bait_df.reset_index(drop=True, inplace=True)
         self.bait_list = bait_df.copy()
         bait_df2 = bait_df.copy()
@@ -399,18 +409,18 @@ def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
         os.mkdir(analysis_dir)
     
     # Run all the processing methods
-    pyseus_tables = RawTables(root=root,
-        analysis=analysis, intensity_type=intensity_type, pg_file=pg_file)
+    pyseus_tables = RawTables(experiment_dir=root,
+        intensity_type=intensity_type, pg_file=pg_file)
     pyseus_tables.filter_table()
     pyseus_tables.transform_intensities(func=np.log2)
-    pyseus_tables.group_replicates(intensity_re=r'_\d+$', reg_exp=r'(.*_.*)_\d+$')
+    pyseus_tables.group_replicates(reg_exp=r'(.*_.*)_\d+$')
     pyseus_tables.remove_invalid_rows()
     if bait_impute:
         pyseus_tables.bait_impute(distance=distance, width=width, local=local)
     else:
         pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
-    pyseus_tables.generate_export_bait_matrix()
-    pyseus_tables.save()
+    # pyseus_tables.generate_export_bait_matrix()
+    # pyseus_tables.save()
     return pyseus_tables
 
 
@@ -537,7 +547,7 @@ def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
 
     imputed_df = imputed_df.copy()
     # retrieve bait names
-    bait_names = [col[0] for col in list(imputed_df) if col[0] != 'Info']
+    bait_names = [col[0] for col in list(imputed_df) if col[0] != 'metadata']
     bait_names = list(set(bait_names))
     # initiate a new df for medians
     median_df = pd.DataFrame()
@@ -554,10 +564,40 @@ def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
 
     if save_info:
         # get info columns into the new df
-        info = imputed_df['Info']
+        info = imputed_df['metadata']
         info_cols = list(info)
 
         for col in info_cols:
             median_df[col] = info[col]
 
     return median_df
+
+
+def dash_output_table(data_table, sample_cols, metadata_cols):
+    """
+    Method to force any tables from RawTables class to fit into a standard
+    output table used in the custon DASH app. 
+    Strips any multi-level columns, and create a new level of columns 
+    that specify samples and metadata
+    """
+    
+    data_table = data_table.copy()
+
+    if data_table.columns.nlevels > 1:
+        # strip the grouping multi-level columns
+        data_table = data_table.droplevel('Samples', axis=1)
+        data_table.columns.name = None
+    
+    # divide into sample table and meta table
+    sample_table = data_table[sample_cols].copy()
+    meta_table = data_table[metadata_cols].copy()
+
+    # Add appropriate column headings to both
+    sample_table = pd.concat([sample_table], keys=['sample'], axis=1)
+    meta_table = pd.concat([meta_table], keys=['metadata'], axis=1)
+
+    # join the tables again
+    data_table = pd.concat([meta_table, sample_table], axis=1)
+
+    return data_table
+    
