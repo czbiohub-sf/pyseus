@@ -1,2 +1,0 @@
-,raw_table_sep,top_row_skip,sample_search_RE,search_RE,replacement_RE,filter_rows,rename_samples,log_transform,transform_option,remove_incomplete_rows,merge_replicates,merge_option,replace_nulls,replace_option,impute_distance,impute_width
-0,",",2,Intensity ,Intensity ;,NONE;,['filter_maxquant'],['rename_samples'],['log_transform'],log2,,['merge_reps'],median,,sample_impute,0.9,0.8

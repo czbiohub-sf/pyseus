@@ -163,22 +163,10 @@ def create_layout():
                         'textAlign': 'center',
                         'display': 'inline-block',
                         'width': '40%',
-                        'marginLeft': '10%'
+                        'marginLeft': '30%'
 
                     }),
-                html.Div([
-                    html.Button(
-                        'Apply configs!',
-                        id =  'apply-config-button',
-                        ),
-                    ], style={
-                        'marginTop': '2%',
-                        'textAlign': 'center',
-                        'display': 'inline-block',
-                        'width': '40%',
-                        'marginRight': '10%'
 
-                    }),
 
             ],
             style = {

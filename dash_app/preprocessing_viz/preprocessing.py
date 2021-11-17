@@ -421,6 +421,7 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     configs['impute_distance'] = [impute_dist]
     configs['impute_width'] = [impute_width]
 
+
     button_style['background-color'] = '#B6E880'
 
 
@@ -444,7 +445,6 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     Output('replace_option', 'value'),
     Output('imputation_dist', 'value'),
     Output('imputation_width', 'value'),
-    Output('configs_save_name', 'value'),
     Output('load-config-button', 'style'),
     Input('load-config-button', 'n_clicks'),
     State('config_upload', 'contents'),
@@ -458,19 +458,49 @@ def preload_configs(n_clicks, content, button_style):
         # parse txt (tsv) file as pd df from upload
         content_type, content_string = content.split(',')
         
-        # eval dict for interpreting strings as lists in read_csv
-        converters = {
-            'filter_rows': pd.eval,
-            'rename_samples': pd.eval,
-            'log_transform': pd.eval,
-            'merge_replicates': pd.eval,
-            
-        }
+        # values that need to be in a list-form for return
+        return_lists = ['filter_rows', 'rename_samples', 'log_transform',
+            'remove_incomplete_rows', 'merge_replicates', 'replace_nulls']
+        
+        # # eval dict for interpreting strings as lists in read_csv
+        # converters = {}
+        # for col in return_lists:
+        #     converters[col] = pd.eval
 
+
+        # convert uploaded data to csv
         decoded = base64.b64decode(content_string)
+        configs = pd.read_csv(io.StringIO(decoded.decode('utf-8')), index_col=0)
+        
+        for col in return_lists:
+            if isinstance(configs[col].item(), str):
+                configs[col] = configs[col].apply(pd.eval)
+            configs[col] = configs[col].apply(lambda x: x if
+                isinstance(x, list) else [])
 
+        button_style = {}
+        button_style['background-color'] = '#B6E880'
+        
+        return configs['raw_table_sep'].item(),\
+            configs['top_row_skip'].item(),\
+            configs['sample_search_RE'].item(),\
+            configs['search_RE'].item(),\
+            configs['replacement_RE'].item(),\
+            configs['filter_rows'].item(),\
+            configs['rename_samples'].item(),\
+            configs['log_transform'].item(),\
+            configs['transform_option'].item(),\
+            configs['remove_incomplete_rows'].item(),\
+            configs['merge_replicates'].item(),\
+            configs['merge_option'].item(),\
+            configs['replace_nulls'].item(),\
+            configs['replace_option'].item(),\
+            configs['impute_distance'].item(),\
+            configs['impute_width'].item(), button_style
 
-        ms_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+            
+
+        
 
 
 if __name__ == "__main__":
