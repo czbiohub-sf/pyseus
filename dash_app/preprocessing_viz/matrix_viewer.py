@@ -25,6 +25,7 @@ from matrix_viewer_layout import create_layout
 sys.path.append('../../')
 from pyseus import basic_processing as bp
 from pyseus.plotting import plotly_umap as pu
+from pyseus.plotting import plotly_heatmap as ph
 
 # global, immutable variables
 transposed_annots = ('sample')
@@ -37,89 +38,106 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # App Layout
 app.layout = create_layout()
 
-# @app.callback(
-#     Output('raw_table_upload', 'children'),
-#     Output('raw_table_upload', 'style'),
-#     Input('raw_table_upload', 'filename'),
-#     State('raw_table_upload', 'style')
-# )
-# def display_upload_ms_filename(filename, style):
-#     if filename is None:
-#         raise PreventUpdate
-#     else:
-#         style['background-color'] = '#B6E880'
-#         return filename, style
+@app.callback(
+    Output('raw_table_upload', 'children'),
+    Output('raw_table_upload', 'style'),
+    Input('raw_table_upload', 'filename'),
+    State('raw_table_upload', 'style')
+)
+def display_upload_ms_filename(filename, style):
+    if filename is None:
+        raise PreventUpdate
+    else:
+        style['background-color'] = '#B6E880'
+        return filename, style
 
 
-# @app.callback(
-#     Output('processed_table', 'children'),
-#     Output('features', 'children'),
-#     Output('annots', 'children'),
-#     Output('table_dims', 'children'),
-#     Output('features_checklist', 'options'),
-#     Output('features_checklist', 'value'),
-#     Output('label_select', 'options'),
-#     Output('label_select', 'value'),
-#     Output('read_table_button', 'style'),
-#     Input('read_table_button', 'n_clicks'),
-#     State('raw_table_upload', 'contents'),
-#     State('read_table_button', 'style'),
-#     )
-# def parse_raw_table(n_clicks, content, button_style):
-#     """
-#     initiate QualityControl class with the uploaded proteingroups file
-#     """
+@app.callback(
+    Output('processed_table', 'children'),
+    Output('features_checklist', 'options'),
+    Output('features_checklist', 'value'),
+    Output('label_select', 'options'),
+    Output('data_metrics', 'data'),
+    Output('color_button', 'n_clicks'),
+    Output('read_table_button', 'style'),
+    Input('read_table_button', 'n_clicks'),
+    State('raw_table_upload', 'contents'),
+    State('read_table_button', 'style'),
+    State('color_button', 'n_clicks'),
+    prevent_initial_call=True
 
-#     if n_clicks is None:
-#         raise PreventUpdate
-#     else:
-#         # parse txt (tsv) file as pd df from upload
-#         content_type, content_string = content.split(',')
-#         decoded = base64.b64decode(content_string)
 
-#         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-#             low_memory=False, header=[0,1], index_col=0)
+    )
+def parse_raw_table(n_clicks, content, button_style, color_clicks):
+    """
+    initiate QualityControl class with the uploaded proteingroups file
+    """
+
+    if n_clicks is None:
+        raise PreventUpdate
+    else:
+        # parse txt (tsv) file as pd df from upload
+        content_type, content_string = content.split(',')
+        decoded = base64.b64decode(content_string)
+
+        raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
+            low_memory=False, header=[0,1], index_col=0)
         
 
-#         # regular table, features, and annots for UMAP
-#         processed_table = raw_table.droplevel(level=0, axis=1)
-#         features = list(raw_table['sample'])
-#         labels = list(raw_table['metadata'])
-#         dims = list(raw_table['sample'].shape)
-
-#         features_json = json.dumps(features)
-#         labels_json = json.dumps(labels)
-#         dims_json = json.dumps(dims)
+        # regular table, features, and annots for UMAP
+        processed_table = raw_table.droplevel(level=0, axis=1)
+        features = list(raw_table['sample'])
+        labels = list(raw_table['metadata'])
 
 
-#         # feature checklist options 
-#         features_opts = [{'label': feature, 'value': feature}
-#             for feature in features]
+        # feature checklist options 
+        features_opts = [{'label': feature, 'value': feature}
+            for feature in features]
 
 
-#         # labels/annots options
-#         label_opts = []
-#         label_opts.append({'label': 'None', 'value': 'None'})
-#         for label in labels:
-#             label_opts.append({'label': label, 'value': label})
+        # labels/annots options
+        label_opts = []
+        label_opts.append({'label': 'None', 'value': 'None'})
+        for label in labels:
+            label_opts.append({'label': label, 'value': label})
 
-#         annot_val = 'None'
+        processed_table_json = processed_table.to_json()
 
-#         # drop duplicates
-#         processed_table.drop_duplicates(inplace=True)
-#         processed_table_json = processed_table.to_json()
+        if button_style is None:
+            button_style = {}
+        button_style['background-color'] = '#B6E880'
+
+        if color_clicks is None:
+            color_clicks = 1
+        else:
+            color_clicks += 1
+
+        matrix = processed_table[features]
+        metrics = [{
+            'min': [np.round(matrix.values.min(),2)],
+            'max': [np.round(matrix.values.max(),2)],
+            'avg': [np.round(matrix.values.mean(),2)],
+            'stdev': [np.round(matrix.values.std(),2)]
+        }]
+
+        return processed_table_json, features_opts, features,\
+            label_opts, metrics, color_clicks, button_style
 
 
-#         if button_style is None:
-#             button_style = {}
-#         button_style['background-color'] = '#B6E880'
 
-#         return processed_table_json, features_json, labels_json,\
-#             dims_json, button_style
-
-
-
-
+@app.callback(
+    Output('color_bar', 'figure'),
+    Input('scale_data_button', 'n_clicks'),
+    Input('color_button', 'n_clicks'),
+    State('colorscale_min', 'value'),
+    State('colorscale_max', 'value'),
+    State('colormap', 'value')
+)
+def generate_colormap(scale_data_clicks, color_clicks,
+    min, max, colormap):
+    
+    fig, _ = ph.color_map(min, max, colors=colormap)
+    return fig
     
 
 

@@ -237,33 +237,31 @@ def df_min_max(df):
     return min(all_vals), max(all_vals)
 
 
-def color_map(df, zmin, zmax):
+def color_map(zmin, zmax, colors='perseus'):
     """generate a color map, zmin, and zmax that the heatmap function will use
     Will add customization features in the future"""
 
-    dfmin, dfmax = df_min_max(df)
-    if zmin is None:
-        zmin = dfmin
-    if zmax is None:
-        zmax = dfmax
+    z = np.linspace(zmin, zmax, 200)
+    if colors == 'perseus':
 
-    # Use built in seaborn function to blend palette
-    cmap = sns.blend_palette(('black', 'blue', 'green', 'yellow',
-        'orange', 'red'), n_colors=8, as_cmap=False)
-    hexmap = []
-    # change to hex values that Plotly can read
-    for color in cmap:
-        hexmap.append(matplotlib.colors.rgb2hex(color))
+        # Use built in seaborn function to blend palette
+        cmap = sns.blend_palette(('black', 'blue', 'green', 'yellow',
+            'orange', 'red'), n_colors=8, as_cmap=False)
+        hexmap = []
+        # change to hex values that Plotly can read
+        for color in cmap:
+            hexmap.append(matplotlib.colors.rgb2hex(color))
+    else:
+        hexmap = colors
 
     # a range list from zmin to zmax
-    a = list(range(int(zmin), int(zmax)))
-    y = [0]*len(a)
+    y = [0]*len(z)
     # plot colorscale
-    fig = go.Figure(go.Heatmap(x=a, y=y, z=a, zmin=zmin, zmax=zmax,
+    fig = go.Figure(go.Heatmap(x=z, y=y, z=z, zmin=zmin, zmax=zmax,
         colorscale=hexmap, showscale=False),
-        layout=go.Layout({'width': 1000, 'height': 200}, yaxis={'showticklabels': False}))
-
-    return fig, zmin, zmax, hexmap
+        layout=go.Layout(yaxis={'showticklabels': False}))
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+    return fig, hexmap
 
 
 

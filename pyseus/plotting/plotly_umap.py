@@ -110,7 +110,7 @@ def interaction_umap(
     fig.update_yaxes(showticklabels=False)
     fig.update_layout(
         legend=dict(
-            font=dict(size=16)
+            font=dict(size=14)
         )
         )
     

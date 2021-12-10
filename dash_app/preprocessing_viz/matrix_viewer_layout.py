@@ -159,7 +159,7 @@ def create_layout():
                 style={
                     'overflowY': 'auto',
                     'overflowX': 'auto',
-                    'height': '210px',
+                    'height': '250px',
                     'marginLeft': '10%',
                     'width': '80%',
                     'border': '0.5px #BDC3C7 solid',
@@ -170,7 +170,7 @@ def create_layout():
                 'display': 'inline-block',
                 'height': '400px',
                 'marginTop': '1%',
-                'width': '34%',
+                'width': '29%',
                 'borderRight': '1px #A6ACAF solid'
             }),
         
@@ -206,7 +206,7 @@ def create_layout():
 
             }),
             html.Div([
-                html.Button('Scale Data', id = 'scale_data',
+                html.Button('Scale Data', id = 'scale_data_button',
                     style={
                     'width':'70%',
                     'marginTop':'5%'
@@ -234,6 +234,16 @@ def create_layout():
                     {'name':'Average', 'id': 'avg'},
                     {'name':'Stdev', 'id': 'stdev'},
                     ],
+                style_cell_conditional=[
+                    {'if': {'column_id': 'min'},
+                    'width': '25%'},
+                    {'if': {'column_id': 'max'},
+                    'width': '25%'},
+                    {'if': {'column_id': 'avg'},
+                    'width': '25%'},
+                    {'if': {'column_id': 'stdev'},
+                    'width': '25%'},
+                ],
                 data=[{
                     'min': [0],
                     'max': [0],
@@ -269,16 +279,16 @@ def create_layout():
                 dcc.Input(
                     id = 'colorscale_min',
                     type = 'number',
-                    value='0',
-                    style = {'width': '60%',
-                        'marginLeft': '20%'}
+                    value=0,
+                    style = {'width': '80%',
+                        'marginLeft': '10%'}
                 ),
 
             ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'width': '33%'
+                'width': '22.5%'
             }),
             html.Div([
                 html.P('Maximum Value',
@@ -289,15 +299,15 @@ def create_layout():
                 dcc.Input(
                     id = 'colorscale_max',
                     type = 'number',
-                    value=10,
-                    style = {'width': '60%',
-                        'marginLeft': '20%'}
+                    value=100,
+                    style = {'width': '80%',
+                        'marginLeft': '10%'}
                 ),
             ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'width': '33%'
+                'width': '22.5%'
             }),
             html.Div([
                 html.P('Color map',
@@ -308,13 +318,17 @@ def create_layout():
                 dcc.Dropdown(id='colormap',
                     options=[
                         {'label': 'Perseus', 'value':'perseus'},
-                        {'label': 'Viridis', 'value':'viridis'},
+                        {'label': 'Viridis', 'value':'Viridis'},
+                        {'label': 'Cividis', 'value':'Cividis'},
+                        {'label': 'Plasma', 'value': 'Plasma'},
+                        {'label': 'Blues', 'value': 'Blues'},
+                        {'label': 'YellowGreen', 'value': 'YlGn'}
                     ],
                     value='perseus',
                     style={
-                        'marginLeft': '10%',
-                        'textAlign': 'center',
-                        'width': '80%'
+                        'marginLeft': '5%',
+                        'textAlign': 'left',
+                        'width': '90%'
                     }
                 )
 
@@ -322,8 +336,24 @@ def create_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'width': '33%'
+                'width': '22.5%'
             }),
+            html.Div([
+                html.Button('Apply options!', id='color_button',
+                style={'width': '80%',
+                    'marginLeft':'10%',
+                    'marginTop': '7%'})
+            ],
+            style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'width': '32.5%'
+            }),
+            dcc.Graph(id='color_bar', style={
+                'height':'10%',
+                'width':'80%',
+                'marginLeft':'10%',
+                'marginTop':'5%'})
 
 
         ],
@@ -331,25 +361,95 @@ def create_layout():
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '400px',
-                'width': '65%'
+                'width': '70%'
             }
         ),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
+        html.Div([
+            html.P('Clustergram Options',
+                style={'textAlign': 'center',
+                    'fontSize': 20,
+                    'marginTop':'15%'}
+            ),
+            html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
+
+            html.P('Clustering',
+                style={'textAlign': 'center',
+                    'fontSize': 15,
+                    'marginBottom': '4%'}
+            ),
+
+            dcc.Checklist(
+                id='cluster_checks',
+                options=[
+                    {'label': 'Cluster samples', 'value': 'bait_clust'},
+                    {'label': 'Cluster observations', 'value': 'prey_clust'},
+
+                ],
+                value=['prey_clust', 'bait_clust']
+            ),
+            
+            html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
+
+            html.P('Tick labels',
+                style={'textAlign': 'center',
+                    'fontSize': 15,
+                    'marginBottom': '4%'}
+            ),
+
+            dcc.Checklist(
+                id='tick_checks',
+                options=[
+                    {'label': 'Show sample labels', 'value': 'sample_ticks'},
+                    {'label': 'Show obs. labels', 'value': 'obs_ticks'},
+                ],
+                value=['sample_ticks', 'obs_ticks']
+            ),
+
+
+            html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
+            html.Div([
+                html.Button('Create plot!', id = 'generate_matrix',
+                    style={
+                    'width':'95%',
+                    'marginLeft': '2.5%'
+                    }
+                )
+            ],
+                style={
+                    'marginTop': '2%',
+                    'marginLeft': '5%', 
+                    'width': '90%',
+                    'verticalAlign': 'top'
+                }),
+
+        ],
+            style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'height': '700px',
+                'width': '15%',
+                'borderRight': '1px #A6ACAF solid',
+            }
+        ),
+        html.Div([
+            dcc.Graph(id='matrix_fig', style=
+            {'height': '100%'})
+        ],
+            style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'height': '700px',
+                'width': '84%',
+            }),
+        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+
         # Hiddn divs inside the app for computations and storing intermediate values
         html.Div(
             id='processed_table', style={'display': 'none'}),
-        html.Div(
-            id='features', style={'display': 'none'}),
-        html.Div(
-            id='annots', style={'display': 'none'}),
-        html.Div(
-            id='table_dims', style={'display': 'none'}),
-        html.Div(
-            id='transposed_table', style={'display': 'none'}),
-        html.Div(
-            id='external_annot_series', style={'display': 'none'}),
+ 
 
 
 
