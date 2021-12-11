@@ -118,7 +118,8 @@ def prey_kmeans(imputed_df, k=20, method='single', ordering=True, verbose=True):
     return leaves
 
 
-def bait_leaves(imputed_df, method='average', distance='euclidean', verbose=True):
+def bait_leaves(imputed_df, features, method='average', distance='euclidean',
+    grouped=True, verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance
     rtype: prey_leaves list"""
@@ -126,12 +127,14 @@ def bait_leaves(imputed_df, method='average', distance='euclidean', verbose=True
     if verbose:
         print("Generating bait linkage...")
         start_time = time.time()
-    # Create a median_df, taking median of all replicates
-    median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
-    median_df.drop(columns=['Protein names', 'Gene names',
-    'Protein IDs', 'Majority protein IDs'],
-        inplace=True)
 
+    if grouped:
+        # Create a median_df, taking median of all replicates
+        median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
+        median_df = median_df[features].copy()
+
+    else:
+        median_df = imputed_df[features]
     # Transpose to get linkages of baits
     median_df = median_df.T
 
@@ -148,7 +151,8 @@ def bait_leaves(imputed_df, method='average', distance='euclidean', verbose=True
     return bait_leaves
 
 
-def prey_leaves(imputed_df, method='average', distance='euclidean', verbose=True):
+def prey_leaves(imputed_df, features, method='average', distance='euclidean', grouped=True,
+    verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
 
@@ -157,10 +161,18 @@ def prey_leaves(imputed_df, method='average', distance='euclidean', verbose=True
         print("Generating prey linkage...")
         start_time = time.time()
 
-    # Create a median_df, taking median of all replicates
-    median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
-    median_df.drop(columns=['Fasta headers', 'Protein names', 'Gene names'],
-        inplace=True)
+    # MaxQuant specific
+    features = features.copy()
+    features.append('Protein IDs')
+
+    if grouped:
+        # Create a median_df, taking median of all replicates
+        median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
+        median_df = median_df[features]
+    
+    else:
+        median_df = imputed_df[features]
+
 
     # Protein IDs will be the reference to retrieve the correct order of preys
     median_df.set_index('Protein IDs', inplace=True)
@@ -180,8 +192,8 @@ def prey_leaves(imputed_df, method='average', distance='euclidean', verbose=True
     return prey_leaves
 
 
-def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, bait_leaves=None,
-        bait_clust=False, verbose=True):
+def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label,
+    bait_leaves=None, bait_clust=False, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -194,31 +206,24 @@ def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, bait_leaves=None
     plot_df = imputed_df.copy()
 
     # Set index to Protein IDs to match the dendro leaves
-    plot_df.set_index(('Info', 'Protein IDs'), inplace=True)
-
+    plot_df.set_index('Protein IDs', inplace=True)
     # Correctly order the plot df according to dendro leaves
     plot_df = plot_df.T[prey_leaves].T
 
-    # Reset index to Gene Names
-    plot_df.set_index(('Info', 'Gene names'), inplace=True)
+    # Reset index to set label
+    plot_df.set_index(label, inplace=True)
 
+    print(bait_clust)
     # Reorder columns based on bait_leaves
     if bait_clust:
         plot_df = plot_df[bait_leaves]
 
     # Informational columns are unnecessary now, drop them
-    plot_df.drop(columns=['Info'], level='Baits', inplace=True)
-    plot_df = plot_df.droplevel('Baits', axis=1)
-    plot_df.index.rename('Gene names', inplace=True)
-
-
+    plot_df = plot_df[features]
 
     # Generate the heatmap
-    heatmap = [
-        go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=plot_df.values.tolist(),
-        colorscale=hexmap, zmin=zmin, zmax=zmax)]
-
-
+    heatmap = go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=plot_df.values.tolist(),
+        colorscale=hexmap, zmin=zmin, zmax=zmax)
 
     if verbose:
         end_time = np.round(time.time() - start_time, 2)

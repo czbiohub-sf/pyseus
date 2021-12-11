@@ -11,6 +11,8 @@ from dash import dcc
 from dash import html
 from dash import dash_table
 
+from plotly import graph_objs as go
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -139,6 +141,74 @@ def generate_colormap(scale_data_clicks, color_clicks,
     fig, _ = ph.color_map(min, max, colors=colormap)
     return fig
     
+
+@app.callback(
+    Output('matrix_fig', 'figure'),
+    Output('generate_matrix', 'style'),
+
+    Input('generate_matrix', 'n_clicks'),
+    State('processed_table', 'children'),
+    State('features_checklist', 'value'),
+    State('label_select', 'value'),
+
+    State('colorscale_min', 'value'),
+    State('colorscale_max', 'value'),
+    State('colormap', 'value'),
+
+    State('cluster_checks', 'value'),
+    State('tick_checks', 'value'),
+
+    State('generate_matrix', 'style'),
+
+    prevent_initial_call=True
+)
+def generate_clustergram(n_clicks, processed_table_json, features, label,\
+    zmin, zmax, colormap, cluster_checks, tick_checks, button_style):
+    """
+    returns plotly figure of cluster heatmap
+    """
+
+    button_style['background-color'] = '#B6E880'
+
+    processed_table = pd.read_json(processed_table_json)
+    
+    _, hexmap = ph.color_map(zmin, zmax, colormap)
+
+    bait_leaves = None
+    prey_leaves = None
+    bait_clust = False
+
+    if 'bait_clust' in cluster_checks:
+        bait_leaves = ph.bait_leaves(processed_table, features, grouped=False,
+            verbose=False)
+        bait_clust = True
+
+    prey_leaves = ph.prey_leaves(processed_table, features, grouped=False,
+        verbose=False)
+    
+    heatmap = ph.dendro_heatmap(processed_table, features, prey_leaves, hexmap,
+        zmin, zmax, label, bait_leaves=bait_leaves, bait_clust=bait_clust, verbose=False)
+
+    x_tick = False
+    y_tick = False
+    if 'sample_ticks' in tick_checks:
+        x_tick = True
+    if 'obs_ticks' in tick_checks:
+        y_tick = True
+
+    layout = go.Layout(
+                  xaxis={'showticklabels':x_tick},
+                 yaxis={'showticklabels':y_tick})
+    
+    fig = go.Figure(data=heatmap, layout=layout)
+
+    return fig, button_style
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

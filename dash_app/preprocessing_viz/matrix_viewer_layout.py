@@ -168,7 +168,7 @@ def create_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '400px',
+                'height': '390px',
                 'marginTop': '1%',
                 'width': '29%',
                 'borderRight': '1px #A6ACAF solid'
@@ -350,17 +350,17 @@ def create_layout():
                 'width': '32.5%'
             }),
             dcc.Graph(id='color_bar', style={
-                'height':'10%',
+                'height': '40px',
                 'width':'80%',
                 'marginLeft':'10%',
-                'marginTop':'5%'})
+                'marginTop':'2%'})
 
 
         ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '400px',
+                'height': '390px',
                 'width': '70%'
             }
         ),
@@ -375,20 +375,24 @@ def create_layout():
             ),
             html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
 
-            html.P('Clustering',
+            html.P('Sample clustering',
                 style={'textAlign': 'center',
                     'fontSize': 15,
+                    'marginBottom': '1%'}
+            ),
+            html.P('Observations are automatically clustered',
+                style={'textAlign': 'center',
+                    'fontSize': 13,
                     'marginBottom': '4%'}
             ),
 
             dcc.Checklist(
                 id='cluster_checks',
                 options=[
-                    {'label': 'Cluster samples', 'value': 'bait_clust'},
-                    {'label': 'Cluster observations', 'value': 'prey_clust'},
-
+                    {'label': 'Cluster individual samples/replicates', 'value': 'bait_clust'},
+                    {'label': 'Cluster samples grouped by replicates', 'value': 'group_clust'},
                 ],
-                value=['prey_clust', 'bait_clust']
+                value=[]
             ),
             
             html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
