@@ -33,7 +33,7 @@ class Validation():
     post-processing or validation methods
     """
 
-    def __init__(self, hit_table, target_col, prey_col, corum, localization_table,
+    def __init__(self, hit_table, target_col, prey_col, corum=None, localization_table=None,
         interaction_table=None):
         """
         initiate class with a hit table (without interactions called) and other 
@@ -77,7 +77,7 @@ class Validation():
         self.interaction_table = hits[hits['interaction']]
 
 
-    def dynamic_fdr(self, perc=10, curvature=3, offset_seed=2.5):
+    def dynamic_fdr(self, perc=10, curvature=3, offset_seed=2.5, experiment=True):
         """
         compute dynamic FDR for each plate-bait group in all_hits table
         all_hits: DataFrame, output of hit_calling_validations.get_all_interactors
@@ -92,9 +92,12 @@ class Validation():
         
         # group hits table by experiment & target and place them into a bin of lists
         selects = []
+        if not experiment:
+            hits['experiment'] = 'N/A'
         grouped = hits.groupby(['experiment', 'target'])
         baits = []
         experiments = []
+
         for bait, group in grouped:
             experiments.append(bait[0])
             baits.append(bait[1])
@@ -348,15 +351,20 @@ def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
     # requirement of less than 2 neg hits or less than designated % of positive hits
     neg_hit = hit_count(neg_select, 3, seed)
     pos_hit = hit_count(pos_select, 3, seed)
-
-    pos_perc = 100 * neg_hit / pos_hit
+    if pos_hit == 0:
+        pos_perc = 0
+    else:
+        pos_perc = 100 * neg_hit / pos_hit
 
     while (neg_hit < 2 or pos_perc < perc) and seed > 0.1:
 
         seed -= 0.1
         neg_hit = hit_count(neg_select, 3, seed)
         pos_hit = hit_count(pos_select, 3, seed)
-        pos_perc = 100 * neg_hit / pos_hit
+        if pos_hit == 0:
+            pos_perc = 0
+        else:
+            pos_perc = 100 * neg_hit / pos_hit
 
     if pos_perc > perc:
         seed += 0.1

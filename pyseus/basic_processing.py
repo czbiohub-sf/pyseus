@@ -367,7 +367,7 @@ class RawTables:
         self.prey_imputed_table = imputed  
     
 
-    def generate_export_bait_matrix(self):
+    def generate_export_bait_matrix(self, export=False):
         """
         Generates and creates a Boolean bait matrix that will be used for control
         exclusion in p-val and enrichment analysis. 
@@ -382,15 +382,17 @@ class RawTables:
         self.bait_list = bait_df.copy()
         bait_df2 = bait_df.copy()
         bait_df2['plot'] = True
-        bait_df2.to_csv(self.root + self.analysis + '/plotting_exclusion_list.csv',
+        if export:
+            bait_df2.to_csv(self.root + self.analysis + '/plotting_exclusion_list.csv',
             index=False)
 
         # Create a boolean table
         for bait in baits:
             bait_df[bait] = True
         self.bait_matrix = bait_df.copy()
-        self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',
-            index=False)
+        if export:
+            self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',
+                index=False)
 
 
 def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',

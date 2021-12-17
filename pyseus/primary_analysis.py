@@ -138,7 +138,7 @@ class AnalysisTables:
         exclusion = self.exclusion_matrix.copy()
 
         # iterate through each cluster to generate neg con group
-        bait_list = [col[0] for col in list(imputed) if col[0] != 'Info']
+        bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
         bait_list = list(set(bait_list))   
           
         multi_args = zip(bait_list, repeat(imputed),
@@ -154,9 +154,9 @@ class AnalysisTables:
         master_df = pd.concat(outputs, axis=1)
 
         # join gene names to the df
-        gene_names = imputed[[('Info', 'Protein IDs'), ('Info', 'Gene names')]]
-        gene_names.set_index(('Info', 'Protein IDs'), drop=True, inplace=True)
-        gene_names.rename(columns={'Info': 'gene_names'}, inplace=True)
+        gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
+        gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
+        gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
         gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
 
 
@@ -177,7 +177,7 @@ class AnalysisTables:
         """
 
         imputed = self.imputed_table.copy()
-        bait_list = [col[0] for col in list(imputed) if col[0] != 'Info']
+        bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
         bait_list = list(set(bait_list))
 
         multi_args = zip(bait_list, repeat(imputed), repeat(None), repeat(std_enrich),
@@ -207,9 +207,9 @@ class AnalysisTables:
         print("Second round finished!")
 
         # join gene names to the df
-        gene_names = imputed[[('Info', 'Protein IDs'), ('Info', 'Gene names')]]
-        gene_names.set_index(('Info', 'Protein IDs'), drop=True, inplace=True)
-        gene_names.rename(columns={'Info': 'gene_names'}, inplace=True)
+        gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
+        gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
+        gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
         gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
 
         master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
@@ -218,8 +218,8 @@ class AnalysisTables:
 
     
 
-    def convert_to_standard_table(self, metrics=['pvals', 'enrichment'], interactors=False,
-            simple_analysis=True):
+    def convert_to_standard_table(self, metrics=['pvals', 'enrichment'],
+            experiment=True,simple_analysis=True):
         """
         the standard table no longer uses column organization for baits. 
         It follows a more SQL-like form where bait information is provided in 
@@ -241,30 +241,26 @@ class AnalysisTables:
             target_pvs['protein_ids'] = protein_ids
 
             # return target_pvs
-            # just_hits bool will return all hits, else it will only return interactors
-            
-            if interactors:
-                selection = ['interactors'] + metrics
-                hits = target_pvs[target_pvs['hits'] | target_pvs['minor_hits']][selection]
-                hits.reset_index(inplace=True)
-            else:
-                hits = target_pvs
-                hits.reset_index(inplace=True)
 
-            hits['experiment'] = target.split('_')[0]
-            hits['target'] = target.split('_')[1]
+            hits = target_pvs.copy()
+            hits.reset_index(inplace=True)
+            if experiment:
+                hits['experiment'] = target.split('_')[0]
+                hits['target'] = target.split('_')[1]
+            else:
+                hits['target'] = target
             hits.rename(columns={'gene_names': 'prey'}, inplace=True)
             hits.reset_index(drop=True, inplace=True)
             all_hits.append(hits)
 
         all_hits = pd.concat(all_hits, axis=0)
-        col_order = ['experiment', 'target', 'prey', 'protein_ids'] + metrics 
-        all_hits = all_hits[col_order]
-        
-        if interactors:
-            self.standard_interactors_table = all_hits
+        if experiment:
+            col_order = ['experiment', 'target', 'prey', 'protein_ids'] + metrics 
         else:
-            self.standard_hits_table = all_hits
+            col_order = ['target', 'prey', 'protein_ids'] + metrics
+        all_hits = all_hits[col_order]
+
+        self.standard_hits_table = all_hits
 
 
     def save(self, option_str=''):
@@ -295,25 +291,25 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     excluded = exclusion.copy()
 
     # initiate other variables required for the fx
-    gene_list = df[('Info', 'Protein IDs')].tolist()
+    gene_list = df[('metadata', 'Protein IDs')].tolist()
 
     # construct a negative control
     temporary = df.copy()
-    temporary.drop('Info', level='Baits', inplace=True, axis=1)
+    temporary.drop('metadata', level='Samples', inplace=True, axis=1)
     if second_round:
         neg_control = second_round_neg_control.copy()
     else:
         neg_control = df.copy()
-        neg_control.drop('Info', level='Baits', inplace=True, axis=1)
+        neg_control.drop('metadata', level='Samples', inplace=True, axis=1)
     
     if simple:
         # Get a list of excluded genes
-        excluded = excluded[['Baits', bait]]
+        excluded = excluded[['Samples', bait]]
         excluded = excluded[excluded[bait] == False]
 
         exclude_list = [bait]
         if excluded.shape[0] > 0:
-            exclude_list = exclude_list + excluded['Baits'].to_list()
+            exclude_list = exclude_list + excluded['Samples'].to_list()
         
         # Convert all values in same groups as np.nans
         for gene in exclude_list:
