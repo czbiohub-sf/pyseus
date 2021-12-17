@@ -2,7 +2,9 @@
 ### Pyseus: Perseus in Python
 
 
-##### This repository contains source code and notebooks to process and analyze Mass-Spec output from MaxQuant software, mainly utilizing the proteingroups.txt output file. The protein groups file is converted into Pandas DataFrames stored as objects in appropriate python Classes, which contain transformation and analysis methods. There are currently 4 main classes, with brief description of each class. For complete description and required arguments, please refer to the source code:
+##### This repository contains source code and notebooks to process and analyze Mass-Spec output from MaxQuant software, mainly utilizing the proteingroups.txt output file. However, features are in place to accept most feature tables that follow a standard format.
+##### The feature matrix is converted into Pandas DataFrames stored as objects in appropriate python Classes, which contain transformation and analysis methods. There are currently 4 main classes, with brief description of each class. For complete description and required arguments, please refer to the source code.
+##### A web-app that brings many of the functions in Pyseus to a GUI is included in the repository in the dash_app directory. It is currently in development, and a more thorough documentation will follow. 
 
 ### RawTables
 RawTables class takes the initial proteingroups.txt file and processes it into an organized, filtered DataFrame ready for significance/enrichment calculations. The following are some of the main class methods:
@@ -18,7 +20,7 @@ RawTables class takes the initial proteingroups.txt file and processes it into a
 AnalysisTables class uses imputed table and exclusion matrix output from RawTables, and performs essential analysis including enrichment/significance testing to call interactions and stoichiometry calculations. 
 
 
-##### Exclusion Matrix manipulation: AnalysisTables class can utilize exclusion matrix, which is a user-defined set of sample & negative control to be used for enrichment/significance testing. The following are helpful methods:
+##### Exclusion Matrix manipulation: AnalysisTables class can utilize exclusion matrix, which is a user-defined set of sample & negative control to be used for enrichment/significance testing. The following are helpful methods mostly for uses in notebooks:
 * restore_default_exclusion_matrix(): restore the exclusion matrix to default - no exclusion of any baits / negative controls
 * load_exclusion_matrix(): load user-defined exclusion matrix
 * print_baits(): print all baits in the analysis
@@ -35,6 +37,9 @@ AnalysisTables class uses imputed table and exclusion matrix output from RawTabl
 Validation class takes standard_hits_table from AnalysisTables class for various post-processing or validation methods
 * static_fdr(): Call significant interactors from standard hits table with user input offset and curvature for thresholding
 * dynamic_fd(): compute dynamic FDR for each plate-bait group in the standard table
+* convert_to_unique_interactions(): The nature of MS-IP presents possibilities for duplicate interactions, this function removes such duplicates. As a consequence, the direction of interactions is lost (no more bait/prey designations), but maximum edge values can be optionally conserved.  
+* corum_interaction_coverage(): Calculates the recall of the interactome, using CORUM interactions as a ground truth. The function is utilized in generating a precision-recall curve of the interactome. 
+* colocalization_precision(): Calculates the precision of the interactome, using broad localization patterns as a ground truth. THis function is utilized in generating a precision--recall curve of the interactome. 
 
 
 ## Included Notebooks
