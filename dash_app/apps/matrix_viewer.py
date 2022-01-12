@@ -17,14 +17,18 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import re
+import os
 import sys
-
+file_dir = os.path.dirname(__file__)
+sys.path.append(file_dir)
 from sklearn.cluster import KMeans
 import umap
 
 from matrix_viewer_layout import create_layout
 
-sys.path.append('../../')
+head, tail = os.path.split(file_dir)
+head, tail = os.path.split(head)
+sys.path.append(head)
 from pyseus import basic_processing as bp
 from pyseus.plotting import plotly_umap as pu
 from pyseus.plotting import plotly_heatmap as ph
@@ -35,16 +39,14 @@ transposed_annots = ('sample')
 # initiate app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-# App Layout
-app.layout = create_layout()
+from app import app
+layout =  create_layout()
 
 @app.callback(
-    Output('raw_table_upload', 'children'),
-    Output('raw_table_upload', 'style'),
-    Input('raw_table_upload', 'filename'),
-    State('raw_table_upload', 'style')
+    Output('mat_raw_table_upload', 'children'),
+    Output('mat_raw_table_upload', 'style'),
+    Input('mat_raw_table_upload', 'filename'),
+    State('mat_raw_table_upload', 'style')
 )
 def display_upload_ms_filename(filename, style):
     if filename is None:
@@ -55,16 +57,16 @@ def display_upload_ms_filename(filename, style):
 
 
 @app.callback(
-    Output('processed_table', 'children'),
+    Output('mat_processed_table', 'children'),
     Output('features_checklist', 'options'),
     Output('features_checklist', 'value'),
     Output('label_select', 'options'),
     Output('data_metrics', 'data'),
     Output('color_button', 'n_clicks'),
-    Output('read_table_button', 'style'),
-    Input('read_table_button', 'n_clicks'),
-    State('raw_table_upload', 'contents'),
-    State('read_table_button', 'style'),
+    Output('mat_read_table_button', 'style'),
+    Input('mat_read_table_button', 'n_clicks'),
+    State('mat_raw_table_upload', 'contents'),
+    State('mat_read_table_button', 'style'),
     State('color_button', 'n_clicks'),
     prevent_initial_call=True
 
@@ -87,7 +89,7 @@ def parse_raw_table(n_clicks, content, button_style, color_clicks):
         
 
         # regular table, features, and annots for UMAP
-        processed_table = raw_table.droplevel(level=0, axis=1)
+        processed_table = raw_table.droplevel(level=0, axis=1).copy()
         features = list(raw_table['sample'])
         labels = list(raw_table['metadata'])
 
@@ -147,7 +149,7 @@ def generate_colormap(scale_data_clicks, color_clicks,
     Output('generate_matrix', 'style'),
 
     Input('generate_matrix', 'n_clicks'),
-    State('processed_table', 'children'),
+    State('mat_processed_table', 'children'),
     State('features_checklist', 'value'),
     State('label_select', 'value'),
 

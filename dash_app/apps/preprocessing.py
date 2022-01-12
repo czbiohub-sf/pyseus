@@ -15,28 +15,30 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import re
+import os
 import sys
+file_dir = os.path.dirname(__file__)
+sys.path.append(file_dir)
 
 from preprocessing_layout import create_layout
 
-sys.path.append('../../')
+head, tail = os.path.split(file_dir)
+head, tail = os.path.split(head)
+sys.path.append(head)
 from pyseus import basic_processing as bp
 
+from app import app
 
-# initiate app
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # App Layout
-app.layout = create_layout()
+layout = create_layout()
 
 
 @app.callback(
-    Output('raw_table_filename', 'children'),
-    Output('raw_table_filename', 'style'),
-    Input('raw_table_upload', 'filename'),
-    State( 'raw_table_filename', 'style')
+    Output('pp_raw_table_filename', 'children'),
+    Output('pp_raw_table_filename', 'style'),
+    Input('pp_raw_table_upload', 'filename'),
+    State( 'pp_raw_table_filename', 'style')
 )
 def display_upload_ms_filename(filename, style):
     if filename is None:
@@ -60,18 +62,18 @@ def display_upload_config_filename(filename, style):
         return filename, style
 
 @app.callback(
-    Output('raw_table', 'children'),
-    Output('all_cols', 'children'),
-    Output('sample_cols_checklist', 'options'),
-    Output('meta_cols_checklist', 'options'),
+    Output('pp_raw_table', 'children'),
+    Output('all_pp_cols', 'children'),
+    Output('sample_pp_cols_checklist', 'options'),
+    Output('meta_pp_cols_checklist', 'options'),
     Output('read_table_button', 'style'),
     Input('read_table_button', 'n_clicks'),
-    State('raw_table_upload', 'contents'),
-    State('raw_table_sep', 'value'),
+    State('pp_raw_table_upload', 'contents'),
+    State('pp_raw_table_sep', 'value'),
     State('skip_top_rows', 'value'),
     State('read_table_button', 'style'),
     )
-def parse_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
+def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
     """
     initiate QualityControl class with the uploaded proteingroups file
     """
@@ -111,11 +113,11 @@ def parse_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
             checklist_options, button_style
 
 @app.callback(
-    Output('sample_cols_checklist', 'value'),
+    Output('sample_pp_cols_checklist', 'value'),
     Output('apply_sample_re_button', 'style'),    
     Input('apply_sample_re_button', 'n_clicks'),
     State('sample_search_re', 'value'),
-    State('all_cols', 'children'),
+    State('all_pp_cols', 'children'),
     State('apply_sample_re_button', 'style'),  
 )
 def sample_cols_re_search(n_clicks, search_re, all_cols_json, button_style):
@@ -137,7 +139,7 @@ def sample_cols_re_search(n_clicks, search_re, all_cols_json, button_style):
 
 @app.callback(
     Output('num_samples_selected', 'children'),
-    Input('sample_cols_checklist', 'value')
+    Input('sample_pp_cols_checklist', 'value')
 )
 def update_sample_number(checked_list):
     if checked_list is None:
@@ -148,7 +150,7 @@ def update_sample_number(checked_list):
 
 @app.callback(
     Output('num_meta_selected', 'children'),
-    Input('meta_cols_checklist', 'value')
+    Input('meta_pp_cols_checklist', 'value')
 )
 def update_sample_number(checked_list):
     if checked_list is None:
@@ -159,13 +161,13 @@ def update_sample_number(checked_list):
 
 
 @app.callback(
-    Output('sample_cols', 'children'),
-    Output('meta_cols', 'children'),
-    Output('original_sample_cols', 'data'),
+    Output('sample_pp_cols', 'children'),
+    Output('meta_pp_cols', 'children'),
+    Output('original_sample_pp_cols', 'data'),
     Output('save-cols-button', 'style'),
     Input('save-cols-button', 'n_clicks'),
-    State('sample_cols_checklist', 'value'),
-    State('meta_cols_checklist', 'value'),
+    State('sample_pp_cols_checklist', 'value'),
+    State('meta_pp_cols_checklist', 'value'),
     State('save-cols-button', 'style'),    
 )
 def select_cols(n_clicks, sample_cols, meta_cols, button_style):
@@ -184,11 +186,11 @@ def select_cols(n_clicks, sample_cols, meta_cols, button_style):
             button_style
 
 @app.callback(
-    Output('renamed_sample_cols', 'data'),
+    Output('renamed_sample_pp_cols', 'data'),
     Output('re_warning', 'children'),
     Output('preview_rename', 'style'),
     Input('preview_rename', 'n_clicks'),
-    State('sample_cols', 'children'),
+    State('sample_pp_cols', 'children'),
     State('search_re', 'value'),
     State('replacement_re', 'value'),
     State('preview_rename', 'style')
@@ -216,12 +218,12 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
         return col_table.to_dict('records'), '', button_style
 
 @app.callback(
-    Output('processed_table', 'children'),
+    Output('pp_processed_table', 'children'),
     Output('process_table_button', 'style'),
     Input('process_table_button', 'n_clicks'),
-    State('raw_table', 'children'),
-    State('sample_cols', 'children'),
-    State('meta_cols', 'children'),
+    State('pp_raw_table', 'children'),
+    State('sample_pp_cols', 'children'),
+    State('meta_pp_cols', 'children'),
     State('search_re', 'value'),
     State('replacement_re', 'value'),
     State('filter_rows_check', 'value'),
@@ -238,7 +240,7 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
     State('process_table_button', 'style'),
 )
 
-def process_table(n_clicks, raw_table_json, sample_cols_json,
+def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
     meta_cols_json, search_re, replacement_re, filter_rows,
     rename_samples, log_transform, transform_opt,
     remove_incomplete_rows, merge_reps, merge_opt, replace_nulls,
@@ -249,7 +251,7 @@ def process_table(n_clicks, raw_table_json, sample_cols_json,
         raise PreventUpdate
     else:
         # parse raw table and columns from json formats
-        raw_table = pd.read_json(raw_table_json)
+        pp_raw_table = pd.read_json(pp_raw_table_json)
         sample_cols = json.loads(sample_cols_json)
         meta_cols = json.loads(meta_cols_json)
 
@@ -261,12 +263,12 @@ def process_table(n_clicks, raw_table_json, sample_cols_json,
             sample_cols=sample_cols,
             intensity_type='',
             file_designated=True,
-            proteingroup=raw_table
+            proteingroup=pp_raw_table
         )
         # designate raw table as filtered_table in the class
         # for specific exception to this Dash App
         # and use it as a default output table
-        ms_tables.filtered_table = raw_table
+        ms_tables.filtered_table = pp_raw_table
         output_table = ms_tables.filtered_table
 
         # filter rows on MaxQuant contaminants, reverse-seq, and only id by site
@@ -376,7 +378,7 @@ def download_ms_table(n_clicks, table_json, save_name, button_style):
     Output('download-configs-csv', 'data'),
     Output('download_configs', 'style'),
     Input('download_configs', 'n_clicks'),
-    State('raw_table_sep', 'value'),
+    State('pp_raw_table_sep', 'value'),
     State('skip_top_rows', 'value'),
     State('sample_search_re', 'value'),
     State('search_re', 'value'),
@@ -404,7 +406,7 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     button_style, save_name):
 
     configs = pd.DataFrame()
-    configs['raw_table_sep'] = [table_sep]
+    configs['pp_raw_table_sep'] = [table_sep]
     configs['top_row_skip'] = [top_row_skip]
     configs['sample_search_RE'] = [sample_search_re]
     configs['search_RE'] = [search_re]
@@ -429,7 +431,7 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
         save_name), button_style
 
 @app.callback(
-    Output('raw_table_sep', 'value'),
+    Output('pp_raw_table_sep', 'value'),
     Output('skip_top_rows', 'value'),
     Output('sample_search_re', 'value'),
     Output('search_re', 'value'),
@@ -481,7 +483,7 @@ def preload_configs(n_clicks, content, button_style):
         button_style = {}
         button_style['background-color'] = '#B6E880'
         
-        return configs['raw_table_sep'].item(),\
+        return configs['pp_raw_table_sep'].item(),\
             configs['top_row_skip'].item(),\
             configs['sample_search_RE'].item(),\
             configs['search_RE'].item(),\

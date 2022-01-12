@@ -9,6 +9,7 @@ from dash.exceptions import PreventUpdate
 from dash import dcc
 from dash import html
 from dash import dash_table
+from numpy import true_divide
 
 import pandas as pd
 import plotly.express as px
@@ -16,22 +17,17 @@ import plotly.express as px
 import sys
 sys.path.append('../../')
 
-def create_layout():
+def calculation_layout():
     return html.Div([
-        
-        # Header tags
-        html.P('Volcano plot generator',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
         html.Div([
             
             html.P('Upload a processed feature table or use a pre-loaded one',
                 style={'textAlign': 'center',
                     'fontSize': 20,
-                    'marginBottom':'0%'}),
-            html.P("""The UMAP generating script requires a standard format
+                    'marginBottom':'0%',
+                    'marginTop': '4%'}),
+            html.P("""The script requires a standard format
                 of feature table. Please use the Process Table page to create one.""",
                 style={
                     'textAlign': 'center',
@@ -41,7 +37,7 @@ def create_layout():
             # upload component
             html.Div([
                 dcc.Upload(
-                    id='raw_table_upload',
+                    id='vol_raw_table_upload',
                     children=html.Div([
                         'Drag and Drop or ',
                         html.A('Select a feature table')
@@ -62,7 +58,7 @@ def create_layout():
                 ),
                 
                 html.Div([
-                    html.Button('Read table!', id = 'read_table_button')],
+                    html.Button('Read table!', id = 'vol_read_table_button')],
                     style={
                         'marginTop': '2%',
                         'marginLeft': '30%', 
@@ -161,9 +157,20 @@ def create_layout():
             ),
 
 
-            html.Hr(style={'marginTop': '3%', 'marginBottom': '3%'}),
+            html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
+            html.P('Download current control matrix', style={'textAlign': 'center',
+                'fontSize': 18}),
+            html.Button('Download', id='download_matrix_button',
+                style={
+                    'marginLeft':'7.5%',
+                    'width': '85%',
+                    'white-space': 'normal'
+                }
+            ),
+            dcc.Download(id="download_control_matrix"),
 
-            html.P('Import a manual control sample matrix', style={'textAlign': 'center',
+            html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
+            html.P('Import a custom control matrix', style={'textAlign': 'center',
                 'fontSize': 18}),
             dcc.Upload(
                 id='null_matrix_upload',
@@ -185,14 +192,15 @@ def create_layout():
                 # Only single file
                 multiple=False
             ),
-            html.Button('Apply matrix', id='null_matrix_button',
+            html.Button('Apply uploaded matrix', id='null_matrix_button',
                 style={
                     'marginLeft':'7.5%',
                     'width': '85%',
                     'marginTop': '4%',
                     'white-space': 'normal'
                 }
-            )
+            ),
+
         ],
             style={
                 'vertical-align': 'top',
@@ -205,8 +213,8 @@ def create_layout():
         
 
         html.Div([
-            html.P('View selected controls', style={'textAlign': 'center',
-                'fontSize': 18}),
+            html.P('Review controls for a selected sample', style={'textAlign': 'center',
+                'fontSize': 18, 'marginTop': '4%'}),
             
             dcc.Dropdown(id='view_sample_controls',
                 placeholder='Select a sample',
@@ -260,7 +268,7 @@ def create_layout():
                     'width': '80%',
                     'border': '0.5px #BDC3C7 solid',
                 }),
-            html.P('Edit controls for selected samples', style={'textAlign': 'center',
+            html.P('Select controls for the chosen samples', style={'textAlign': 'center',
                 'fontSize': 16, 'lineHeight':'15px', 'marginTop':'2%'}),
             dcc.Checklist(
                 id='edit_controls',
@@ -293,96 +301,83 @@ def create_layout():
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
+        html.Div([
+
+            html.P('Enrichment option', style={'textAlign': 'center',
+                'fontSize': 18, 'lineHeight':'15px', 'marginTop':'2%'}),
+
+            dcc.RadioItems(id='enrichment_option',
+                options=[
+                    {'label': 'Absolute enrichment',
+                    'value': 'False'},
+                    {'label': 'Relative enrichment (stdev units)',
+                    'value': 'True'}
+                    ],
+        
+                style={
+                    'textAlign': 'center',
+                    'width': '90%',
+                    'marginLeft': '5%'
+                },
+                value='True'
+            ),
+            ],
+
+            style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'height': '100px',
+                'width': '50%',
+            }
+        ),
+
+        html.Div([
+
+            html.Button('Calculate enrichment!', id='calculate_button',
+                style={
+                    'marginLeft':'0%',
+                    'width': '85%',
+                    'marginTop': '0%',
+                    'white-space': 'normal'
+                }
+            ),
+            dcc.Download(id="download_pval_table"),
+            html.Button('Download calculated table!', id='download_pval_button',
+                style={
+                    'marginLeft':'0%',
+                    'width': '85%',
+                    'marginTop': '2%',
+                    'white-space': 'normal'
+                }
+            )
+
+            ],
+
+            style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'height': '100px',
+                'width': '50%',
+            }
+        ),
 
 
-        # html.Div([
-        #     html.P('Clustergram Options',
-        #         style={'textAlign': 'center',
-        #             'fontSize': 20,
-        #             'marginTop':'15%'}
-        #     ),
-        #     html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
-
-        #     html.P('Sample clustering',
-        #         style={'textAlign': 'center',
-        #             'fontSize': 15,
-        #             'marginBottom': '1%'}
-        #     ),
-        #     html.P('Observations are automatically clustered',
-        #         style={'textAlign': 'center',
-        #             'fontSize': 13,
-        #             'marginBottom': '4%'}
-        #     ),
-
-        #     dcc.Checklist(
-        #         id='cluster_checks',
-        #         options=[
-        #             {'label': 'Cluster individual samples/replicates', 'value': 'bait_clust'},
-        #             {'label': 'Cluster samples grouped by replicates', 'value': 'group_clust'},
-        #         ],
-        #         value=[]
-        #     ),
-            
-        #     html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
-
-        #     html.P('Tick labels',
-        #         style={'textAlign': 'center',
-        #             'fontSize': 15,
-        #             'marginBottom': '4%'}
-        #     ),
-
-        #     dcc.Checklist(
-        #         id='tick_checks',
-        #         options=[
-        #             {'label': 'Show sample labels', 'value': 'sample_ticks'},
-        #             {'label': 'Show obs. labels', 'value': 'obs_ticks'},
-        #         ],
-        #         value=['sample_ticks', 'obs_ticks']
-        #     ),
 
 
-        #     html.Hr(style={'marginTop':'8%', 'marginBottom':'8%'}),
-        #     html.Div([
-        #         html.Button('Create plot!', id = 'generate_matrix',
-        #             style={
-        #             'width':'95%',
-        #             'marginLeft': '2.5%'
-        #             }
-        #         )
-        #     ],
-        #         style={
-        #             'marginTop': '2%',
-        #             'marginLeft': '5%', 
-        #             'width': '90%',
-        #             'verticalAlign': 'top'
-        #         }),
-
-        # ],
-        #     style={
-        #         'vertical-align': 'top',
-        #         'display': 'inline-block',
-        #         'height': '700px',
-        #         'width': '15%',
-        #         'borderRight': '1px #A6ACAF solid',
-        #     }
-        # ),
-        # html.Div([
-        #     dcc.Graph(id='matrix_fig', style=
-        #     {'height': '100%'})
-        # ],
-        #     style={
-        #         'vertical-align': 'top',
-        #         'display': 'inline-block',
-        #         'height': '700px',
-        #         'width': '84%',
-        #     }),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
         # Hiddn divs inside the app for computations and storing intermediate values
         html.Div(
-            id='processed_table', style={'display': 'none'}),
- 
+            id='vol_processed_table', style={'display': 'none'}),
+        html.Div(
+            id='control_matrix', style={'display': 'none'}
+        ),
+        html.Div(
+            id='samples', style={'display': 'none'}
+        ),
+        html.Div(
+            id='significance_table', style={'display': 'none'})
 
 
 

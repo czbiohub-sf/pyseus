@@ -77,6 +77,45 @@ class Validation():
         self.interaction_table = hits[hits['interaction']]
 
 
+    def hawaii_fdr(self, perc=10, curvature=3, offset_seed=2.5, experiment=True):
+        """
+        compute dynamic FDR for all samples pooled in all_hits table
+        all_hits: DataFrame, output of hit_calling_validations.get_all_interactors
+        perc: threshold for get_fdr5_seed specifying how much % of false positives
+            are allowed before calling a FDR threshold
+        RETURN:
+        DataFrame, dataframe containing all the major and minor FDR thresholds
+            for each bait-plate group
+        DataFrame, all_hits df with fdr threshold columns added
+        """
+        hits = self.hit_table.copy()
+        
+        # group hits table by experiment & target and place them into a bin of lists
+        selects = []
+        if not experiment:
+            hits['experiment'] = 'N/A'
+ 
+        
+        # parallel processing for calculating FDR seed
+
+        seed = hawaii_find_thresh(hits, 'None', perc, curvature, offset_seed)
+   
+        fdr = [curvature, seed]
+
+        enrichment = hits['enrichment']  
+        pvals = hits['pvals']     
+        thresh = enrichment.apply(pa.calc_thresh,
+            args=[fdr[0], fdr[1]])
+
+        hits['interaction'] = np.where(
+            (pvals > thresh), True, False)
+
+        hits['fdr'] = [fdr] * hits.shape[0]
+
+        self.called_table = hits
+        self.interaction_table = hits[hits['interaction']].copy()
+
+
     def dynamic_fdr(self, perc=10, curvature=3, offset_seed=2.5, experiment=True):
         """
         compute dynamic FDR for each plate-bait group in all_hits table
@@ -143,6 +182,7 @@ class Validation():
 
         interaction_table = pd.concat(new_groups)
         self.dynamic_fdr_table = fdr_df
+        self.called_table = interaction_table
         self.interaction_table = interaction_table[interaction_table['interaction']]
 
     def convert_to_unique_interactions(self, target_match=False, get_edge=False, edge='pvals'):
@@ -340,17 +380,17 @@ def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
                 seed += 0.2
             else:
                 seed += 0.1
-            hit = hit_count(neg_select, 3, seed)
+            hit = hit_count(neg_select, curvature, seed)
     else:
         while hit == 0:
             seed -= 0.1
-            hit = hit_count(neg_select, 3, seed)
+            hit = hit_count(neg_select, curvature, seed)
         seed += 0.1
     
     # With the calculated seed, find the threshold that meets the 
     # requirement of less than 2 neg hits or less than designated % of positive hits
-    neg_hit = hit_count(neg_select, 3, seed)
-    pos_hit = hit_count(pos_select, 3, seed)
+    neg_hit = hit_count(neg_select, curvature, seed)
+    pos_hit = hit_count(pos_select, curvature, seed)
     if pos_hit == 0:
         pos_perc = 0
     else:
@@ -371,6 +411,55 @@ def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
 
     return round(seed, 2)    
 
+def hawaii_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
+    """
+    Find the proper p-val/enrichment threshold for a bait
+    """
+    
+    # filter for negative hits
+    neg_select = select[select['enrichment'] < 0]
+    pos_select = select[select['enrichment'] > 0]
+    
+    # With the calculated seed, find the threshold that meets the 
+    # requirement of less than 2 neg hits or less than designated % of positive hits
+    neg_hit = hit_count(neg_select, curvature, seed)
+    pos_hit = hit_count(pos_select, curvature, seed)
+    if pos_hit == 0:
+        pos_perc = 0
+    else:
+        pos_perc = 100 * neg_hit / pos_hit
+    
+    if pos_perc < perc:
+        while pos_perc < perc and seed > 0.1:
+            seed -= 0.1
+            neg_hit = hit_count(neg_select, 3, seed)
+            pos_hit = hit_count(pos_select, 3, seed)
+            if pos_hit == 0:
+                pos_perc = 0
+            else:
+                pos_perc = 100 * neg_hit / pos_hit
+
+        if pos_perc > perc:
+            seed += 0.1
+    else: 
+        while pos_perc > perc and seed < 30:
+            if seed > 5:
+                seed += 0.5
+            else:
+                seed == 0.2
+            neg_hit = hit_count(neg_select, 3, seed)
+            pos_hit = hit_count(pos_select, 3, seed)
+            if pos_hit == 0:
+                pos_perc = 0
+            else:
+                pos_perc = 100 * neg_hit / pos_hit
+
+        if pos_perc < perc:
+            seed -= 0.2
+
+
+    
+    return round(seed, 2)    
 
 
 def hit_count(bait_series, curvature, offset):

@@ -41,7 +41,7 @@ def create_layout():
             # upload component
             html.Div([
                 dcc.Upload(
-                    id='raw_table_upload',
+                    id='mat_raw_table_upload',
                     children=html.Div([
                         'Drag and Drop or ',
                         html.A('Select a feature table')
@@ -60,7 +60,7 @@ def create_layout():
                     # Only single file
                     multiple=False
                 ),
-                # html.P('Uploaded feature table', id='raw_table_filename', 
+                # html.P('Uploaded feature table', id='mat_raw_table_filename', 
                 #     style={
                 #         'textAlign': 'center',
                 #         'border' : '0.5px #BDC3C7 solid',
@@ -72,7 +72,7 @@ def create_layout():
                 # ),
                 
                 html.Div([
-                    html.Button('Read table!', id = 'read_table_button')],
+                    html.Button('Read table!', id = 'mat_read_table_button')],
                     style={
                         'marginTop': '2%',
                         'marginLeft': '30%', 
@@ -452,7 +452,7 @@ def create_layout():
 
         # Hiddn divs inside the app for computations and storing intermediate values
         html.Div(
-            id='processed_table', style={'display': 'none'}),
+            id='mat_processed_table', style={'display': 'none'}),
  
 
 

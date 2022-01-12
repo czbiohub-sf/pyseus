@@ -36,7 +36,7 @@ def create_layout():
             # upload component
             html.Div([
                 dcc.Upload(
-                    id='raw_table_upload',
+                    id='pp_raw_table_upload',
                     children=html.Div([
                         'Drag and Drop or ',
                         html.A('Select a MS table')
@@ -55,7 +55,7 @@ def create_layout():
                     # Only single file
                     multiple=False
                 ),
-                html.P('Uploaded MS table', id='raw_table_filename', 
+                html.P('Uploaded MS table', id='pp_raw_table_filename', 
                     style={
                         'textAlign': 'center',
                         'border' : '0.5px #BDC3C7 solid',
@@ -67,7 +67,7 @@ def create_layout():
                 ),
                 html.Div([
                     dcc.RadioItems(
-                        id='raw_table_sep',
+                        id='pp_raw_table_sep',
                         options=[
                             {'label': 'comma-separated', 
                             'value': ','},
@@ -188,7 +188,7 @@ def create_layout():
                 html.P('Sample columns', style={'textAlign': 'center',
                     'fontSize': 16}),
                 dcc.Checklist(
-                    id='sample_cols_checklist',
+                    id='sample_pp_cols_checklist',
                     style={
                         'marginLeft': '10%',
                         'overflowY': 'auto',
@@ -237,7 +237,7 @@ def create_layout():
                 html.P('Metadata columns', style={'textAlign': 'center',
                     'fontSize':16}),
                 dcc.Checklist(
-                    id='meta_cols_checklist',
+                    id='meta_pp_cols_checklist',
                     style={
                         'marginLeft': '10%',
                         'overflowY': 'auto',
@@ -570,7 +570,7 @@ def create_layout():
         html.Div([
             html.Div([
                 dash_table.DataTable(
-                    id='original_sample_cols',
+                    id='original_sample_pp_cols',
                     columns=[{'name':'column names', 'id': 'column names'}],
                     style_header={
                         'fontWeight':'bold'
@@ -594,7 +594,7 @@ def create_layout():
             ),
             html.Div([
                 dash_table.DataTable(
-                    id='renamed_sample_cols',
+                    id='renamed_sample_pp_cols',
                     columns=[{'name':'new column names', 'id': 'new column names'}],
                     style_header={
                         'fontWeight':'bold'
@@ -675,19 +675,19 @@ def create_layout():
 
         # Hiddn divs inside the app for computations and storing intermediate values
         html.Div(
-            id='raw_table', style={'display': 'none'}),
+            id='pp_raw_table', style={'display': 'none'}),
         html.Div(
-            id='processed_table', style={'display': 'none'}),
+            id='pp_processed_table', style={'display': 'none'}),
         html.Div(
-            id='all_cols', style={'display': 'none'}),
+            id='all_pp_cols', style={'display': 'none'}),
         html.Div(
-            id='sample_cols', style={'display': 'none'}),
+            id='sample_pp_cols', style={'display': 'none'}),
         html.Div(
-            id='meta_cols', style={'display': 'none'}),
+            id='meta_pp_cols', style={'display': 'none'}),
         dcc.Download(id="download-ms-table-csv"),
         dcc.Download(id="download-configs-csv"),
         # html.Div(
-        #     id='renamed_sample_cols', children=None, style={'display': 'none'}),
+        #     id='renamed_sample_pp_cols', children=None, style={'display': 'none'}),
         # html.Div(
         #     id='renamed_table', children=None, style={'display': 'none'}),
         # html.Div(

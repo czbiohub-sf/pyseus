@@ -34,10 +34,10 @@ class AnalysisTables:
 
     def __init__(
         self,
-        root,
-        analysis,
-        imputed_table,
-        exclusion_matrix):
+        root=None,
+        analysis=None,
+        imputed_table=None,
+        exclusion_matrix=None):
 
         # initiate class that cover essential metadata and imputed table
         # from RawTables class.
@@ -228,6 +228,9 @@ class AnalysisTables:
         if simple_analysis:
             pvals = self.simple_pval_table.copy()
             protein_ids = pvals.index.to_list()
+        else:
+            pvals= self.two_step_pval_table.copy()
+            protein_ids = pvals.index.to_list()
 
         pvals.set_index(('gene_names', 'gene_names'), inplace=True)
         pvals.index.name = 'gene_names'
@@ -258,7 +261,7 @@ class AnalysisTables:
             col_order = ['experiment', 'target', 'prey', 'protein_ids'] + metrics 
         else:
             col_order = ['target', 'prey', 'protein_ids'] + metrics
-        all_hits = all_hits[col_order]
+        all_hits = all_hits[col_order].reset_index(drop=True)
 
         self.standard_hits_table = all_hits
 
@@ -307,9 +310,8 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
         excluded = excluded[['Samples', bait]]
         excluded = excluded[excluded[bait] == False]
 
-        exclude_list = [bait]
         if excluded.shape[0] > 0:
-            exclude_list = exclude_list + excluded['Samples'].to_list()
+            exclude_list =  excluded['Samples'].to_list()
         
         # Convert all values in same groups as np.nans
         for gene in exclude_list:

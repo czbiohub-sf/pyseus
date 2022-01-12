@@ -15,33 +15,56 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import re
+import os
 import sys
+file_dir = os.path.dirname(__file__)
+sys.path.append(file_dir)
 
 from sklearn.cluster import KMeans
 import umap
 
-from umap_viewer_layout import create_layout
+from umap_viewer_layout import plotting_layout, customize_layout
 
-sys.path.append('../../')
+head, tail = os.path.split(file_dir)
+head, tail = os.path.split(head)
+sys.path.append(head)
 from pyseus import basic_processing as bp
 from pyseus.plotting import plotly_umap as pu
 
 # global, immutable variables
 transposed_annots = ('sample')
 
-# initiate app
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+from app import app
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # App Layout
-app.layout = create_layout()
+layout = html.Div([
+        # Header tags
+        html.P('The UMAP generator',
+            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
+                'marginBottom': '1%'}),
+        dcc.Tabs(
+            id="tabs",
+            value='calculation',
+            children=[
+                dcc.Tab(
+                    label='Customize features and annotations',
+                    value='calculation',
+                    children = customize_layout()
+                ),
+                dcc.Tab(
+                    label='Plot UMAP',
+                    value='plotting',
+                    children = plotting_layout()
+                ),
+                ]),
+    ])
 
 @app.callback(
-    Output('raw_table_upload', 'children'),
-    Output('raw_table_upload', 'style'),
-    Input('raw_table_upload', 'filename'),
-    State('raw_table_upload', 'style')
+    Output('um_raw_table_upload', 'children'),
+    Output('um_raw_table_upload', 'style'),
+    Input('um_raw_table_upload', 'filename'),
+    State('um_raw_table_upload', 'style')
 )
 def display_upload_ms_filename(filename, style):
     if filename is None:
@@ -52,17 +75,17 @@ def display_upload_ms_filename(filename, style):
 
 
 @app.callback(
-    Output('processed_table', 'children'),
-    Output('features', 'children'),
-    Output('annots', 'children'),
+    Output('um_processed_table', 'children'),
+    Output('um_features', 'children'),
+    Output('um_annots', 'children'),
     Output('table_dims', 'children'), 
     Output('transposed_table', 'children'),
-    Output('read_table_button', 'style'),
-    Input('read_table_button', 'n_clicks'),
-    State('raw_table_upload', 'contents'),
-    State('read_table_button', 'style'),
+    Output('um_read_table_button', 'style'),
+    Input('um_read_table_button', 'n_clicks'),
+    State('um_raw_table_upload', 'contents'),
+    State('um_read_table_button', 'style'),
     )
-def parse_raw_table(n_clicks, content, button_style):
+def parse_um_raw_table(n_clicks, content, button_style):
     """
     initiate QualityControl class with the uploaded proteingroups file
     """
@@ -74,27 +97,27 @@ def parse_raw_table(n_clicks, content, button_style):
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
 
-        raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
+        um_raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0,1], index_col=0)
         
 
         # regular table, features, and annots for UMAP
-        processed_table = raw_table.droplevel(level=0, axis=1)
-        features = list(raw_table['sample'])
-        annots = list(raw_table['metadata'])
-        dims = list(raw_table['sample'].shape)
+        um_processed_table = um_raw_table.droplevel(level=0, axis=1)
+        um_features = list(um_raw_table['sample'])
+        annots = list(um_raw_table['metadata'])
+        dims = list(um_raw_table['sample'].shape)
 
-        features_json = json.dumps(features)
+        um_features_json = json.dumps(um_features)
         annots_json = json.dumps(annots)
         dims_json = json.dumps(dims)
 
 
         # drop duplicates
-        processed_table.drop_duplicates(inplace=True)
-        processed_table_json = processed_table.to_json()
+        um_processed_table.drop_duplicates(inplace=True)
+        um_processed_table_json = um_processed_table.to_json()
 
         # Transposed table, features, and annots for UMAP
-        transposed_table = raw_table['sample'].T.reset_index().rename(
+        transposed_table = um_raw_table['sample'].T.reset_index().rename(
             {'index': 'samples'}, axis=1)
         
         transposed_table.drop_duplicates(inplace=True)
@@ -105,27 +128,27 @@ def parse_raw_table(n_clicks, content, button_style):
             button_style = {}
         button_style['background-color'] = '#B6E880'
 
-        return processed_table_json, features_json, annots_json,\
+        return um_processed_table_json, um_features_json, annots_json,\
             dims_json, transposed_table_json, button_style
 
 @app.callback(
     Output('feature_dims', 'children'),
-    Output('features_checklist', 'options'),
-    Output('features_checklist', 'value'),
-    Output('label_select', 'options'),
-    Output('label_select', 'value'),
+    Output('um_features_checklist', 'options'),
+    Output('um_features_checklist', 'value'),
+    Output('um_label_select', 'options'),
+    Output('um_label_select', 'value'),
     Output('annot_select', 'options'),
     Output('annot_select', 'value'),
     Output('merge_key_feature', 'options'),
     Output('transpose_button', 'style'),
     Input('transpose_button', 'n_clicks'),
-    Input('features', 'children'),
-    State('annots', 'children'),
+    Input('um_features', 'children'),
+    State('um_annots', 'children'),
     State('table_dims', 'children'),
     State('transpose_button', 'style'),
     prevent_initial_call=True
 )
-def return_feature_selections(transpose_clicks, features_json, 
+def return_feature_selections(transpose_clicks, um_features_json, 
     annots_json, dims_json, button_style):
 
     if transpose_clicks is None:
@@ -133,7 +156,7 @@ def return_feature_selections(transpose_clicks, features_json,
 
     # for non transposed option
     if transpose_clicks % 2 == 0:
-        features = json.loads(features_json)
+        um_features = json.loads(um_features_json)
         annots = json.loads(annots_json)
         dims = json.loads(dims_json)
 
@@ -142,8 +165,8 @@ def return_feature_selections(transpose_clicks, features_json,
             {len(annots)} annotations'
         
         # feature checklist options 
-        features_opts = [{'label': feature, 'value': feature}
-            for feature in features]
+        um_features_opts = [{'label': feature, 'value': feature}
+            for feature in um_features]
 
         # labels/annots options
         annot_opts = []
@@ -155,7 +178,7 @@ def return_feature_selections(transpose_clicks, features_json,
         
         button_style['background-color'] = 'white'
         
-        return dim_string, features_opts, features, annot_opts,\
+        return dim_string, um_features_opts, um_features, annot_opts,\
             annot_val, annot_opts, annot_val, annot_opts, button_style
     
     # for transposed option
@@ -229,7 +252,7 @@ def fill_external_keys(content, filename):
     State('transpose_button', 'n_clicks'),
     State('annot_table_upload', 'contents'),
     State('annot_table_upload', 'filename'),
-    State('processed_table', 'children'),
+    State('um_processed_table', 'children'),
     State('transposed_table', 'children'),
     State('merge_key_feature', 'value'),
     State('merge_key_annot', 'value'),
@@ -237,7 +260,7 @@ def fill_external_keys(content, filename):
     State('merge_button', 'style'),
     prevent_initial_call=True
 )
-def merge_tables(n_clicks, transpose_clicks, content, filename, processed_table, transposed_table,\
+def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_table, transposed_table,\
     feature_key, annot_key, annot_label, button_style):
 
     button_style['background-color'] = '#B6E880'
@@ -257,15 +280,15 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, processed_table,
 
     # for non transposed option
     if transpose_clicks % 2 == 0:
-        processed_table = pd.read_json(processed_table)
+        um_processed_table = pd.read_json(um_processed_table)
             
     # for transposed option
     else:
-        processed_table = pd.read_json(transposed_table)
+        um_processed_table = pd.read_json(transposed_table)
 
     annot_table.rename(columns={annot_key: feature_key}, inplace=True)
-    merge_table = processed_table.merge(annot_table, on=feature_key, how='left')
-    merge_table.drop_duplicates(subset=list(processed_table), inplace=True)
+    merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
+    merge_table.drop_duplicates(subset=list(um_processed_table), inplace=True)
     
     external_annot = merge_table[annot_label].to_list()
     external_annot_json = json.dumps(external_annot)
@@ -281,8 +304,8 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, processed_table,
     Input('generate_umap', 'n_clicks'),
     State('transpose_button', 'n_clicks'),
 
-    State('features_checklist', 'value'),
-    State('label_select', 'value'),
+    State('um_features_checklist', 'value'),
+    State('um_label_select', 'value'),
 
     State('annot_options', 'value'),
     State('annot_select', 'value'),
@@ -290,7 +313,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, processed_table,
 
     State('n_cluster', 'value'),
 
-    State('processed_table', 'children'),
+    State('um_processed_table', 'children'),
     State('transposed_table', 'children'),
 
     State('feature_scaling', 'value'),
@@ -303,7 +326,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, processed_table,
     prevent_initial_call=True
 )
 def generate_umap(umap_clicks, transpose_clicks, features, label, annot_opts,\
-    internal_annot, ext_annot, n_cluster, processed_table, transposed_table, scaling,\
+    internal_annot, ext_annot, n_cluster, um_processed_table, transposed_table, scaling,\
     n_neighbors, min_dist, metric,  button_style):
     """
     Generate umap from all the customizable options
@@ -317,15 +340,15 @@ def generate_umap(umap_clicks, transpose_clicks, features, label, annot_opts,\
 
     # for non transposed option
     if transpose_clicks % 2 == 0:
-        processed_table = pd.read_json(processed_table)
+        um_processed_table = pd.read_json(um_processed_table)
         
     
     # for transposed option
     else:
-        processed_table = pd.read_json(transposed_table)
+        um_processed_table = pd.read_json(transposed_table)
         # manual assignment of features and label
-        features = list(processed_table)
-        features.remove('samples')
+        um_features = list(um_processed_table)
+        um_features.remove('samples')
         label = 'samples'
     
     # designate appropriate annotation for colormap
@@ -335,11 +358,11 @@ def generate_umap(umap_clicks, transpose_clicks, features, label, annot_opts,\
         annot = internal_annot
     elif annot_opts == 'external':
         external_annots = json.loads(ext_annot)
-        processed_table['external'] = external_annots
+        um_processed_table['external'] = external_annots
         annot = 'external'
 
-    processed_table.dropna(subset=features, inplace=True)
-    matrix = processed_table[features]
+    um_processed_table.dropna(subset=um_features, inplace=True)
+    matrix = um_processed_table[um_features]
 
     # scale matrix
     scaled = pu.scale_table(matrix.values, scaling)
@@ -349,7 +372,7 @@ def generate_umap(umap_clicks, transpose_clicks, features, label, annot_opts,\
     if annot_opts == 'cluster':
         clusters = KMeans(n_clusters=n_cluster).fit_predict(scaled)
         clusters = [str(x) for x in clusters]
-        processed_table['cluster'] = clusters
+        um_processed_table['cluster'] = clusters
         annot = 'cluster'
 
     # calculate umap dist
@@ -359,9 +382,9 @@ def generate_umap(umap_clicks, transpose_clicks, features, label, annot_opts,\
         metric=metric
     )
     u = fit.fit_transform(scaled)
-    processed_table['umap_1'] = u[: , 0]
-    processed_table['umap_2'] = u[:, 1]
-    fig = pu.interaction_umap(processed_table, node_name=label, cluster=annot)
+    um_processed_table['umap_1'] = u[: , 0]
+    um_processed_table['umap_2'] = u[:, 1]
+    fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
 
     return fig, button_style
 

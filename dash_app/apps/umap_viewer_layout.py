@@ -16,14 +16,9 @@ import plotly.express as px
 import sys
 sys.path.append('../../')
 
-def create_layout():
+def customize_layout():
     return html.Div([
         
-        # Header tags
-        html.P('The UMAP generator',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
         html.Div([
             
@@ -41,7 +36,7 @@ def create_layout():
             # upload component
             html.Div([
                 dcc.Upload(
-                    id='raw_table_upload',
+                    id='um_raw_table_upload',
                     children=html.Div([
                         'Drag and Drop or ',
                         html.A('Select a feature table')
@@ -60,7 +55,7 @@ def create_layout():
                     # Only single file
                     multiple=False
                 ),
-                # html.P('Uploaded feature table', id='raw_table_filename', 
+                # html.P('Uploaded feature table', id='um_raw_table_filename', 
                 #     style={
                 #         'textAlign': 'center',
                 #         'border' : '0.5px #BDC3C7 solid',
@@ -72,7 +67,7 @@ def create_layout():
                 # ),
                 
                 html.Div([
-                    html.Button('Read table!', id = 'read_table_button')],
+                    html.Button('Read table!', id = 'um_read_table_button')],
                     style={
                         'marginTop': '2%',
                         'marginLeft': '30%', 
@@ -167,7 +162,7 @@ def create_layout():
                     'width': '80%' ,
                 }
             ),
-            dcc.Dropdown(id='label_select',
+            dcc.Dropdown(id='um_label_select',
                 placeholder='Select a label',
                 style={
                     'textAlign': 'left',
@@ -180,7 +175,7 @@ def create_layout():
             html.P('Select features for UMAP generation', style={'textAlign': 'center',
                 'fontSize': 18}),
             dcc.Checklist(
-                id='features_checklist',
+                id='um_features_checklist',
                 style={
                     'overflowY': 'auto',
                     'overflowX': 'auto',
@@ -196,7 +191,7 @@ def create_layout():
                 'height': '360px',
                 'marginLeft': '3%',
                 'marginTop': '1%',
-                'width': '27%',
+                'width': '24%',
                 'borderRight': '1px #A6ACAF solid'
             }),
         html.Div([
@@ -268,7 +263,7 @@ def create_layout():
                 'display': 'inline-block',
                 'height': '360px',
                 'marginTop': '1%',
-                'width': '22%',
+                'width': '25%',
                 'borderRight': '1px #A6ACAF solid' 
             }),
 
@@ -403,174 +398,177 @@ def create_layout():
         ),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+    ])
+def plotting_layout():
+    return html.Div([
 
-        html.Div([
-            html.P('UMAP Options',
-                style={'textAlign': 'center',
-                    'fontSize': 20,
-                    'marginTop':'1.5%'}
-            ),
-            html.Hr(style={'marginTop':'4%', 'marginBottom':'4%'}),
-            html.P('Feature scaling',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginTop':'0%',
-                    'marginBottom': '0%'}
-            ),
-            dcc.Dropdown(id='feature_scaling',
-                options=[
-                    {'label': 'None', 'value':'None'},
-                    {'label': 'Standardization', 'value':'standard'},
-                    {'label': 'Robust Scaler', 'value':'robust'},
-                    {'label': 'Min-max scaling', 'value':'min_max'},
-                    {'label': 'l1 normalization', 'value':'l1_norm'},
-                    {'label': 'l2 normalization', 'value':'l2_norm'},
-                ],
-                value='standard',
-                style={
-                    'marginLeft': '5%',
-                    'textAlign': 'center',
-                    'width': '90%'
-                }
-            ),
-
-            html.Hr(style={'marginTop':'4%', 'marginBottom':'4%'}),
-            html.P('UMAP n_neighbors',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}
-            ),
-
-            html.Div([
-                dcc.Slider(
-                    id='n_neighbors',
-                    min=0,
-                    max=20,
-                    step=1,
-                    value=5,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        5: '5',
-                        10: '10',
-                        15: '15',
-                        20: '20'
-                    },
-                )],
-                style={'width':'90%', 'marginLeft':'5%', 'marginTop':'3%'}
-            ),
-            html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
-
-            html.P('UMAP min_dist',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}
-            ),
-
-            html.Div([
-                dcc.Slider(
-                    id='min_dist',
-                    min=0,
-                    max=1,
-                    step=0.05,
-                    value=0.1,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        0.25: '0.25',
-                        0.5: '0.5',
-                        1: '1',
-                    },
-                )],
-                style={'width':'90%', 'marginLeft':'5%', 'marginTop':'3%'}
-            ),
-            html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
-
-            html.P('UMAP metric',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}
-            ),
-
-            dcc.Input(
-                    id = 'umap_metric',
-                    type = 'text',
-                    value='euclidean',
-                    style = {'width': '80%', 'marginTop': '1.5%',
-                        'marginLeft': '10%'}
-                ),
-
-
-            html.Hr(style={'marginTop':'5%', 'marginBottom':'5%'}),
-            html.Div([
-                html.Button('Generate UMAP!', id = 'generate_umap',
-                    style={
-                    'width':'95%',
-                    'marginLeft': '2.5%'
-                    }
-                )
+    html.Div([
+        html.P('UMAP Options',
+            style={'textAlign': 'center',
+                'fontSize': 20,
+                'marginTop':'1.5%'}
+        ),
+        html.Hr(style={'marginTop':'4%', 'marginBottom':'4%'}),
+        html.P('Feature scaling',
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginTop':'0%',
+                'marginBottom': '0%'}
+        ),
+        dcc.Dropdown(id='feature_scaling',
+            options=[
+                {'label': 'None', 'value':'None'},
+                {'label': 'Standardization', 'value':'standard'},
+                {'label': 'Robust Scaler', 'value':'robust'},
+                {'label': 'Min-max scaling', 'value':'min_max'},
+                {'label': 'l1 normalization', 'value':'l1_norm'},
+                {'label': 'l2 normalization', 'value':'l2_norm'},
             ],
-                style={
-                    'marginTop': '2%',
-                    'marginLeft': '10%', 
-                    'width': '80%',
-                    'verticalAlign': 'top'
-                }),
-            html.Hr(style={'marginTop':'5%', 'marginBottom':'5%'}),
-
-            dcc.Link("UMAP parameters docs",
-                href="https://umap-learn.readthedocs.io/en/latest/parameters.html",
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginLeft':'10%'}
-                ),
-            html.Br(),
-            dcc.Link("Feature scaling docs",
-                href="https://scikit-learn.org/stable/auto_examples/preprocessing/plot_all_scaling.html",
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginLeft':'10%'}
-                ),
-
-
-        ],
+            value='standard',
             style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '700px',
-                'width': '20%',
-                'borderRight': '1px #A6ACAF solid',
+                'marginLeft': '5%',
+                'textAlign': 'center',
+                'width': '90%'
             }
         ),
+
+        html.Hr(style={'marginTop':'4%', 'marginBottom':'4%'}),
+        html.P('UMAP n_neighbors',
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginBottom': '0%'}
+        ),
+
         html.Div([
-            dcc.Graph(id='umap_fig', style=
-            {'height': '100%'})
+            dcc.Slider(
+                id='n_neighbors',
+                min=0,
+                max=20,
+                step=1,
+                value=5,
+                tooltip={"placement": "bottom", "always_visible": True},
+                marks={
+                    0: '0',
+                    5: '5',
+                    10: '10',
+                    15: '15',
+                    20: '20'
+                },
+            )],
+            style={'width':'90%', 'marginLeft':'5%', 'marginTop':'3%'}
+        ),
+        html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
+
+        html.P('UMAP min_dist',
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginBottom': '0%'}
+        ),
+
+        html.Div([
+            dcc.Slider(
+                id='min_dist',
+                min=0,
+                max=1,
+                step=0.05,
+                value=0.1,
+                tooltip={"placement": "bottom", "always_visible": True},
+                marks={
+                    0: '0',
+                    0.25: '0.25',
+                    0.5: '0.5',
+                    1: '1',
+                },
+            )],
+            style={'width':'90%', 'marginLeft':'5%', 'marginTop':'3%'}
+        ),
+        html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
+
+        html.P('UMAP metric',
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginBottom': '0%'}
+        ),
+
+        dcc.Input(
+                id = 'umap_metric',
+                type = 'text',
+                value='euclidean',
+                style = {'width': '80%', 'marginTop': '1.5%',
+                    'marginLeft': '10%'}
+            ),
+
+
+        html.Hr(style={'marginTop':'5%', 'marginBottom':'5%'}),
+        html.Div([
+            html.Button('Generate UMAP!', id = 'generate_umap',
+                style={
+                'width':'95%',
+                'marginLeft': '2.5%'
+                }
+            )
         ],
             style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '700px',
-                'width': '79%',
+                'marginTop': '2%',
+                'marginLeft': '10%', 
+                'width': '80%',
+                'verticalAlign': 'top'
             }),
-        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+        html.Hr(style={'marginTop':'5%', 'marginBottom':'5%'}),
 
-        # Hiddn divs inside the app for computations and storing intermediate values
-        html.Div(
-            id='processed_table', style={'display': 'none'}),
-        html.Div(
-            id='features', style={'display': 'none'}),
-        html.Div(
-            id='annots', style={'display': 'none'}),
-        html.Div(
-            id='table_dims', style={'display': 'none'}),
-        html.Div(
-            id='transposed_table', style={'display': 'none'}),
-        html.Div(
-            id='external_annot_series', style={'display': 'none'}),
+        dcc.Link("UMAP parameters docs",
+            href="https://umap-learn.readthedocs.io/en/latest/parameters.html",
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginLeft':'10%'}
+            ),
+        html.Br(),
+        dcc.Link("Feature scaling docs",
+            href="https://scikit-learn.org/stable/auto_examples/preprocessing/plot_all_scaling.html",
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginLeft':'10%'}
+            ),
 
 
+    ],
+        style={
+            'vertical-align': 'top',
+            'display': 'inline-block',
+            'height': '700px',
+            'width': '20%',
+            'borderRight': '1px #A6ACAF solid',
+        }
+    ),
+    html.Div([
+        dcc.Graph(id='umap_fig', style=
+        {'height': '100%'})
+    ],
+        style={
+            'vertical-align': 'top',
+            'display': 'inline-block',
+            'height': '700px',
+            'width': '79%',
+        }),
+    html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
-        # html.P('Uploaded feature table', id='raw_table_filename', 
+    # Hiddn divs inside the app for computations and storing intermediate values
+    html.Div(
+        id='um_processed_table', style={'display': 'none'}),
+    html.Div(
+        id='um_features', style={'display': 'none'}),
+    html.Div(
+        id='um_annots', style={'display': 'none'}),
+    html.Div(
+        id='table_dims', style={'display': 'none'}),
+    html.Div(
+        id='transposed_table', style={'display': 'none'}),
+    html.Div(
+        id='external_annot_series', style={'display': 'none'}),
+
+    ])
+
+        # html.P('Uploaded feature table', id='um_raw_table_filename', 
         #             style={
         #                 'textAlign': 'center',
         #                 'border' : '0.5px #BDC3C7 solid',
@@ -581,5 +579,3 @@ def create_layout():
         #             }
         #         ),
 
-
-    ])

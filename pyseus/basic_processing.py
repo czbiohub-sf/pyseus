@@ -19,7 +19,7 @@ class RawTables:
     """
     
     # initiate raw table by importing from data directory
-    def __init__(self, experiment_dir, pg_file='proteinGroups.txt', info_cols=None,
+    def __init__(self, experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
             sample_cols=None, intensity_type='Intensity ', proteingroup=None,
             file_designated=False):
         # set up root folders for the experiment and standard for comparison
@@ -388,7 +388,8 @@ class RawTables:
 
         # Create a boolean table
         for bait in baits:
-            bait_df[bait] = True
+            bait_bools = [True if x != bait else False for x in baits]
+            bait_df[bait] = bait_bools
         self.bait_matrix = bait_df.copy()
         if export:
             self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',

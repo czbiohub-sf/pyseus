@@ -9,7 +9,7 @@ import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import math
 
-def simple_volcano(v_df, bait, fcd, width=800, height=800):
+def simple_volcano(v_df, bait, fcd, width=None, height=None):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
     v_df.set_index(('gene_names', 'gene_names'), inplace=True)
@@ -55,8 +55,6 @@ def simple_volcano(v_df, bait, fcd, width=800, height=800):
     #     line=dict(color='firebrick', dash='dash')))
 
     fig.update_layout(
-        width=width,
-        height=height,
         title={'text': bait,
             'x': 0.5,
             'y': 0.95},
@@ -64,30 +62,34 @@ def simple_volcano(v_df, bait, fcd, width=800, height=800):
             yaxis_title='P value (-log10)',
             showlegend=False,
             margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+    if width:
+        fig.update_layout(
+            width=width,
+            height=height,
+            )
     fig.update_xaxes(range=[-1 * xmax, xmax])
     fig.update_yaxes(range=[-1, ymax])
-    fig.show()
+    
+    return fig
 
 
-def volcano_plot(v_df, bait, plate, width=800, height=800):
+def volcano_plot(v_df, bait, plate, width=None, height=None):
     # initiate dfs
     sel_df = v_df.copy()
     sel_df = v_df.set_index('prey')
 
     # start a subplot
-    fig = make_subplots(rows=1, cols=1)
+    fig = go.Figure()
     i = 1
 
-    bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['plate'] == plate)]
+    bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['experiment'] == plate)]
 
 
-    hits = bait_vals[bait_vals['hits']]
+    hits = bait_vals[bait_vals['interaction']]
     # print("Number of Significant Hits: " + str(hits.shape[0]))
 
-    minor_hits = bait_vals[bait_vals['minor_hits']]
-    # print("Number of Minor Hits: " + str(minor_hits.shape[0]))
 
-    no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
+    no_hits = bait_vals[~bait_vals['interaction']]
 
 
     # calculations for x axis min, max parameters
@@ -98,53 +100,45 @@ def volcano_plot(v_df, bait, plate, width=800, height=800):
         ymax = 30
 
     # FCD plot calculation
-    fcd1 = bait_vals.iloc[0]['fdr1']
-    fcd2 = bait_vals.iloc[0]['fdr5']
+    fcd1 = bait_vals.iloc[0]['fdr']
 
 
     x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
         + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
     y1 = fcd1[0] / (abs(x1) - fcd1[1])
-    x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
-        + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
-    y2 = fcd2[0] / (abs(x2) - fcd2[1])
+
 
     # add significant hits
     fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
         mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10, line=dict(width=2))), row=1, col=i)
-
-    # add minor hits
-    fig.add_trace(go.Scatter(x=minor_hits['enrichment'], y=minor_hits['pvals'],
-        mode='markers+text', text=minor_hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10, color='firebrick')), row=1, col=i)
+        opacity=0.6, marker=dict(size=10, line=dict(width=2))))
 
     # add non-significant hits
     fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
         mode='markers', text=no_hits.index.tolist(), opacity=0.4,
-        marker=dict(size=8)), row=1, col=i)
+        marker=dict(size=8)))
 
     fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
-        line=dict(color='royalblue', dash='dash')), row=1, col=i)
-    fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
-        line=dict(color='firebrick', dash='dash')), row=1, col=i)
+        line=dict(color='royalblue', dash='dash')))
+
     # axis customization
-    fig.update_xaxes(title_text='Enrichment (log2)', row=1, col=i,
+    fig.update_xaxes(title_text='Enrichment (log2)',
         range=[-1 * xmax, xmax])
-    fig.update_yaxes(title_text='p-value (-log10)', row=1, col=i,
+    fig.update_yaxes(title_text='p-value (-log10)', 
         range=[-1, ymax])
 
-    # layout
     fig.update_layout(
-        width=width,
-        height=height,
-        title={'text': bait,
-            'x': 0.5,
-            'y': 0.98},
+            xaxis_title='Enrichment (log2)',
+            yaxis_title='P value (-log10)',
             showlegend=False,
             margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
-    fig.show()
+    if width:
+        fig.update_layout(
+            width=width,
+            height=height,
+            )
 
+    return fig
 
 def comparison_volcano(v_df, v2_df, bait, fcd, fcd2):
     """plot volcano plots from two analyses for qualitative comparisons"""
