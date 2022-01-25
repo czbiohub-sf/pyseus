@@ -14,11 +14,10 @@ from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,
 
 # initiate app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+server = flask.Flask(__name__)
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
-	suppress_callback_exceptions=True)
-
-app.server = flask.Flask(__name__)
+	suppress_callback_exceptions=True, server=server)
 
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
