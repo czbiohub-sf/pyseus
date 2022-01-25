@@ -85,13 +85,11 @@ def customize_layout():
             ),
             html.Div([
 
-                dcc.Dropdown(id='preloaded_dropdown',
+                dcc.Dropdown(id='um_preloaded_dropdown',
                     options=[
-                        {'label': 'table 1', 'value': 'table1'},
-                        {'label': 'table 2', 'value': 'table2'},
-                        {'label': 'table 3', 'value': 'table3'},
-                        {'label': 'table 4', 'value': 'table4'},
-                        {'label': 'table 5', 'value': 'table5'},
+                        {'label': 'slot 1', 'value': '1'},
+                        {'label': 'slot 2', 'value': '2'},
+                        {'label': 'slot 3', 'value': '3'},
                     ],
                     placeholder='Select a pre-loaded table',
                     style={
@@ -104,7 +102,7 @@ def customize_layout():
                 html.Div([
                     html.Button(
                         'Load data!',
-                        id =  'load-preload-button',)
+                        id =  'um_preload_button',)
                     ], style={
                         'marginTop': '2%',
                         'textAlign': 'center',

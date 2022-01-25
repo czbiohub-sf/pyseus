@@ -20,7 +20,7 @@ import sys
 file_dir = os.path.dirname(__file__)
 sys.path.append(file_dir)
 
-from preprocessing_layout import create_layout
+from preprocessing_layout import upload_layout, process_layout
 
 head, tail = os.path.split(file_dir)
 head, tail = os.path.split(head)
@@ -31,34 +31,54 @@ from app import app
 
 
 # App Layout
-layout = create_layout()
+# App Layout
+layout = html.Div([
+        # Header tags
+        html.P('Data table processing',
+            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
+                'marginBottom': '1%'}),
+        dcc.Tabs(
+            id="pre_tabs",
+            value='raw_table',
+            children=[
+                dcc.Tab(
+                    label='Raw table upload & Feature designation',
+                    value='raw_table',
+                    children = upload_layout()
+                ),
+                dcc.Tab(
+                    label='Data processing',
+                    value='process',
+                    children = process_layout()
+                ),
+                ]),
+    ])
 
 
 @app.callback(
-    Output('pp_raw_table_filename', 'children'),
-    Output('pp_raw_table_filename', 'style'),
-    Input('pp_raw_table_upload', 'filename'),
-    State( 'pp_raw_table_filename', 'style')
+    Output('config_upload', 'children'),
+    Output('config_upload', 'style'),
+    Input('config_upload', 'filename'),
+    State('config_upload', 'style')
 )
 def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
-
 @app.callback(
-    Output('config_filename', 'children'),
-    Output('config_filename', 'style'),
-    Input('config_upload', 'filename'),
-    State('config_filename', 'style'),
+    Output('pp_raw_table_upload', 'children'),
+    Output('pp_raw_table_upload', 'style'),
+    Input('pp_raw_table_upload', 'filename'),
+    State('pp_raw_table_upload', 'style')
 )
-def display_upload_config_filename(filename, style):
+def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
 @app.callback(
@@ -107,7 +127,7 @@ def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
 
         if button_style is None:
             button_style = {}
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
 
         return filtered_table, all_cols_json, checklist_options,\
             checklist_options, button_style
@@ -127,7 +147,7 @@ def sample_cols_re_search(n_clicks, search_re, all_cols_json, button_style):
     if n_clicks is None:
         raise PreventUpdate
     else:
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
         all_cols = json.loads(all_cols_json)
         selected_sample_cols = []
         for col in all_cols:
@@ -180,7 +200,7 @@ def select_cols(n_clicks, sample_cols, meta_cols, button_style):
         col_table = pd.DataFrame()
         col_table['column names'] = sample_cols
 
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
 
         return sample_cols_json, meta_cols_json, col_table.to_dict('records'),\
             button_style
@@ -213,7 +233,7 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
         
         col_table = pd.DataFrame()
         col_table['new column names'] = new_cols
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
 
         return col_table.to_dict('records'), '', button_style
 
@@ -237,6 +257,7 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
     State('replace_option', 'value'),
     State('imputation_dist', 'value'),
     State('imputation_width', 'value'),
+    State('tech_reps', 'value'),
     State('process_table_button', 'style'),
 )
 
@@ -244,7 +265,7 @@ def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
     meta_cols_json, search_re, replacement_re, filter_rows,
     rename_samples, log_transform, transform_opt,
     remove_incomplete_rows, merge_reps, merge_opt, replace_nulls,
-    replace_opt, impute_dist, impute_width, button_style):
+    replace_opt, impute_dist, impute_width, tech_reps, button_style):
     
     
     if n_clicks is None:
@@ -296,7 +317,8 @@ def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
         
         # group tables by technical replicates for the following
         # processing options
-        ms_tables.group_replicates(reg_exp=r'(.*)_\d+$')
+        if tech_reps == 'yes':
+            ms_tables.group_replicates(reg_exp=r'(.*)_\d+$')
 
         # if options involve any grouping, the output table is defaulted to 
         # grouped table
@@ -344,7 +366,7 @@ def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
         final_table_json = final_table.to_json()
 
         # change button color when finished
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
 
         return final_table_json, button_style
 
@@ -352,7 +374,7 @@ def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
     Output('download-ms-table-csv', 'data'),
     Output('download_table', 'style'),
     Input('download_table', 'n_clicks'),
-    State('processed_table', 'children'),
+    State('pp_processed_table', 'children'),
     State('ms_save_name', 'value'),
     State('download_table', 'style'),
     prevent_initial_call=True
@@ -361,6 +383,9 @@ def download_ms_table(n_clicks, table_json, save_name, button_style):
     """
     load table from the frontend json format, and save in a csv
     """
+    if n_clicks is None:
+        raise PreventUpdate
+
     download = pd.read_json(table_json)
 
     # json reads multi-index tuples as literal strings
@@ -369,7 +394,7 @@ def download_ms_table(n_clicks, table_json, save_name, button_style):
     download.columns = pd.MultiIndex.from_tuples(column_tuples)
 
 
-    button_style['background-color'] = '#B6E880'
+    button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv,
         save_name), button_style
@@ -394,6 +419,7 @@ def download_ms_table(n_clicks, table_json, save_name, button_style):
     State('replace_option', 'value'),
     State('imputation_dist', 'value'),
     State('imputation_width', 'value'),
+    State('tech_reps', 'value'),
     State('download_configs', 'style'),
     State('configs_save_name', 'value'),
     prevent_initial_call=True
@@ -402,11 +428,14 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     search_re, replacement_re, filter_rows,
     rename_samples, log_transform,
     transform_opt, remove_incomplete_rows, merge_reps, merge_opt,
-    replace_nulls, replace_opt, impute_dist, impute_width,
+    replace_nulls, replace_opt, impute_dist, impute_width, tech_reps,
     button_style, save_name):
 
+    if n_clicks is None:
+        raise PreventUpdate
+
     configs = pd.DataFrame()
-    configs['pp_raw_table_sep'] = [table_sep]
+    configs['raw_table_sep'] = [table_sep]
     configs['top_row_skip'] = [top_row_skip]
     configs['sample_search_RE'] = [sample_search_re]
     configs['search_RE'] = [search_re]
@@ -422,9 +451,10 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     configs['replace_option'] = [replace_opt]
     configs['impute_distance'] = [impute_dist]
     configs['impute_width'] = [impute_width]
+    configs['tech_reps'] = [tech_reps]
 
 
-    button_style['background-color'] = '#B6E880'
+    button_style['background-color'] = '#DCE7EC'
 
 
     return dcc.send_data_frame(configs.to_csv,
@@ -447,6 +477,7 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     Output('replace_option', 'value'),
     Output('imputation_dist', 'value'),
     Output('imputation_width', 'value'),
+    Output('tech_reps', 'value'),
     Output('load-config-button', 'style'),
     Input('load-config-button', 'n_clicks'),
     State('config_upload', 'contents'),
@@ -481,9 +512,9 @@ def preload_configs(n_clicks, content, button_style):
                 isinstance(x, list) else [])
 
         button_style = {}
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
         
-        return configs['pp_raw_table_sep'].item(),\
+        return configs['raw_table_sep'].item(),\
             configs['top_row_skip'].item(),\
             configs['sample_search_RE'].item(),\
             configs['search_RE'].item(),\
@@ -498,12 +529,79 @@ def preload_configs(n_clicks, content, button_style):
             configs['replace_nulls'].item(),\
             configs['replace_option'].item(),\
             configs['impute_distance'].item(),\
-            configs['impute_width'].item(), button_style
-
+            configs['impute_width'].item(),\
+            configs['tech_reps'].item(),\
+            button_style
+ 
             
+@app.callback(
+    Output('pp_processed_table_status', 'data'),
+    Input('slot_label_1', 'children'),
+    Input('slot_label_2', 'children'),
+    Input('slot_label_3', 'children'),
+    Input('slot_label_4', 'children'),
+    Input('slot_label_5', 'children'),
+    Input('slot_label_6', 'children'),
+    State('pp_processed_table_status', 'data'),
 
+)
+def update_table_status(label_1, label_2, label_3, label_4, label_5, label_6, data):
+    table = pd.DataFrame.from_records(data)
+    table_names = table['table_name'].to_list()
+    table_names[0] = label_1
+    table_names[1] = label_2
+    table_names[2] = label_3
+    table_names[3] = label_4
+    table_names[4] = label_5
+    table_names[5] = label_6
+
+    table['table_name'] = table_names
+
+    return table.to_dict('records')
         
+@app.callback(
+    Output('slot_table_4', 'children'),
+    Output('slot_table_5', 'children'),
+    Output('slot_table_6', 'children'),
+    Output('slot_label_4', 'children'),
+    Output('slot_label_5', 'children'),
+    Output('slot_label_6', 'children'),
+    Output('pp_ul_button', 'style'),
 
+    # this is input/states from preprocessing page
+    Input('pp_ul_button', 'n_clicks'),
+    State('slot_save_name', 'value'),
+    State('save_slot', 'value'),
+    State('pp_processed_table', 'children'),
+
+    State('slot_table_4', 'children'),
+    State('slot_table_5', 'children'),
+    State('slot_table_6', 'children'),
+    State('slot_label_4', 'children'),
+    State('slot_label_5', 'children'),
+    State('slot_label_6', 'children'),
+    State('pp_ul_button', 'style'),
+
+    prevent_initial_call=True
+)
+def upload_table(n_clicks, pp_save_name, pp_slot, pp_table,
+    table_1, table_2, table_3, label_1, label_2, label_3, button_style):
+
+    if n_clicks is None:
+        raise PreventUpdate
+
+    # assign tables and labels to a list for easy slot designation
+    tables = [table_1, table_2, table_3]
+    labels = [label_1, label_2, label_3]  
+
+    tables[pp_slot] = pp_table
+    labels[pp_slot] = pp_save_name
+    button_style['background-color'] = '#DCE7EC'
+
+
+
+    return tables[0], tables[1], tables[2], labels[0], labels[1],\
+        labels[2], button_style
 
 if __name__ == "__main__":
     app.run_server(debug=True)

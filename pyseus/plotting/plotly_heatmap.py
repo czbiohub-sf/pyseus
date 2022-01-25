@@ -152,7 +152,7 @@ def bait_leaves(imputed_df, features, method='average', distance='euclidean',
 
 
 def prey_leaves(imputed_df, features, method='average', distance='euclidean', grouped=True,
-    verbose=True):
+    index_id = 'Protein IDs', verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
 
@@ -161,9 +161,9 @@ def prey_leaves(imputed_df, features, method='average', distance='euclidean', gr
         print("Generating prey linkage...")
         start_time = time.time()
 
-    # MaxQuant specific
+    # Set index
     features = features.copy()
-    features.append('Protein IDs')
+    features.append(index_id)
 
     if grouped:
         # Create a median_df, taking median of all replicates
@@ -174,8 +174,8 @@ def prey_leaves(imputed_df, features, method='average', distance='euclidean', gr
         median_df = imputed_df[features]
 
 
-    # Protein IDs will be the reference to retrieve the correct order of preys
-    median_df.set_index('Protein IDs', inplace=True)
+    # Index IDs will be the reference to retrieve the correct order of preys
+    median_df.set_index(index_id, inplace=True)
 
 
     prey_linkage = linkage(median_df, method=method)
@@ -192,7 +192,7 @@ def prey_leaves(imputed_df, features, method='average', distance='euclidean', gr
     return prey_leaves
 
 
-def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label,
+def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label, index_id='Protein IDs',
     bait_leaves=None, bait_clust=False, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
@@ -206,7 +206,7 @@ def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label,
     plot_df = imputed_df.copy()
 
     # Set index to Protein IDs to match the dendro leaves
-    plot_df.set_index('Protein IDs', inplace=True)
+    plot_df.set_index(index_id, inplace=True)
     # Correctly order the plot df according to dendro leaves
     plot_df = plot_df.T[prey_leaves].T
 

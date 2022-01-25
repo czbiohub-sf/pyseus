@@ -24,7 +24,7 @@ sys.path.append(file_dir)
 from sklearn.cluster import KMeans
 import umap
 
-from matrix_viewer_layout import create_layout
+from matrix_viewer_layout import calculation_layout, plotting_layout
 
 head, tail = os.path.split(file_dir)
 head, tail = os.path.split(head)
@@ -40,7 +40,47 @@ transposed_annots = ('sample')
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 from app import app
-layout =  create_layout()
+# App Layout
+layout = html.Div([
+        # Header tags
+        html.P('Clustergram generator',
+            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
+                'marginBottom': '1%'}),
+        dcc.Tabs(
+            id="tabs",
+            value='options',
+            children=[
+                dcc.Tab(
+                    label='Clustergram options',
+                    value='options',
+                    children = calculation_layout()
+                ),
+                dcc.Tab(
+                    label='Plot Clustergram',
+                    value='plotting',
+                    children = plotting_layout()
+                ),
+                ]),
+    ])
+
+@app.callback(
+    Output('mat_preloaded_dropdown', 'options'),
+    Input('slot_label_1', 'children'),
+    Input('slot_label_2', 'children'),
+    Input('slot_label_3', 'children'),
+    Input('slot_label_4', 'children'),
+    Input('slot_label_5', 'children'),
+    Input('slot_label_6', 'children'),
+)
+def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
+    
+    labels = [label_1, label_2, label_3, label_4, label_5, label_6]
+    options = []
+    for i in np.arange(0,6):
+        option = {'label': 'Slot ' + str(i+1) + ': ' + labels[i], 'value': i}
+        options.append(option)
+    return options 
+
 
 @app.callback(
     Output('mat_raw_table_upload', 'children'),
@@ -52,7 +92,7 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
 
@@ -61,25 +101,50 @@ def display_upload_ms_filename(filename, style):
     Output('features_checklist', 'options'),
     Output('features_checklist', 'value'),
     Output('label_select', 'options'),
+    Output('index_select', 'options'),
     Output('data_metrics', 'data'),
     Output('color_button', 'n_clicks'),
     Output('mat_read_table_button', 'style'),
+    Output('mat_preload_button', 'style'),
+
+    # upload Input and states
     Input('mat_read_table_button', 'n_clicks'),
+    Input('mat_preload_button', 'n_clicks'),
     State('mat_raw_table_upload', 'contents'),
     State('mat_read_table_button', 'style'),
     State('color_button', 'n_clicks'),
+
+    # preload Input and states
+
+    State('mat_preloaded_dropdown', 'value'),
+    State('slot_table_1', 'children'),
+    State('slot_table_2', 'children'),
+    State('slot_table_3', 'children'),
+    State('slot_table_4', 'children'),
+    State('slot_table_5', 'children'),
+    State('slot_table_6', 'children'),
+    State('mat_preload_button', 'style'),
+
     prevent_initial_call=True
 
 
     )
-def parse_raw_table(n_clicks, content, button_style, color_clicks):
+def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_clicks,\
+     preload_slot, table_1, table_2, table_3, table_4, table_5, table_6,\
+    preload_style):
     """
     initiate QualityControl class with the uploaded proteingroups file
     """
 
-    if n_clicks is None:
+    
+    if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
-    else:
+
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id == 'mat_read_table_button':
         # parse txt (tsv) file as pd df from upload
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
@@ -87,45 +152,58 @@ def parse_raw_table(n_clicks, content, button_style, color_clicks):
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0,1], index_col=0)
         
-
-        # regular table, features, and annots for UMAP
-        processed_table = raw_table.droplevel(level=0, axis=1).copy()
-        features = list(raw_table['sample'])
-        labels = list(raw_table['metadata'])
-
-
-        # feature checklist options 
-        features_opts = [{'label': feature, 'value': feature}
-            for feature in features]
-
-
-        # labels/annots options
-        label_opts = []
-        label_opts.append({'label': 'None', 'value': 'None'})
-        for label in labels:
-            label_opts.append({'label': label, 'value': label})
-
-        processed_table_json = processed_table.to_json()
-
         if button_style is None:
             button_style = {}
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
+    
+    elif button_id == 'mat_preload_button':
+        tables = [table_1, table_2, table_3, table_4, table_5, table_6]
+        table = pd.read_json(tables[preload_slot])
 
-        if color_clicks is None:
-            color_clicks = 1
-        else:
-            color_clicks += 1
+        column_tuples = [eval(name) for name in list(table)]
+        table.columns = pd.MultiIndex.from_tuples(column_tuples)
+        raw_table = table.copy()
+        if preload_style is None:
+            preload_style = {}
+        preload_style['background-color'] = '#DCE7EC'
 
-        matrix = processed_table[features]
-        metrics = [{
-            'min': [np.round(matrix.values.min(),2)],
-            'max': [np.round(matrix.values.max(),2)],
-            'avg': [np.round(matrix.values.mean(),2)],
-            'stdev': [np.round(matrix.values.std(),2)]
-        }]
 
-        return processed_table_json, features_opts, features,\
-            label_opts, metrics, color_clicks, button_style
+    # regular table, features, and annots for UMAP
+    processed_table = raw_table.droplevel(level=0, axis=1).copy()
+    features = list(raw_table['sample'])
+    labels = list(raw_table['metadata'])
+
+
+    # feature checklist options 
+    features_opts = [{'label': feature, 'value': feature}
+        for feature in features]
+
+
+    # labels/annots options
+    label_opts = []
+    label_opts.append({'label': 'None', 'value': 'None'})
+    for label in labels:
+        label_opts.append({'label': label, 'value': label})
+
+    processed_table_json = processed_table.to_json()
+
+
+
+    if color_clicks is None:
+        color_clicks = 1
+    else:
+        color_clicks += 1
+
+    matrix = processed_table[features]
+    metrics = [{
+        'min': [np.round(matrix.values.min(),2)],
+        'max': [np.round(matrix.values.max(),2)],
+        'avg': [np.round(matrix.values.mean(),2)],
+        'stdev': [np.round(matrix.values.std(),2)]
+    }]
+
+    return processed_table_json, features_opts, features,\
+        label_opts, label_opts, metrics, color_clicks, button_style, preload_style
 
 
 
@@ -152,6 +230,7 @@ def generate_colormap(scale_data_clicks, color_clicks,
     State('mat_processed_table', 'children'),
     State('features_checklist', 'value'),
     State('label_select', 'value'),
+    State('index_select', 'value'),
 
     State('colorscale_min', 'value'),
     State('colorscale_max', 'value'),
@@ -164,13 +243,16 @@ def generate_colormap(scale_data_clicks, color_clicks,
 
     prevent_initial_call=True
 )
-def generate_clustergram(n_clicks, processed_table_json, features, label,\
+def generate_clustergram(n_clicks, processed_table_json, features, label, index,\
     zmin, zmax, colormap, cluster_checks, tick_checks, button_style):
     """
     returns plotly figure of cluster heatmap
     """
 
-    button_style['background-color'] = '#B6E880'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    button_style['background-color'] = '#DCE7EC'
 
     processed_table = pd.read_json(processed_table_json)
     
@@ -181,15 +263,16 @@ def generate_clustergram(n_clicks, processed_table_json, features, label,\
     bait_clust = False
 
     if 'bait_clust' in cluster_checks:
-        bait_leaves = ph.bait_leaves(processed_table, features, grouped=False,
+        bait_leaves = ph.bait_leaves(processed_table, features, index_id=index, grouped=False,
             verbose=False)
         bait_clust = True
 
-    prey_leaves = ph.prey_leaves(processed_table, features, grouped=False,
+    prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
         verbose=False)
     
     heatmap = ph.dendro_heatmap(processed_table, features, prey_leaves, hexmap,
-        zmin, zmax, label, bait_leaves=bait_leaves, bait_clust=bait_clust, verbose=False)
+        zmin, zmax, label, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
+        verbose=False)
 
     x_tick = False
     y_tick = False

@@ -91,38 +91,57 @@ def plotting_layout():
                 }
             ),
             html.Div([
-
-                dcc.RadioItems(id='load_options',
-                    options=[
-                        {'label': 'Use calculated enrichment table',
-                        'value': 'calculated'},
-                        {'label': 'Use uploaded enrichment table',
-                        'value': 'pre_enrichment'},
-                        {'label': 'Use uploaded hits table',
-                            'value': 'pre_hits'}
-                        ],
-            
-                    style={
-                        'textAlign': 'center',
-                        'width': '90%',
-                        'marginLeft': '5%',
-                        'marginTop':'3%'
-                    },
-                    value='calculated'
+                html.Div([
+                    dcc.RadioItems(id='load_options',
+                        options=[
+                            {'label': 'Use calculated enrichment table',
+                            'value': 'calculated'},
+                            {'label': 'Use uploaded enrichment table',
+                            'value': 'pre_enrichment'},
+                            {'label': 'Use uploaded hits table',
+                                'value': 'pre_hits'}
+                            ],
+                
+                        style={
+                            'textAlign': 'center',
+                            'width': '90%',
+                            'marginLeft': '5%',
+                            'marginTop':'3%'
+                        },
+                        value='calculated'
+                    ),
+                ], style={
+                    'display': 'inline-block',
+                    'width': '65%',
+                    'verticalAlign':'top'
+                }
                 ),
 
                 html.Div([
                     html.Button(
                         'Load data!',
-                        id =  'load_button', style={})
+                        id =  'load_button', style={'marginTop': '7%'})
                     ], style={
                         'marginTop': '2%',
-                        'textAlign': 'center',
                         'display': 'inline-block',
-                        'width': '40%',
-                        'marginLeft': '30%'
+
+                        'width': '35%'
 
                     }),
+
+                html.Hr(style={'marginTop': '2%', 'marginBottom': '3%'}),
+                html.P('Select a marker label', style={'textAlign': 'center',
+                    'fontSize': 16, 'lineHeight':'15px'}),
+                dcc.Dropdown(id='vol_marker_label',
+                    placeholder='Select a label',
+                    style={
+                        'textAlign': 'center',
+                        'marginTop': '2%',
+                        'width': '70%',
+                        'marginLeft': '15%',
+                    }
+                ),
+
 
 
             ],
@@ -139,7 +158,7 @@ def plotting_layout():
         html.P('Call significant hits',
                         style={'textAlign': 'center',
                             'fontSize': 20,
-                            'marginTop':'3%'}
+                            'marginTop':'1%'}
                 ),
         html.Div([
            

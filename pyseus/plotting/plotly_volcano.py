@@ -73,10 +73,10 @@ def simple_volcano(v_df, bait, fcd, width=None, height=None):
     return fig
 
 
-def volcano_plot(v_df, bait, plate, width=None, height=None):
+def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None):
     # initiate dfs
     sel_df = v_df.copy()
-    sel_df = v_df.set_index('prey')
+    sel_df = v_df.set_index(marker)
 
     # start a subplot
     fig = go.Figure()

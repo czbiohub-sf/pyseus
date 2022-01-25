@@ -16,21 +16,16 @@ import plotly.express as px
 import sys
 sys.path.append('../../')
 
-def create_layout():
+def calculation_layout():
     return html.Div([
         
         # Header tags
-        html.P('Clustergram viewer',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
-
         html.Div([
             
             html.P('Upload a processed feature table or use a pre-loaded one',
                 style={'textAlign': 'center',
                     'fontSize': 20,
-                    'marginBottom':'0%'}),
+                    'marginBottom':'0%', 'marginTop':'2%'}),
             html.P("""The UMAP generating script requires a standard format
                 of feature table. Please use the Process Table page to create one.""",
                 style={
@@ -90,13 +85,14 @@ def create_layout():
             ),
             html.Div([
 
-                dcc.Dropdown(id='preloaded_dropdown',
+                dcc.Dropdown(id='mat_preloaded_dropdown',
                     options=[
-                        {'label': 'table 1', 'value': 'table1'},
-                        {'label': 'table 2', 'value': 'table2'},
-                        {'label': 'table 3', 'value': 'table3'},
-                        {'label': 'table 4', 'value': 'table4'},
-                        {'label': 'table 5', 'value': 'table5'},
+                        {'label': 'slot 1', 'value': 0},
+                        {'label': 'slot 2', 'value': 1},
+                        {'label': 'slot 3', 'value': 2},
+                        {'label': 'slot 4', 'value': 3},
+                        {'label': 'slot 5', 'value': 4},
+                        {'label': 'slot 6', 'value': 5},
                     ],
                     placeholder='Select a pre-loaded table',
                     style={
@@ -109,7 +105,7 @@ def create_layout():
                 html.Div([
                     html.Button(
                         'Load data!',
-                        id =  'load-preload-button',)
+                        id =  'mat_preload_button',)
                     ], style={
                         'marginTop': '2%',
                         'textAlign': 'center',
@@ -128,10 +124,29 @@ def create_layout():
                 }
             ),
         ]),
-        html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+        html.Hr(style={'marginTop': '2%', 'marginBottom': '1%'}),
 
         
         html.Div([
+            html.Div([
+                html.P('Select an index', style={'textAlign': 'center',
+                    'fontSize':18}),
+            ],
+                style={
+                    'vertical-align': 'top',
+                    'marginLeft': '10%',
+                    'width': '80%' ,
+                }
+            ),
+            dcc.Dropdown(id='index_select',
+                placeholder='Select an index',
+                style={
+                    'textAlign': 'left',
+                    'width': '90%',
+                    'marginLeft': '5%'
+                }
+            ),
+            html.Hr(style={'marginTop': '3%', 'marginBottom': '3%'}),
             html.Div([
                 html.P('Select a label', style={'textAlign': 'center',
                     'fontSize':18}),
@@ -159,7 +174,7 @@ def create_layout():
                 style={
                     'overflowY': 'auto',
                     'overflowX': 'auto',
-                    'height': '250px',
+                    'height': '220px',
                     'marginLeft': '10%',
                     'width': '80%',
                     'border': '0.5px #BDC3C7 solid',
@@ -168,7 +183,7 @@ def create_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '390px',
+                'height': '450px',
                 'marginTop': '1%',
                 'width': '29%',
                 'borderRight': '1px #A6ACAF solid'
@@ -350,22 +365,26 @@ def create_layout():
                 'width': '32.5%'
             }),
             dcc.Graph(id='color_bar', style={
-                'height': '40px',
+                'height': '50px',
                 'width':'80%',
                 'marginLeft':'10%',
-                'marginTop':'2%'})
+                'marginTop':'3.5%'})
 
 
         ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '390px',
+                'height': '450px',
                 'width': '70%'
             }
         ),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+    ])
+
+def plotting_layout():
+    return html.Div([
 
         html.Div([
             html.P('Clustergram Options',

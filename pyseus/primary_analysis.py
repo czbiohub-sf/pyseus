@@ -137,6 +137,7 @@ class AnalysisTables:
         imputed = self.imputed_table.copy()
         exclusion = self.exclusion_matrix.copy()
 
+        imputed.reset_index(drop=True, inplace=True)
         # iterate through each cluster to generate neg con group
         bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
         bait_list = list(set(bait_list))   
@@ -153,16 +154,22 @@ class AnalysisTables:
 
         master_df = pd.concat(outputs, axis=1)
 
-        # join gene names to the df
-        gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
-        gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
-        gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
-        gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
+        # join metadata to the df
+        meta_cols = [col for col in list(imputed) if col[0] == 'metadata']
+        metadata = imputed[meta_cols].copy()
 
 
-        master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
+        master_df = pd.concat([master_df, metadata], axis=1, join='inner')
 
         self.simple_pval_table = master_df
+
+
+
+        # gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
+        # gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
+        # gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
+        # gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
+
 
     def two_step_bootstrap_pval_enrichment(self, std_enrich=True, mean=False, thresh=0.001,
         bootstrap_rep=100):
@@ -177,6 +184,7 @@ class AnalysisTables:
         """
 
         imputed = self.imputed_table.copy()
+        imputed.reset_index(drop=True, inplace=True)
         bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
         bait_list = list(set(bait_list))
 
@@ -206,20 +214,27 @@ class AnalysisTables:
         master_df = pd.concat(outputs, axis=1)
         print("Second round finished!")
 
-        # join gene names to the df
-        gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
-        gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
-        gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
-        gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
+        # # join gene names to the df
+        # gene_names = imputed[[('metadata', 'Protein IDs'), ('metadata', 'Gene names')]].copy()
+        # gene_names.set_index(('metadata', 'Protein IDs'), drop=True, inplace=True)
+        # gene_names.rename(columns={'metadata': 'gene_names'}, inplace=True)
+        # gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
 
-        master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
+        # master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
+
+        # join metadata to the df
+        meta_cols = [col for col in list(imputed) if col[0] == 'metadata']
+        metadata = imputed[meta_cols].copy()
+
+        master_df = pd.concat([master_df, metadata], axis=1, join='inner')
+
 
         self.two_step_pval_table = master_df.copy() 
 
     
 
     def convert_to_standard_table(self, metrics=['pvals', 'enrichment'],
-            experiment=True,simple_analysis=True):
+            experiment=True,simple_analysis=True, perseus=True):
         """
         the standard table no longer uses column organization for baits. 
         It follows a more SQL-like form where bait information is provided in 
@@ -227,40 +242,51 @@ class AnalysisTables:
         """
         if simple_analysis:
             pvals = self.simple_pval_table.copy()
-            protein_ids = pvals.index.to_list()
+            # protein_ids = pvals.index.to_list()
         else:
             pvals= self.two_step_pval_table.copy()
-            protein_ids = pvals.index.to_list()
+            # protein_ids = pvals.index.to_list()
 
-        pvals.set_index(('gene_names', 'gene_names'), inplace=True)
-        pvals.index.name = 'gene_names'
-        targets = pvals.columns.get_level_values('baits')
-        targets = list(set(targets))
+        # pvals.set_index(('gene_names', 'gene_names'), inplace=True)
+        # pvals.index.name = 'gene_names'
+
+        bait_list = [col[0] for col in list(pvals) if col[0] != 'metadata']
+        meta_list = [col for col in list(pvals) if col[0] == 'metadata']
+        metas = [col[1] for col in meta_list]
+
+        targets = list(set(bait_list))
 
         all_hits = []
         # Get all hits and minor hits along with the metric data
         for target in targets:
             target_pvs = pvals[target]
-            target_pvs['protein_ids'] = protein_ids
+            for meta in meta_list:
+                target_pvs[meta[1]] = pvals[meta].to_list()
 
             # return target_pvs
 
             hits = target_pvs.copy()
-            hits.reset_index(inplace=True)
             if experiment:
                 hits['experiment'] = target.split('_')[0]
                 hits['target'] = target.split('_')[1]
             else:
                 hits['target'] = target
-            hits.rename(columns={'gene_names': 'prey'}, inplace=True)
+            if perseus:
+                hits.rename(columns={'Gene names': 'prey'}, inplace=True)
+                hits.rename(columns={'Protein IDs': 'protein_ids'}, inplace=True)
             hits.reset_index(drop=True, inplace=True)
             all_hits.append(hits)
+        if perseus:
+            metas.remove('Gene names')
+            metas.remove('Protein IDs')
+            metas.insert(0, 'prey')
+            metas.insert(0, 'protein_ids')
 
         all_hits = pd.concat(all_hits, axis=0)
         if experiment:
-            col_order = ['experiment', 'target', 'prey', 'protein_ids'] + metrics 
+            col_order = ['experiment', 'target'] + metas + metrics
         else:
-            col_order = ['target', 'prey', 'protein_ids'] + metrics
+            col_order = ['target'] + metas + metrics
         all_hits = all_hits[col_order].reset_index(drop=True)
 
         self.standard_hits_table = all_hits
@@ -293,8 +319,8 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     df = df.copy()
     excluded = exclusion.copy()
 
-    # initiate other variables required for the fx
-    gene_list = df[('metadata', 'Protein IDs')].tolist()
+    # # initiate other variables required for the fx
+    # gene_list = df[('metadata', 'Protein IDs')].tolist()
 
     # construct a negative control
     temporary = df.copy()
@@ -326,7 +352,7 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     if first_round:
         # copy a bait series that will be returned with removed hits
         neg_series = temporary[bait].copy()
-        neg_series.index = gene_list
+        # neg_series.index = gene_list
         neg_series.columns = pd.MultiIndex.from_product([[bait], neg_series.columns])
 
     # add an index value to the list for locating neg_control indices
@@ -334,7 +360,8 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
         bait_series[i].append(i)
 
     # perform the p value calculations
-    pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
+    pval_series = pd.Series(bait_series, name='pvals')
+    # pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
 
     if simple:
         pval_series = pval_series.apply(get_pvals, args=[neg_control.T, std_enrich, mean])
@@ -359,7 +386,7 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
 
         # Remove hits from the negative control
         replicates = list(neg_series)
-
+ 
         for rep in replicates:
             for hit in hits:
                 neg_series[rep][hit] = np.nan

@@ -65,6 +65,24 @@ layout = html.Div([
                 ]),
     ])
 
+@app.callback(
+    Output('vol_preloaded_dropdown', 'options'),
+    Input('slot_label_1', 'children'),
+    Input('slot_label_2', 'children'),
+    Input('slot_label_3', 'children'),
+    Input('slot_label_4', 'children'),
+    Input('slot_label_5', 'children'),
+    Input('slot_label_6', 'children'),
+)
+def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
+    
+    labels = [label_1, label_2, label_3, label_4, label_5, label_6]
+    options = []
+    for i in np.arange(0,6):
+        option = {'label': 'Slot ' + str(i+1) + ': ' + labels[i], 'value': i}
+        options.append(option)
+    return options 
+
 
 @app.callback(
     Output('vol_raw_table_upload', 'children'),
@@ -78,7 +96,7 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
 @app.callback(
@@ -93,62 +111,98 @@ def display_upload_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
 @app.callback(
     Output('vol_processed_table', 'children'),
     Output('samples', 'children'),
     Output('vol_read_table_button',   'style'),
+    Output('vol_preload_button', 'style'),
     Input('vol_read_table_button', 'n_clicks'),
+    Input('vol_preload_button', 'n_clicks'),
     State('vol_raw_table_upload', 'contents'),
-    State('vol_read_table_button', 'style'),
 
+
+    # preload Input and states
+
+    State('vol_preloaded_dropdown', 'value'),
+    State('slot_table_1', 'children'),
+    State('slot_table_2', 'children'),
+    State('slot_table_3', 'children'),
+    State('slot_table_4', 'children'),
+    State('slot_table_5', 'children'),
+    State('slot_table_6', 'children'),
+
+    State('vol_read_table_button', 'style'),
+    State('vol_preload_button', 'style'),
     prevent_initial_call=True
     )
-def parse_raw_table(n_clicks, content, button_style):
+def parse_raw_table(n_clicks, preload_clicks, content,  preload_slot,\
+        table_1, table_2, table_3, table_4, table_5, table_6, button_style, preload_style):
     """
     group replicates again from the standard file format
     and save the grouped table
     """
 
-    if n_clicks is None:
+  
+    if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
-    else:
+
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+
+    if button_id == 'vol_read_table_button':
+
         # parse txt (csv) file as pd df from upload
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
 
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0,1], index_col=0)
-        
-        processed_table = raw_table.droplevel(level=0, axis=1).copy()
-        processed_table.reset_index(drop=True, inplace=True)
-        features = list(raw_table['sample'])
-        labels = list(raw_table['metadata'])        
-
-        processing = bp.RawTables(file_designated=True)
-        processing.transformed_table = processed_table
-        processing.sample_cols = features
-        processing.info_cols = labels
-
-        processing.group_replicates(reg_exp=r'(.*)_\d+$')
-        grouped = processing.grouped_table
-
-        samples = [col[0] for col in list(grouped)]
-        samples = list(set(samples))
-        samples.remove('metadata')
-        samples.sort()
-        
-        samples_json = json.dumps(samples)
-        
-        grouped_json = grouped.to_json()
-
         if button_style is None:
             button_style = {}
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
+    
+    elif button_id == 'vol_preload_button':
+        tables = [table_1, table_2, table_3, table_4, table_5, table_6]
+        table = pd.read_json(tables[preload_slot])
 
-        return grouped_json, samples_json, button_style
+        column_tuples = [eval(name) for name in list(table)]
+        table.columns = pd.MultiIndex.from_tuples(column_tuples)
+        raw_table = table.copy()
+        if preload_style is None:
+            preload_style = {}
+        preload_style['background-color'] = '#DCE7EC'
+
+
+    
+    processed_table = raw_table.droplevel(level=0, axis=1).copy()
+    processed_table.reset_index(drop=True, inplace=True)
+    features = list(raw_table['sample'])
+    labels = list(raw_table['metadata'])        
+
+    processing = bp.RawTables(file_designated=True)
+    processing.transformed_table = processed_table
+    processing.sample_cols = features
+    processing.info_cols = labels
+
+    processing.group_replicates(reg_exp=r'(.*)_\d+$')
+    grouped = processing.grouped_table
+
+    samples = [col[0] for col in list(grouped)]
+    samples = list(set(samples))
+    samples.remove('metadata')
+    samples.sort()
+    
+    samples_json = json.dumps(samples)
+    
+    grouped_json = grouped.to_json()
+
+
+    return grouped_json, samples_json, button_style, preload_style
 
 @app.callback(
     Output('control_matrix', 'children'),
@@ -208,7 +262,7 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
             low_memory=False, index_col=0)
         
         control_matrix_json = control_matrix.to_json()
-        upload_style['background-color'] = '#B6E880'
+        upload_style['background-color'] = '#DCE7EC'
         
         return control_matrix_json, upload_style, apply_style
     
@@ -223,7 +277,7 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
             matrix[sample] = new_controls
         
         control_matrix_json = matrix.to_json()
-        apply_style['background-color'] = '#B6E880'
+        apply_style['background-color'] = '#DCE7EC'
 
         return control_matrix_json, upload_style, apply_style
 
@@ -278,7 +332,7 @@ def review_controls(sample, control_matrix_json):
 def download_matrix(n_clicks, matrix_json, button_style):
     download = pd.read_json(matrix_json)
     download = download.set_index('Samples').reset_index(drop=False)
-    button_style['background-color'] = '#B6E880'
+    button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'control_matrix.csv'), button_style
 
@@ -315,7 +369,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
     
     elif (button_id == 'load_button') and (load_opt == 'pre_hits'):
         if upload_contents is not None:
-            load_style['background-color'] = '#B6E880'
+            load_style['background-color'] = '#DCE7EC'
             return sig_table_json, button_style, load_style
         else:
             raise PreventUpdate
@@ -325,7 +379,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
         if sig_table_json is None:
             raise PreventUpdate
 
-        load_style['background-color'] = '#B6E880'
+        load_style['background-color'] = '#DCE7EC'
         
         return sig_table_json, button_style, load_style
     
@@ -337,7 +391,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
             low_memory=False)
         upload_table_json = upload_table.to_json()
 
-        load_style['background-color'] = '#B6E880'
+        load_style['background-color'] = '#DCE7EC'
 
         return upload_table_json, button_style, load_style
 
@@ -348,7 +402,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
             enrichment_opt = False
 
         grouped = pd.read_json(grouped_table_json)
-        button_style['background-color'] = '#B6E880'
+        button_style['background-color'] = '#DCE7EC'
 
         # json reads multi-index tuples as literal strings
         # so convert back to proper multi-level columns
@@ -366,8 +420,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
             analysis = pa.AnalysisTables(imputed_table=grouped,
                 exclusion_matrix=control_matrix)
             analysis.simple_pval_enrichment(std_enrich=control_opt)
-            analysis.convert_to_standard_table(experiment=False, simple_analysis=True)
-
+            analysis.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
             hits_table = analysis.standard_hits_table.copy()
             hits_table_json = hits_table.to_json()          
             
@@ -377,7 +430,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
         elif control_opt =='automatic':
             analysis = pa.AnalysisTables(imputed_table=grouped)
             analysis.two_step_bootstrap_pval_enrichment(std_enrich=enrichment_opt)
-            analysis.convert_to_standard_table(experiment=False, simple_analysis=False)
+            analysis.convert_to_standard_table(experiment=False, simple_analysis=False, perseus=False)
 
             hits_table = analysis.standard_hits_table.copy()
             hits_table_json = hits_table.to_json()
@@ -395,7 +448,7 @@ def calculate_significance(n_clicks, load_clicks, grouped_table_json, control_op
 def download_matrix(n_clicks, table_json, button_style):
 
     download = pd.read_json(table_json)
-    button_style['background-color'] = '#B6E880'
+    button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'significance_table.csv'), button_style
 
@@ -412,11 +465,12 @@ def display_upload_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return filename, style
 
 
 @app.callback(
+    Output('vol_marker_label', 'options'),
     Output('enrichment_table_status', 'children'),
     Output('enrichment_table_status', 'style'),
     Input('significance_table', 'children'),
@@ -428,8 +482,16 @@ def check_enrichment_status(sig_table, style):
     if sig_table is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
-        return 'Enrichment table calculated', style
+        sig_table = pd.read_json(sig_table)
+        
+        meta_cols = [col for col in list(sig_table) if col not in ['Unnamed: 0', 'target', 'pvals', 'enrichment']]
+        options = []
+        for col in meta_cols:
+            option = {'label': col, 'value': col}
+            options.append(option)
+
+        style['background-color'] = '#DCE7EC'
+        return options, 'Enrichment table calculated', style
 
     
 @app.callback(
@@ -488,7 +550,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents, sig_table_json,
         hits_table = vali.called_table.copy()
         hits_table_json = hits_table.to_json()
 
-        hits_style['background-color'] = '#B6E880'
+        hits_style['background-color'] = '#DCE7EC'
 
         return hits_table_json, hits_style
 
@@ -503,7 +565,7 @@ def check_hits_status(sig_table, style):
     if sig_table is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#B6E880'
+        style['background-color'] = '#DCE7EC'
         return 'Hits table ready!', style
 
 @app.callback(
@@ -517,7 +579,7 @@ def check_hits_status(sig_table, style):
 def download_matrix(n_clicks, table_json, button_style):
 
     download = pd.read_json(table_json)
-    button_style['background-color'] = '#B6E880'
+    button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'hits_table.csv'), button_style
  
@@ -546,12 +608,13 @@ def populate_volcano_samples(hits_table_json):
     Input('volcano_button_1', 'n_clicks'),
     State('hits_table', 'children'),
     State('volcano_dropdown_1', 'value'),
+    State('vol_marker_label', 'value'),
     prevent_initial_call=True
 )
-def plot_volcano(click_1, hits_table_json, sample):
+def plot_volcano(click_1, hits_table_json, sample, marker):
 
     hits_table = pd.read_json(hits_table_json)
-    fig = pv.volcano_plot(hits_table, sample, plate='N/A')
+    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A')
 
     return fig
 
@@ -560,13 +623,14 @@ def plot_volcano(click_1, hits_table_json, sample):
     Input('volcano_button_2', 'n_clicks'),
     State('hits_table', 'children'),
     State('volcano_dropdown_2', 'value'),
+    State('vol_marker_label', 'value'),
     prevent_initial_call=True)
-def plot_volcano(click_1, hits_table_json, sample):
+def plot_volcano(click_1, hits_table_json, sample, marker):
 
     """
     """
     hits_table = pd.read_json(hits_table_json)
-    fig = pv.volcano_plot(hits_table, sample, plate='N/A')
+    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A')
 
     return fig
 
