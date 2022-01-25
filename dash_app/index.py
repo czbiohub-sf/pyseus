@@ -1,24 +1,15 @@
-import dash
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 
-import flask
+from app import app
 # import all pages in the app
 from apps import preprocessing, matrix_viewer, umap_viewer, volcano_viewer, home
 from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,\
     volcano_calculation_layout, volcano_plotting_layout
 
-
-
-# initiate app
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-server = flask.Flask(__name__)
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
-	suppress_callback_exceptions=True, server=server)
-
+server = app.server
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
 
@@ -120,5 +111,4 @@ def display_page(pathname):
 
 
 if __name__ == "__main__":
-    app.title='Pyseus'
     app.run_server(debug=True)
