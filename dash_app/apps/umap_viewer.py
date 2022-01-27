@@ -205,6 +205,9 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
 def return_feature_selections(transpose_clicks, um_features_json, 
     annots_json, dims_json, button_style):
 
+    if um_features_json is None and transpose_clicks is None:
+        raise PreventUpdate
+
     if transpose_clicks is None:
         transpose_clicks = 0
 
@@ -317,6 +320,9 @@ def fill_external_keys(content, filename):
 def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_table, transposed_table,\
     feature_key, annot_key, annot_label, button_style):
 
+    if n_clicks is None:
+        raise PreventUpdate
+
     button_style['background-color'] = '#DCE7EC'
 
     # parse txt (tsv) file as pd df from upload
@@ -385,6 +391,8 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     """
     Generate umap from all the customizable options
     """
+    if umap_clicks is None:
+        raise PreventUpdate
 
     button_style['background-color'] = '#DCE7EC'
 
