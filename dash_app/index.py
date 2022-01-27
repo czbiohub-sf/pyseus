@@ -9,7 +9,7 @@ from apps import preprocessing, matrix_viewer, umap_viewer, volcano_viewer, home
 from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,\
     volcano_calculation_layout, volcano_plotting_layout
 
-server = app.server
+# server = app.server
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
 

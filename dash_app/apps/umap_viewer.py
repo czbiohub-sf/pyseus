@@ -11,6 +11,9 @@ from dash import dcc
 from dash import html
 from dash import dash_table
 
+from flask_caching.backends import FileSystemCache
+from dash_extensions.callback import CallbackCache, Trigger
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -36,6 +39,9 @@ transposed_annots = ('sample')
 
 from app import app
 
+
+# Create (server side) cache. Works with any flask caching backend.
+umap_cc = CallbackCache(cache=FileSystemCache(cache_dir="cache"))
 
 # App Layout
 layout = html.Div([
@@ -93,6 +99,18 @@ def display_upload_ms_filename(filename, style):
         style['background-color'] = '#DCE7EC'
         return filename, style
 
+@umap_cc.cached_callback(
+    Output('um_cache_p_table', 'data'),
+    [Trigger('um_processed_table', 'children')],   
+)
+def cache_processed_table(processed_table):
+    if processed_table is None:
+        raise PreventUpdate
+    print('did cache trigger?')
+
+    return processed_table
+
+    
 
 @app.callback(
     Output('um_processed_table', 'children'),
@@ -309,7 +327,7 @@ def fill_external_keys(content, filename):
     State('transpose_button', 'n_clicks'),
     State('annot_table_upload', 'contents'),
     State('annot_table_upload', 'filename'),
-    State('um_processed_table', 'children'),
+    State('um_cache_p_table', 'data'),
     State('transposed_table', 'children'),
     State('merge_key_feature', 'value'),
     State('merge_key_annot', 'value'),
@@ -373,7 +391,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_tab
 
     State('n_cluster', 'value'),
 
-    State('um_processed_table', 'children'),
+    State('um_cache_p_table', 'data'),
     State('transposed_table', 'children'),
 
     State('feature_scaling', 'value'),
