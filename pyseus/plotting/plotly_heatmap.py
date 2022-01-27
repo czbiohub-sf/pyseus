@@ -16,16 +16,15 @@ import time
 import pdb
 
 
-def subtract_prey_median(imputed_df, mad_mod=True, mad_factor=1):
+def subtract_prey_median(imputed_df, features, metadata, mad_mod=True, mad_factor=1):
     """As an option to visualize clustering so that each intensity
     is subtracted by the prey group median, this function
     alters the base dataframe with the transformation"""
 
-    transformed = imputed_df.copy()
+    transformed = imputed_df[features].copy()
 
 
-    # Remove info columns for now, will add back again after transformation
-    transformed.drop(columns=['Info'], level='Baits', inplace=True)
+
     transformed = transformed.T
 
     # Get a list of the columns (baits or preys)
@@ -46,8 +45,7 @@ def subtract_prey_median(imputed_df, mad_mod=True, mad_factor=1):
     #         transformed[col] = transformed[col].apply(lambda x: x if x > mad else 0)
 
     # transpose back to original shape and add the info columns again
-    info_cols = list([col for col in list(imputed_df) if col[0] == 'Info'])
-    for col in info_cols:
+    for col in metadata:
         transformed[col] = imputed_df[col]
 
     return transformed
@@ -128,6 +126,7 @@ def bait_leaves(imputed_df, features, method='average', distance='euclidean',
         print("Generating bait linkage...")
         start_time = time.time()
 
+
     if grouped:
         # Create a median_df, taking median of all replicates
         median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
@@ -151,7 +150,7 @@ def bait_leaves(imputed_df, features, method='average', distance='euclidean',
     return bait_leaves
 
 
-def prey_leaves(imputed_df, features, method='average', distance='euclidean', grouped=True,
+def prey_leaves(imputed_df, features,  method='average', distance='euclidean', grouped=True,
     index_id = 'Protein IDs', verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
@@ -192,7 +191,7 @@ def prey_leaves(imputed_df, features, method='average', distance='euclidean', gr
     return prey_leaves
 
 
-def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label, index_id='Protein IDs',
+def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features, index_id='Protein IDs',
     bait_leaves=None, bait_clust=False, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
@@ -205,6 +204,7 @@ def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label,
 
     plot_df = imputed_df.copy()
 
+
     # Set index to Protein IDs to match the dendro leaves
     plot_df.set_index(index_id, inplace=True)
     # Correctly order the plot df according to dendro leaves
@@ -213,7 +213,6 @@ def dendro_heatmap(imputed_df, features, prey_leaves, hexmap, zmin, zmax, label,
     # Reset index to set label
     plot_df.set_index(label, inplace=True)
 
-    print(bait_clust)
     # Reorder columns based on bait_leaves
     if bait_clust:
         plot_df = plot_df[bait_leaves]

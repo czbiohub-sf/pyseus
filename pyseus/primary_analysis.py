@@ -54,7 +54,7 @@ class AnalysisTables:
         
         exclusion = self.exclusion_matrix.copy()
         baits = list(exclusion)
-        baits.remove('Baits')
+        baits.remove('Samples')
         for bait in baits:
             exclusion[bait] = True
 
@@ -74,7 +74,7 @@ class AnalysisTables:
         """
         Show dataframe of all possible baits
         """
-        return self.exclusion_matrix['Baits']
+        return self.exclusion_matrix['Samples']
     
     def print_controls(self, bait):
         """
@@ -82,11 +82,11 @@ class AnalysisTables:
         """
 
         excluded = self.exclusion_matrix.copy()
-        excluded = excluded[['Baits', bait]]
+        excluded = excluded[['Samples', bait]]
         excluded = excluded[excluded[bait] == True]
         
         if excluded.shape[0] > 0:
-            return excluded[['Baits']]
+            return excluded[['Samples']]
         else:
             print("No control baits selected as control")
     
@@ -96,11 +96,11 @@ class AnalysisTables:
         """
 
         excluded = self.exclusion_matrix.copy()
-        excluded = excluded[['Baits', bait]]
+        excluded = excluded[['Samples', bait]]
         excluded = excluded[excluded[bait] == False]
         
         if excluded.shape[0] > 0:
-            return excluded[['Baits']]
+            return excluded[['Samples']]
         else:
             print("No excluded baits in control")
     
@@ -114,7 +114,7 @@ class AnalysisTables:
         """
 
         exclusion = self.exclusion_matrix.copy()
-        exclusion.set_index('Baits', inplace=True)
+        exclusion.set_index('Samples', inplace=True)
         exclusion = exclusion.T  
         baits = list(exclusion)
 
@@ -287,9 +287,10 @@ class AnalysisTables:
             col_order = ['experiment', 'target'] + metas + metrics
         else:
             col_order = ['target'] + metas + metrics
-        all_hits = all_hits[col_order].reset_index(drop=True)
+        all_hits = all_hits[col_order].copy()
+        all_hits.reset_index(drop=True, inplace=True)
 
-        self.standard_hits_table = all_hits
+        self.standard_hits_table = all_hits.copy()
 
 
     def save(self, option_str=''):
@@ -297,6 +298,11 @@ class AnalysisTables:
         save class to a designated directory
         """
         analysis_dir = self.root + self.analysis
+        try:
+            print("Saving standard hits table..")
+            self.standard_hits_table.to_csv(analysis_dir + '/standard_hits_table.csv')
+        except AttributeError:
+            pass
         if len(option_str) > 0:
             option_str = '_' + option_str
         file_dir = analysis_dir + "/pval_tables" + option_str + '.pkl' 

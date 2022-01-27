@@ -12,7 +12,7 @@ import math
 def simple_volcano(v_df, bait, fcd, width=None, height=None):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
-    v_df.set_index(('gene_names', 'gene_names'), inplace=True)
+    v_df.set_index(('metadata', 'Gene names'), inplace=True)
 
     # Specify the bait column
     bait_vals = v_df[bait]

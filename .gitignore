@@ -1,8 +1,5 @@
 
 ignore/
-data/
-notebook_marco/
-notebook_manu/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
