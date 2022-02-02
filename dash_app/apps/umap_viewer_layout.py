@@ -504,7 +504,16 @@ def plotting_layout():
                 'width':'95%',
                 'marginLeft': '2.5%'
                 }
-            )
+            ),
+            html.Button('Download UMAP', id='download_umap_button',
+                style={
+                    'marginLeft':'2.5%',
+                    'width': '95%',
+                    'marginTop': '4%',
+                    'white-space': 'normal'
+                }
+            ),
+            dcc.Download(id="download_umap"),
         ],
             style={
                 'marginTop': '2%',
@@ -551,6 +560,10 @@ def plotting_layout():
     html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
     # Hiddn divs inside the app for computations and storing intermediate values
+    dcc.Store(id='um_cache_p_table'),
+
+    html.Div(
+        id='um_table', style={'display': 'none'}),
     html.Div(
         id='um_processed_table', style={'display': 'none'}),
     html.Div(

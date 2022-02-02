@@ -361,6 +361,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_tab
 
     Output('umap_fig', 'figure'),
     Output('generate_umap', 'style'),
+    Output('um_table', 'children'),
     Input('generate_umap', 'n_clicks'),
     State('transpose_button', 'n_clicks'),
 
@@ -448,12 +449,26 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     um_processed_table['umap_2'] = u[:, 1]
     fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
 
-    return fig, button_style
+    return fig, button_style, um_processed_table.to_json()
 
     
 
 
+@app.callback(
+    Output('download_umap', 'data'),
+    Output('download_umap_button', 'style'),
+    Input('download_umap_button', 'n_clicks'),
+    State('um_table', 'children'),
+    State('download_umap_button', 'style'),
+    prevent_initial_call=True
+)
+def download_matrix(n_clicks, matrix_json, button_style):
+    if n_clicks is None:
+        raise PreventUpdate
+    download = pd.read_json(matrix_json)
+    button_style['background-color'] = '#DCE7EC'
 
+    return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
 
     
 
