@@ -207,9 +207,10 @@ def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features,
 
     # Set index to Protein IDs to match the dendro leaves
     plot_df.set_index(index_id, inplace=True)
+
     # Correctly order the plot df according to dendro leaves
     plot_df = plot_df.T[prey_leaves].T
-
+    
     # Reset index to set label
     plot_df.set_index(label, inplace=True)
 

@@ -168,7 +168,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         preload_style['background-color'] = '#DCE7EC'
 
 
-    # regular table, features, and annots for UMAP
+    # regular table, features, and annots for matrix
     processed_table = raw_table.droplevel(level=0, axis=1).copy()
     features = list(raw_table['sample'])
     labels = list(raw_table['metadata'])
@@ -270,8 +270,8 @@ def generate_clustergram(n_clicks, processed_table_json, features, label, index,
     prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
         verbose=False)
     
-    heatmap = ph.dendro_heatmap(processed_table, features, prey_leaves, hexmap,
-        zmin, zmax, label, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
+    heatmap = ph.dendro_heatmap(processed_table, prey_leaves, hexmap,
+        zmin, zmax, label, features, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
         verbose=False)
 
     x_tick = False
