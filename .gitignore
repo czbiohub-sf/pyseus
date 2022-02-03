@@ -1,5 +1,6 @@
 data/
 ignore/
+dash_app/cache-directory/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
