@@ -2,6 +2,7 @@ import dash
 from dash import html
 import flask 
 from flask_caching import Cache
+import pandas as pd
 
 
 # initiate app
@@ -22,6 +23,16 @@ cache = Cache(app.server, config={
     # higher numbers will store more data in the filesystem / redis cache
     'CACHE_THRESHOLD': 200
 })
+
+def saved_processed_table(session_id, processed_table=None):
+    @cache.memoize(args_to_ignore=['processed_table'])
+    def save_processed_table(session_id, processed_table):
+
+        return processed_table.to_json()
+    
+    processed_table = save_processed_table(session_id, processed_table)
+    
+    return pd.read_json(processed_table)
 
 
 # def uploaded_processed_table(session_id, content=None):

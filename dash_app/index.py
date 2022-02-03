@@ -2,14 +2,25 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import uuid
+import base64
 
-from app import app
+from dapp import app
+
+
+import pandas as pd
+import io
+
 # import all pages in the app
 from apps import preprocessing, matrix_viewer, umap_viewer, volcano_viewer, home
 from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,\
     volcano_calculation_layout, volcano_plotting_layout
 
+session_id = str(uuid.uuid4())
+
 # server = app.server
+
+
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
 
@@ -65,6 +76,8 @@ index_layout = html.Div([
     html.Div(children=no_p_table, id='slot_label_4', style={'display': 'none'}),
     html.Div(children=no_p_table, id='slot_label_5', style={'display': 'none'}),
     html.Div(children=no_p_table, id='slot_label_6', style={'display': 'none'}),
+
+    dcc.Store(data=session_id, id='session_id')
 
 ])
 

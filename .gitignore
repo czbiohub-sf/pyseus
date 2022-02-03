@@ -1,8 +1,6 @@
-
-ignore/
 data/
-notebook_marco/
-notebook_manu/
+ignore/
+dash_app/cache-directory/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

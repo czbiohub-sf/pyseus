@@ -14,7 +14,10 @@ from dash import dash_table
 
 import pandas as pd
 import numpy as np
-from app import app
+
+from dapp import app
+from dapp import saved_processed_table
+
 
 empty_table = pd.DataFrame()
 slots = []
@@ -150,9 +153,7 @@ def display_upload_ms_filename(filename, style):
 
 
 @app.callback(
-    Output('slot_table_1', 'children'),
-    Output('slot_table_2', 'children'),
-    Output('slot_table_3', 'children'),
+  
     Output('slot_label_1', 'children'),
     Output('slot_label_2', 'children'),
     Output('slot_label_3', 'children'),
@@ -164,10 +165,9 @@ def display_upload_ms_filename(filename, style):
     State('home_raw_table_upload', 'contents'),
     State('home_raw_table_upload', 'filename'),
     State('download_slot', 'value'),
+    State('session_id', 'data'),
 
-    State('slot_table_1', 'children'),
-    State('slot_table_2', 'children'),
-    State('slot_table_3', 'children'),
+
     State('slot_label_1', 'children'),
     State('slot_label_2', 'children'),
     State('slot_label_3', 'children'),
@@ -176,14 +176,15 @@ def display_upload_ms_filename(filename, style):
     prevent_initial_call=True
 )
 def upload_table(n_clicks, content,
-    filename, slot_num, table_1, table_2, table_3, label_1, label_2, label_3,
+    filename, slot_num, session_id, label_1, label_2, label_3,
     home_button_style):
 
     if n_clicks is None:
         raise PreventUpdate
 
+    session_slot = session_id + str(slot_num)
+
     # assign tables and labels to a list for easy slot designation
-    tables = [table_1, table_2, table_3]
     labels = [label_1, label_2, label_3]  
 
 
@@ -194,13 +195,12 @@ def upload_table(n_clicks, content,
     raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
         low_memory=False, header=[0,1], index_col=0)
 
-    tables[slot_num] = raw_table.to_json()
+    _ = saved_processed_table(session_slot, raw_table)
     labels[slot_num] = filename
 
     home_button_style['background-color'] = '#DCE7EC'
     
-    return tables[0], tables[1], tables[2], labels[0], labels[1],\
-        labels[2], home_button_style
+    return labels[0], labels[1], labels[2], home_button_style
 
 
 @app.callback(
