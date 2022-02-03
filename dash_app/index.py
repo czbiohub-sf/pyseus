@@ -18,7 +18,7 @@ from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,
 
 session_id = str(uuid.uuid4())
 
-# server = app.server
+server = app.server
 
 
 no_table = 'No table uploaded'
