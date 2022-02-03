@@ -28,6 +28,7 @@ import umap
 from umap_viewer_layout import plotting_layout, customize_layout
 
 from flask_caching import Cache
+import time
 
 
 head, tail = os.path.split(file_dir)
@@ -394,6 +395,7 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
 
     button_style['background-color'] = '#DCE7EC'
 
+    new_time = time.time()
 
     if transpose_clicks is None:
         transpose_clicks = 0
@@ -427,8 +429,14 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     um_processed_table.dropna(subset=um_features, inplace=True)
     matrix = um_processed_table[um_features]
 
+    print(new_time - time.time())
+    new_time = time.time()
+
     # scale matrix
     scaled = pu.scale_table(matrix.values, scaling)
+
+    print(new_time - time.time())
+    new_time = time.time()
 
     # since clustering annotation must follow dropping Nans, if statement
     # is separately placed here
@@ -447,11 +455,21 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     u = fit.fit_transform(scaled)
     um_processed_table['umap_1'] = u[: , 0]
     um_processed_table['umap_2'] = u[:, 1]
+
+    print(new_time - time.time())
+    new_time = time.time()
+
     fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
+
+    print(new_time - time.time())
+    new_time = time.time()
 
     complete_slot = session_id +'completed'
     um_processed_table = saved_processed_table(complete_slot, um_processed_table)
 
+    print(new_time - time.time())
+    new_time = time.time()
+    
     return fig, button_style
 
     
