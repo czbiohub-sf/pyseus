@@ -578,7 +578,6 @@ def plotting_layout():
         id='external_annot_series', style={'display': 'none'}),
 
     ])
-
         # html.P('Uploaded feature table', id='um_raw_table_filename', 
         #             style={
         #                 'textAlign': 'center',

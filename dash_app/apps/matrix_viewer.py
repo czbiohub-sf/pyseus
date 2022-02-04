@@ -39,7 +39,9 @@ transposed_annots = ('sample')
 # initiate app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-from app import app
+from dapp import app
+from dapp import saved_processed_table
+
 # App Layout
 layout = html.Div([
         # Header tags
@@ -73,7 +75,9 @@ layout = html.Div([
     Input('slot_label_6', 'children'),
 )
 def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
-    
+    """
+    automatically populate slot labels based on the upload/save list
+    """
     labels = [label_1, label_2, label_3, label_4, label_5, label_6]
     options = []
     for i in np.arange(0,6):
@@ -97,7 +101,6 @@ def display_upload_ms_filename(filename, style):
 
 
 @app.callback(
-    Output('mat_processed_table', 'children'),
     Output('features_checklist', 'options'),
     Output('features_checklist', 'value'),
     Output('label_select', 'options'),
@@ -117,28 +120,27 @@ def display_upload_ms_filename(filename, style):
     # preload Input and states
 
     State('mat_preloaded_dropdown', 'value'),
-    State('slot_table_1', 'children'),
-    State('slot_table_2', 'children'),
-    State('slot_table_3', 'children'),
-    State('slot_table_4', 'children'),
-    State('slot_table_5', 'children'),
-    State('slot_table_6', 'children'),
     State('mat_preload_button', 'style'),
+    State('session_id', 'data'),
 
     prevent_initial_call=True
-
-
     )
 def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_clicks,\
-     preload_slot, table_1, table_2, table_3, table_4, table_5, table_6,\
-    preload_style):
+    preload_slot, preload_style, session_id):
     """
-    initiate QualityControl class with the uploaded proteingroups file
+    Load cached table or upload a new table, and cache it to specific
+    clustergram-designated slot.
     """
-
     
     if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
+
+    # combine unique session ID with designated slot id for loading cache
+    session_slot = session_id + str(preload_slot)
+
+    # unique cache id for the processed table used for clust page
+    clust_slot = session_id + 'clust'
+
 
     # get the context of the callback trigger
     ctx = dash.callback_context
@@ -157,8 +159,8 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         button_style['background-color'] = '#DCE7EC'
     
     elif button_id == 'mat_preload_button':
-        tables = [table_1, table_2, table_3, table_4, table_5, table_6]
-        table = pd.read_json(tables[preload_slot])
+
+        table = saved_processed_table(session_slot)
 
         column_tuples = [eval(name) for name in list(table)]
         table.columns = pd.MultiIndex.from_tuples(column_tuples)
@@ -170,6 +172,8 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
 
     # regular table, features, and annots for matrix
     processed_table = raw_table.droplevel(level=0, axis=1).copy()
+
+
     features = list(raw_table['sample'])
     labels = list(raw_table['metadata'])
 
@@ -185,7 +189,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
     for label in labels:
         label_opts.append({'label': label, 'value': label})
 
-    processed_table_json = processed_table.to_json()
+    _ = saved_processed_table(clust_slot, processed_table, overwrite=True)
 
 
 
@@ -202,7 +206,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         'stdev': [np.round(matrix.values.std(),2)]
     }]
 
-    return processed_table_json, features_opts, features,\
+    return features_opts, features,\
         label_opts, label_opts, metrics, color_clicks, button_style, preload_style
 
 
@@ -227,7 +231,6 @@ def generate_colormap(scale_data_clicks, color_clicks,
     Output('generate_matrix', 'style'),
 
     Input('generate_matrix', 'n_clicks'),
-    State('mat_processed_table', 'children'),
     State('features_checklist', 'value'),
     State('label_select', 'value'),
     State('index_select', 'value'),
@@ -240,11 +243,12 @@ def generate_colormap(scale_data_clicks, color_clicks,
     State('tick_checks', 'value'),
 
     State('generate_matrix', 'style'),
+    State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def generate_clustergram(n_clicks, processed_table_json, features, label, index,\
-    zmin, zmax, colormap, cluster_checks, tick_checks, button_style):
+def generate_clustergram(n_clicks, features, label, index,\
+    zmin, zmax, colormap, cluster_checks, tick_checks, button_style, session_id):
     """
     returns plotly figure of cluster heatmap
     """
@@ -254,14 +258,20 @@ def generate_clustergram(n_clicks, processed_table_json, features, label, index,
 
     button_style['background-color'] = '#DCE7EC'
 
-    processed_table = pd.read_json(processed_table_json)
+    # read cache of cluster table
+    clust_id = session_id + 'clust'
+    processed_table = saved_processed_table(clust_id)
     
+
+    # generate the color map
     _, hexmap = ph.color_map(zmin, zmax, colormap)
 
+    
+    # default bait clustering variables
     bait_leaves = None
-    prey_leaves = None
     bait_clust = False
 
+    # cluster samples
     if 'bait_clust' in cluster_checks:
         bait_leaves = ph.bait_leaves(processed_table, features, index_id=index, grouped=False,
             verbose=False)
@@ -288,11 +298,6 @@ def generate_clustergram(n_clicks, processed_table_json, features, label, index,
     fig = go.Figure(data=heatmap, layout=layout)
 
     return fig, button_style
-
-
-
-
-
 
 
 

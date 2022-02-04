@@ -2,18 +2,31 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import uuid
+import base64
 
-from app import app
+from dapp import app
+
+
+import pandas as pd
+import io
+
 # import all pages in the app
 from apps import preprocessing, matrix_viewer, umap_viewer, volcano_viewer, home
 from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,\
     volcano_calculation_layout, volcano_plotting_layout
 
+session_id = str(uuid.uuid4())
+
 server = app.server
+
+
+# strings for initial population uploaded/saved table labels
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
 
 
+# Set up of navigation bar
 navbar = html.Div([
 html.Div(style={'background-color': '#DCE7EC', 'height':'20px', 'borderTop': '1px gray solid'}),
 html.Div([
@@ -52,19 +65,17 @@ index_layout = html.Div([
     dcc.Location(id='url', refresh=False),
     navbar,
     html.Div(id='page-content'),
-    html.Div(id='slot_table_1', style={'display': 'none'}),
-    html.Div(id='slot_table_2', style={'display': 'none'}),
-    html.Div(id='slot_table_3', style={'display': 'none'}),
-    html.Div(id='slot_table_4', style={'display': 'none'}),
-    html.Div(id='slot_table_5', style={'display': 'none'}),
-    html.Div(id='slot_table_6', style={'display': 'none'}),
 
+    # Slot labels for uploaded / saved tables that are cached server-side
+    # Acts as 'global' labels as they are saved in the index layout
     html.Div(children=no_table, id='slot_label_1', style={'display': 'none'}),
     html.Div(children=no_table, id='slot_label_2', style={'display': 'none'}),
     html.Div(children=no_table, id='slot_label_3', style={'display': 'none'}),
     html.Div(children=no_p_table, id='slot_label_4', style={'display': 'none'}),
     html.Div(children=no_p_table, id='slot_label_5', style={'display': 'none'}),
     html.Div(children=no_p_table, id='slot_label_6', style={'display': 'none'}),
+
+    dcc.Store(data=session_id, id='session_id')
 
 ])
 
@@ -81,7 +92,7 @@ umap_plotting_layout = umap_viewer_layout.plotting_layout()
 volc_calc_layout = volcano_calculation_layout.calculation_layout()
 volc_plot_layout = volcano_plotting_layout.plotting_layout()
 
-# "complete" layout
+# "complete" layout for validation
 app.validation_layout = html.Div([
     index_layout,
     pp_upload_layout,

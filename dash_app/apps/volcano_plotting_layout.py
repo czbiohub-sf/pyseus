@@ -124,7 +124,7 @@ def plotting_layout():
                     ], style={
                         'marginTop': '2%',
                         'display': 'inline-block',
-
+                        'background-color':'white',
                         'width': '35%'
 
                     }),
@@ -164,6 +164,8 @@ def plotting_layout():
            
             html.P('Thresholding options', style={'textAlign': 'center',
                 'fontSize': 18, 'lineHeight':'15px', 'marginTop':'6%'}),
+            html.P('Hawaiian option is buggy atm.', style={'textAlign': 'center',
+                'fontSize': 12, 'lineHeight':'15px', 'marginTop':'1%'}),
 
             dcc.RadioItems(id='thresh_option',
                 options=[
@@ -277,7 +279,8 @@ def plotting_layout():
                     'marginLeft':'7.5%',
                     'width': '85%',
                     'marginTop': '4%',
-                    'white-space': 'normal'
+                    'white-space': 'normal',
+                    'background-color': 'white'
                 }
             ),
             html.Button('Download hits table!', id='download_hits_button',

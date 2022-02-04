@@ -336,7 +336,8 @@ def calculation_layout():
                     'marginLeft':'0%',
                     'width': '85%',
                     'marginTop': '0%',
-                    'white-space': 'normal'
+                    'white-space': 'normal',
+                    'background-color': 'white'
                 }
             ),
             dcc.Download(id="download_pval_table"),

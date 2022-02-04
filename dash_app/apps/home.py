@@ -14,8 +14,13 @@ from dash import dash_table
 
 import pandas as pd
 import numpy as np
-from app import app
 
+from dapp import app
+from dapp import saved_processed_table
+
+
+
+# This is the data set-up for the table of "processed_table_status"
 empty_table = pd.DataFrame()
 slots = []
 tables = []
@@ -150,9 +155,7 @@ def display_upload_ms_filename(filename, style):
 
 
 @app.callback(
-    Output('slot_table_1', 'children'),
-    Output('slot_table_2', 'children'),
-    Output('slot_table_3', 'children'),
+  
     Output('slot_label_1', 'children'),
     Output('slot_label_2', 'children'),
     Output('slot_label_3', 'children'),
@@ -164,10 +167,9 @@ def display_upload_ms_filename(filename, style):
     State('home_raw_table_upload', 'contents'),
     State('home_raw_table_upload', 'filename'),
     State('download_slot', 'value'),
+    State('session_id', 'data'),
 
-    State('slot_table_1', 'children'),
-    State('slot_table_2', 'children'),
-    State('slot_table_3', 'children'),
+
     State('slot_label_1', 'children'),
     State('slot_label_2', 'children'),
     State('slot_label_3', 'children'),
@@ -176,14 +178,20 @@ def display_upload_ms_filename(filename, style):
     prevent_initial_call=True
 )
 def upload_table(n_clicks, content,
-    filename, slot_num, table_1, table_2, table_3, label_1, label_2, label_3,
+    filename, slot_num, session_id, label_1, label_2, label_3,
     home_button_style):
+    """
+    When a user uploads a table and clicks upload button, save the table
+    and table name to the server under the right slot
+    """
 
     if n_clicks is None:
         raise PreventUpdate
 
-    # assign tables and labels to a list for easy slot designation
-    tables = [table_1, table_2, table_3]
+    # unique session id for the specific slot the table will be cached
+    session_slot = session_id + str(slot_num)
+
+    # assign labels to a list for easy slot designation
     labels = [label_1, label_2, label_3]  
 
 
@@ -194,13 +202,15 @@ def upload_table(n_clicks, content,
     raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
         low_memory=False, header=[0,1], index_col=0)
 
-    tables[slot_num] = raw_table.to_json()
+    # cache the table to the specific slot
+    _ = saved_processed_table(session_slot, raw_table, overwrite=True)
+
+    # Save the filename to the specific slot
     labels[slot_num] = filename
 
     home_button_style['background-color'] = '#DCE7EC'
     
-    return tables[0], tables[1], tables[2], labels[0], labels[1],\
-        labels[2], home_button_style
+    return labels[0], labels[1], labels[2], home_button_style
 
 
 @app.callback(
@@ -214,6 +224,9 @@ def upload_table(n_clicks, content,
     State('processed_table_status', 'data'),
 )
 def update_table_status(label_1, label_2, label_3, label_4, label_5, label_6, data):
+    """
+    Automatic update of file/table names in the upload/save slots. 
+    """
     table = pd.DataFrame.from_records(data)
     table_names = table['table_name'].to_list()
     table_names[0] = label_1

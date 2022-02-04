@@ -11,6 +11,8 @@ from dash import dcc
 from dash import html
 from dash import dash_table
 
+from flask_caching.backends import FileSystemCache
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -25,6 +27,10 @@ import umap
 
 from umap_viewer_layout import plotting_layout, customize_layout
 
+from flask_caching import Cache
+import time
+
+
 head, tail = os.path.split(file_dir)
 head, tail = os.path.split(head)
 sys.path.append(head)
@@ -34,7 +40,8 @@ from pyseus.plotting import plotly_umap as pu
 # global, immutable variables
 transposed_annots = ('sample')
 
-from app import app
+from dapp import app
+from dapp import saved_processed_table
 
 
 # App Layout
@@ -71,6 +78,9 @@ layout = html.Div([
     Input('slot_label_6', 'children'),
 )
 def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
+    """
+    automatically populate slot labels based on the upload/save list
+    """
     
     labels = [label_1, label_2, label_3, label_4, label_5, label_6]
     options = []
@@ -92,14 +102,12 @@ def display_upload_ms_filename(filename, style):
     else:
         style['background-color'] = '#DCE7EC'
         return filename, style
-
+    
 
 @app.callback(
-    Output('um_processed_table', 'children'),
     Output('um_features', 'children'),
     Output('um_annots', 'children'),
     Output('table_dims', 'children'), 
-    Output('transposed_table', 'children'),
     Output('um_read_table_button', 'style'),
     Output('um_preload_button', 'style'),
     Input('um_read_table_button', 'n_clicks'),
@@ -110,30 +118,32 @@ def display_upload_ms_filename(filename, style):
     # preload Input and states
 
     State('um_preloaded_dropdown', 'value'),
-    State('slot_table_1', 'children'),
-    State('slot_table_2', 'children'),
-    State('slot_table_3', 'children'),
-    State('slot_table_4', 'children'),
-    State('slot_table_5', 'children'),
-    State('slot_table_6', 'children'),
     State('um_read_table_button', 'style'),
     State('um_preload_button', 'style'),
+    State('session_id', 'data')
 
     )
 def parse_um_raw_table(n_clicks, preload_clicks, content, 
-    preload_slot, table_1, table_2, table_3, table_4, table_5, table_6, button_style,\
-    preload_style):
+    preload_slot, button_style, preload_style, session_id):
     """
-    initiate QualityControl class with the uploaded proteingroups file
+    Load cached table or upload a new table, and cache it to specific
+    UMAP-designated slot. 
     """
 
     if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
 
+    # combine unique session ID with designated slot id for loading cache
+    session_slot = session_id + str(preload_slot)
+
+    # unique cache id for the processed table used for UMAP page
+    um_slot = session_id + 'umap'
+
     # get the context of the callback trigger
     ctx = dash.callback_context
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    # Condition for processing uploaded table
     if button_id == 'um_read_table_button':
 
         # parse txt (tsv) file as pd df from upload
@@ -146,44 +156,47 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
             button_style = {}
         button_style['background-color'] = '#DCE7EC'        
 
+    # retrieving table from cache in specific slot
     elif button_id == 'um_preload_button':
-        tables = [table_1, table_2, table_3, table_4, table_5, table_6]
-        table = pd.read_json(tables[preload_slot])
+        table = saved_processed_table(session_slot)
 
+        # json processing for multi indexing
         column_tuples = [eval(name) for name in list(table)]
         table.columns = pd.MultiIndex.from_tuples(column_tuples)
         um_raw_table = table.copy()
+
         if preload_style is None:
             preload_style = {}
         preload_style['background-color'] = '#DCE7EC'
 
-    # regular table, features, and annots for UMAP
+    # processing table, features, and annots for UMAP
     um_processed_table = um_raw_table.droplevel(level=0, axis=1)
     um_features = list(um_raw_table['sample'])
     annots = list(um_raw_table['metadata'])
+
     dims = list(um_raw_table['sample'].shape)
 
+    # save the data as JSON for client-side storage
     um_features_json = json.dumps(um_features)
     annots_json = json.dumps(annots)
     dims_json = json.dumps(dims)
 
 
-    # drop duplicates
+    # drop duplicates and save table to cache
     um_processed_table.drop_duplicates(inplace=True)
-    um_processed_table_json = um_processed_table.to_json()
+    saved_processed_table(um_slot, um_processed_table, overwrite=True)
 
     # Transposed table, features, and annots for UMAP
     transposed_table = um_raw_table['sample'].T.reset_index().rename(
         {'index': 'samples'}, axis=1)
     
     transposed_table.drop_duplicates(inplace=True)
-    transposed_table_json = transposed_table.to_json()
+    trans_slot = session_id + 'transposed'
+    # save to transpose-specific cache
+    saved_processed_table(trans_slot, transposed_table, overwrite=True)
 
-
-
-
-    return um_processed_table_json, um_features_json, annots_json,\
-        dims_json, transposed_table_json, button_style, preload_style
+    return um_features_json, annots_json,\
+        dims_json, button_style, preload_style
 
 @app.callback(
     Output('feature_dims', 'children'),
@@ -204,6 +217,10 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
 )
 def return_feature_selections(transpose_clicks, um_features_json, 
     annots_json, dims_json, button_style):
+    """
+    From the data extracted from processed table, populate options for
+    features, labels, annots, etc. 
+    """
 
     if um_features_json is None and transpose_clicks is None:
         raise PreventUpdate
@@ -282,6 +299,9 @@ def display_merge_filename(filename, style):
 
 )
 def fill_external_keys(content, filename):
+    """
+    populate dropdown options from uploaded annotation table
+    """
     if content is None:
         raise PreventUpdate
     else:
@@ -309,16 +329,19 @@ def fill_external_keys(content, filename):
     State('transpose_button', 'n_clicks'),
     State('annot_table_upload', 'contents'),
     State('annot_table_upload', 'filename'),
-    State('um_processed_table', 'children'),
-    State('transposed_table', 'children'),
     State('merge_key_feature', 'value'),
     State('merge_key_annot', 'value'),
     State('external_annot', 'value'),
     State('merge_button', 'style'),
+    State('session_id', 'data'),
     prevent_initial_call=True
 )
-def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_table, transposed_table,\
-    feature_key, annot_key, annot_label, button_style):
+def merge_tables(n_clicks, transpose_clicks, content, filename, \
+    feature_key, annot_key, annot_label, button_style, session_id):
+    """
+    Load umap table from cache, and merge it with external annotation table.
+    Save merged series to client-side. 
+    """
 
     if n_clicks is None:
         raise PreventUpdate
@@ -340,16 +363,22 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_tab
 
     # for non transposed option
     if transpose_clicks % 2 == 0:
-        um_processed_table = pd.read_json(um_processed_table)
-            
+        session_slot = session_id + 'umap'
+
     # for transposed option
     else:
-        um_processed_table = pd.read_json(transposed_table)
+        session_slot = session_id + 'transposed'
+    
+    # load cached table
+    um_processed_table = saved_processed_table(session_slot)
 
+    # rename keys for proper merge
     annot_table.rename(columns={annot_key: feature_key}, inplace=True)
+
     merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
     merge_table.drop_duplicates(subset=list(um_processed_table), inplace=True)
     
+    # save list to json for client-side cache
     external_annot = merge_table[annot_label].to_list()
     external_annot_json = json.dumps(external_annot)
 
@@ -374,8 +403,6 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_tab
 
     State('n_cluster', 'value'),
 
-    State('um_processed_table', 'children'),
-    State('transposed_table', 'children'),
 
     State('feature_scaling', 'value'),
     State('n_neighbors', 'value'),
@@ -383,12 +410,13 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, um_processed_tab
     State('umap_metric', 'value'),
 
     State('generate_umap', 'style'),
+    State('session_id', 'data'),
     
     prevent_initial_call=True
 )
 def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,\
-    internal_annot, ext_annot, n_cluster, um_processed_table, transposed_table, scaling,\
-    n_neighbors, min_dist, metric,  button_style):
+    internal_annot, ext_annot, n_cluster, scaling,\
+    n_neighbors, min_dist, metric,  button_style, session_id):
     """
     Generate umap from all the customizable options
     """
@@ -401,14 +429,17 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     if transpose_clicks is None:
         transpose_clicks = 0
 
-    # for non transposed option
+    # cached load for non transposed option
     if transpose_clicks % 2 == 0:
-        um_processed_table = pd.read_json(um_processed_table)
-        
-    
-    # for transposed option
+        session_slot = session_id + 'umap'
+        um_processed_table = saved_processed_table(session_slot)
+
+    # cached load for transposed option
     else:
-        um_processed_table = pd.read_json(transposed_table)
+        session_slot = session_id + 'transposed'
+        um_processed_table = saved_processed_table(session_slot)
+
+
         # manual assignment of features and label
         um_features = list(um_processed_table)
         um_features.remove('samples')
@@ -427,8 +458,10 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     um_processed_table.dropna(subset=um_features, inplace=True)
     matrix = um_processed_table[um_features]
 
+
     # scale matrix
     scaled = pu.scale_table(matrix.values, scaling)
+
 
     # since clustering annotation must follow dropping Nans, if statement
     # is separately placed here
@@ -447,31 +480,35 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     u = fit.fit_transform(scaled)
     um_processed_table['umap_1'] = u[: , 0]
     um_processed_table['umap_2'] = u[:, 1]
+
+    # umap generation
     fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
 
-    return fig, button_style, um_processed_table.to_json()
 
-    
+    # save table with umap coordinates for downloadable cache
+    complete_slot = session_id +'completed'
+    um_processed_table = saved_processed_table(complete_slot, um_processed_table, overwrite=True)
 
+
+
+    return fig, button_style
 
 @app.callback(
     Output('download_umap', 'data'),
     Output('download_umap_button', 'style'),
     Input('download_umap_button', 'n_clicks'),
-    State('um_table', 'children'),
+
     State('download_umap_button', 'style'),
+    State('session_id', 'data'),
     prevent_initial_call=True
 )
-def download_matrix(n_clicks, matrix_json, button_style):
+def download_matrix(n_clicks, button_style, session_id):
     if n_clicks is None:
         raise PreventUpdate
-    download = pd.read_json(matrix_json)
+    slot = session_id + 'completed'
+    download = saved_processed_table(slot)
     button_style['background-color'] = '#DCE7EC'
 
-    return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
+    return dcc.send_data_frame(download.to_csv, 'umap.csv'), 
 
-    
-
-
-if __name__ == "__main__":
-    app.run_server(debug=True)
+   
