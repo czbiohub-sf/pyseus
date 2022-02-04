@@ -19,12 +19,13 @@ class RawTables:
     """
     
     # initiate raw table by importing from data directory
-    def __init__(self, experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
+    def __init__(self, analysis= '', experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
             sample_cols=None, intensity_type='Intensity ', proteingroup=None,
             file_designated=False):
         # set up root folders for the experiment and standard for comparison
         self.root = experiment_dir
         self.intensity_type = intensity_type
+        self.analysis = analysis
         if file_designated:
             self.pg_table = proteingroup
         else:
@@ -61,7 +62,11 @@ class RawTables:
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
 
-        ms_table = self.pg_table.copy()
+        try: 
+            ms_table = self.renamed_table.copy()
+        except AttributeError:
+            # if table has not been renamed use the raw pg table
+            ms_table = self.pg_table.copy()
 
         pre_filter = ms_table.shape[0]
 
@@ -83,7 +88,10 @@ class RawTables:
         # select necessary columns
         if select_intensity:
             all_cols = list(ms_table)
-            sample_cols = select_intensity_cols(all_cols, self.intensity_type)
+            int_cols, sample_cols = select_intensity_cols(all_cols, self.intensity_type)
+            rename = {i: j for i, j in zip(int_cols, sample_cols)}
+
+            ms_table = ms_table.rename(columns=rename)           
             info_cols = self.info_cols
             self.sample_cols = sample_cols
         else:
@@ -108,7 +116,11 @@ class RawTables:
                 expressions used in search, and all specified groups are used in substitution
 
         """
-        df = self.filtered_table.copy()
+        try: 
+            df = self.filtered_table.copy()
+        except AttributeError:
+            # if table has not been filtered yet use the raw pg table
+            df = self.pg_table.copy()
         sample_cols = self.sample_cols
 
         # start a new col list
@@ -134,6 +146,7 @@ class RawTables:
 
         renamed = df.rename(columns=rename)
 
+        self.renamed_table = renamed
         self.filtered_table = renamed
 
 
@@ -422,7 +435,7 @@ def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
         pyseus_tables.bait_impute(distance=distance, width=width, local=local)
     else:
         pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
-    # pyseus_tables.generate_export_bait_matrix()
+    pyseus_tables.generate_export_bait_matrix()
     # pyseus_tables.save()
     return pyseus_tables
 
@@ -439,21 +452,24 @@ def select_intensity_cols(orig_cols, intensity_type):
     rtype: intensity_cols list """
     # new list of intensity cols
     intensity_cols = []
+    rename_cols = []
 
     # create a regular expression that can distinguish between
     # intensity and LFQ intensity
-    re_intensity = '^' + intensity_type.lower()
+    re_intensity = '(^' + intensity_type + ')'
 
     # for loop to include all the intensity col names
-    intensity_type = intensity_type.lower()
+    intensity_type = intensity_type
     for col in orig_cols:
-        col_l = col.lower()
-
+ 
         # check if col name has intensity str
-        if re.search(re_intensity, col_l):
-            intensity_cols.append(col)
+        if re.search(re_intensity, col):
+            sample = re.search(re_intensity + ' (.*)', col).groups()[1]
 
-    return intensity_cols
+            intensity_cols.append(col)
+            rename_cols.append(sample)
+
+    return intensity_cols, rename_cols
 
 
 def pool_impute(bait_group, distance=1.8, width=0.3, local=True, global_mean=0, global_stdev=0):

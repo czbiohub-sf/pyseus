@@ -390,6 +390,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 
     Output('umap_fig', 'figure'),
     Output('generate_umap', 'style'),
+    Output('um_table', 'children'),
     Input('generate_umap', 'n_clicks'),
     State('transpose_button', 'n_clicks'),
 
@@ -483,18 +484,20 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     # umap generation
     fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
 
+
     # save table with umap coordinates for downloadable cache
     complete_slot = session_id +'completed'
     um_processed_table = saved_processed_table(complete_slot, um_processed_table, overwrite=True)
 
 
+
     return fig, button_style
 
-    
 @app.callback(
     Output('download_umap', 'data'),
     Output('download_umap_button', 'style'),
     Input('download_umap_button', 'n_clicks'),
+
     State('download_umap_button', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
@@ -508,8 +511,4 @@ def download_matrix(n_clicks, button_style, session_id):
 
     return dcc.send_data_frame(download.to_csv, 'umap.csv'), 
 
-    
-
-
-if __name__ == "__main__":
-    app.run_server(debug=True)
+   

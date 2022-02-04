@@ -280,8 +280,8 @@ def generate_clustergram(n_clicks, features, label, index,\
     prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
         verbose=False)
     
-    heatmap = ph.dendro_heatmap(processed_table, features, prey_leaves, hexmap,
-        zmin, zmax, label, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
+    heatmap = ph.dendro_heatmap(processed_table, prey_leaves, hexmap,
+        zmin, zmax, label, features, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
         verbose=False)
 
     x_tick = False
