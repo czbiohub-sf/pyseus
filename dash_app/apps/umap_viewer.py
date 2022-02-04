@@ -390,7 +390,6 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 
     Output('umap_fig', 'figure'),
     Output('generate_umap', 'style'),
-    Output('um_table', 'children'),
     Input('generate_umap', 'n_clicks'),
     State('transpose_button', 'n_clicks'),
 
