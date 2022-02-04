@@ -19,6 +19,8 @@ from dapp import app
 from dapp import saved_processed_table
 
 
+
+# This is the data set-up for the table of "processed_table_status"
 empty_table = pd.DataFrame()
 slots = []
 tables = []
@@ -178,13 +180,18 @@ def display_upload_ms_filename(filename, style):
 def upload_table(n_clicks, content,
     filename, slot_num, session_id, label_1, label_2, label_3,
     home_button_style):
+    """
+    When a user uploads a table and clicks upload button, save the table
+    and table name to the server under the right slot
+    """
 
     if n_clicks is None:
         raise PreventUpdate
 
+    # unique session id for the specific slot the table will be cached
     session_slot = session_id + str(slot_num)
 
-    # assign tables and labels to a list for easy slot designation
+    # assign labels to a list for easy slot designation
     labels = [label_1, label_2, label_3]  
 
 
@@ -195,7 +202,10 @@ def upload_table(n_clicks, content,
     raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
         low_memory=False, header=[0,1], index_col=0)
 
-    _ = saved_processed_table(session_slot, raw_table)
+    # cache the table to the specific slot
+    _ = saved_processed_table(session_slot, raw_table, overwrite=True)
+
+    # Save the filename to the specific slot
     labels[slot_num] = filename
 
     home_button_style['background-color'] = '#DCE7EC'
@@ -214,6 +224,9 @@ def upload_table(n_clicks, content,
     State('processed_table_status', 'data'),
 )
 def update_table_status(label_1, label_2, label_3, label_4, label_5, label_6, data):
+    """
+    Automatic update of file/table names in the upload/save slots. 
+    """
     table = pd.DataFrame.from_records(data)
     table_names = table['table_name'].to_list()
     table_names[0] = label_1

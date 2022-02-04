@@ -27,10 +27,10 @@ head, tail = os.path.split(head)
 sys.path.append(head)
 from pyseus import basic_processing as bp
 
-from app import app
+from dapp import app
+from dapp import saved_processed_table
 
 
-# App Layout
 # App Layout
 layout = html.Div([
         # Header tags
@@ -82,7 +82,6 @@ def display_upload_ms_filename(filename, style):
         return filename, style
 
 @app.callback(
-    Output('pp_raw_table', 'children'),
     Output('all_pp_cols', 'children'),
     Output('sample_pp_cols_checklist', 'options'),
     Output('meta_pp_cols_checklist', 'options'),
@@ -92,12 +91,16 @@ def display_upload_ms_filename(filename, style):
     State('pp_raw_table_sep', 'value'),
     State('skip_top_rows', 'value'),
     State('read_table_button', 'style'),
+    State('session_id', 'data')
     )
-def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
+def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style, session_id):
     """
     initiate QualityControl class with the uploaded proteingroups file
     """
 
+    # create a cache slot for a raw table
+    raw_table_slot = session_id + 'raw'
+    
     if n_clicks is None:
         raise PreventUpdate
     else:
@@ -119,7 +122,7 @@ def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
             proteingroup=ms_table,
             file_designated=True)
 
-        filtered_table = exp.pg_table.to_json()
+        saved_processed_table(raw_table_slot, exp.pg_table, overwrite=True)
         all_cols = list(exp.pg_table)
         all_cols_json = json.dumps(all_cols)
 
@@ -129,7 +132,7 @@ def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style):
             button_style = {}
         button_style['background-color'] = '#DCE7EC'
 
-        return filtered_table, all_cols_json, checklist_options,\
+        return all_cols_json, checklist_options,\
             checklist_options, button_style
 
 @app.callback(
@@ -238,10 +241,8 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
         return col_table.to_dict('records'), '', button_style
 
 @app.callback(
-    Output('pp_processed_table', 'children'),
     Output('process_table_button', 'style'),
     Input('process_table_button', 'n_clicks'),
-    State('pp_raw_table', 'children'),
     State('sample_pp_cols', 'children'),
     State('meta_pp_cols', 'children'),
     State('search_re', 'value'),
@@ -259,116 +260,123 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
     State('imputation_width', 'value'),
     State('tech_reps', 'value'),
     State('process_table_button', 'style'),
+    State('session_id', 'data')
 )
 
-def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
+def process_table(n_clicks, sample_cols_json,
     meta_cols_json, search_re, replacement_re, filter_rows,
     rename_samples, log_transform, transform_opt,
     remove_incomplete_rows, merge_reps, merge_opt, replace_nulls,
-    replace_opt, impute_dist, impute_width, tech_reps, button_style):
-    
+    replace_opt, impute_dist, impute_width, tech_reps, button_style, session_id):
+    """
+    Process table according to user given otions
+    """
+
+    # slots for cached tables
+    raw_table_slot = session_id + 'raw'
+    processed_table_slot = session_id + 'processed'
     
     if n_clicks is None:
         raise PreventUpdate
-    else:
-        # parse raw table and columns from json formats
-        pp_raw_table = pd.read_json(pp_raw_table_json)
-        sample_cols = json.loads(sample_cols_json)
-        meta_cols = json.loads(meta_cols_json)
 
-        # initiate RawTables class from basic_processing
-        ms_tables = bp.RawTables(
-            experiment_dir=None,
-            pg_file='',
-            info_cols=meta_cols,
-            sample_cols=sample_cols,
-            intensity_type='',
-            file_designated=True,
-            proteingroup=pp_raw_table
-        )
-        # designate raw table as filtered_table in the class
-        # for specific exception to this Dash App
-        # and use it as a default output table
-        ms_tables.filtered_table = pp_raw_table
+    # load cached raw table and columns from json formats
+    pp_raw_table = saved_processed_table(raw_table_slot)
+    sample_cols = json.loads(sample_cols_json)
+    meta_cols = json.loads(meta_cols_json)
+
+    # initiate RawTables class from basic_processing
+    ms_tables = bp.RawTables(
+        experiment_dir=None,
+        pg_file='',
+        info_cols=meta_cols,
+        sample_cols=sample_cols,
+        intensity_type='',
+        file_designated=True,
+        proteingroup=pp_raw_table
+    )
+    # designate raw table as filtered_table in the class
+    # for specific exception to this Dash App
+    # and use it as a default output table
+    ms_tables.filtered_table = pp_raw_table
+    output_table = ms_tables.filtered_table
+
+    # filter rows on MaxQuant contaminants, reverse-seq, and only id by site
+    if filter_rows:
+        ms_tables.filter_table(select_intensity=False, verbose=False)
+        
         output_table = ms_tables.filtered_table
 
-        # filter rows on MaxQuant contaminants, reverse-seq, and only id by site
-        if filter_rows:
-            ms_tables.filter_table(select_intensity=False, verbose=False)
-            
-            output_table = ms_tables.filtered_table
+    # rename samples with given search and replacement REs
+    if rename_samples:
+        search_re = search_re.split(';')
+        replacement_re = replacement_re.split(';')
+        replacement_re = ['' if x == 'NONE' else x for x in replacement_re ]
+        ms_tables.rename_columns(search_re, replacement_re)
 
-        # rename samples with given search and replacement REs
-        if rename_samples:
-            search_re = search_re.split(';')
-            replacement_re = replacement_re.split(';')
-            replacement_re = ['' if x == 'NONE' else x for x in replacement_re ]
-            ms_tables.rename_columns(search_re, replacement_re)
-
-            output_table = ms_tables.filtered_table
-            
-        # transform sample values to log
-        if log_transform:
-            if transform_opt == 'log2':
-                ms_tables.transform_intensities(func=np.log2)
-            else:
-                ms_tables.transform_intensitites(func=np.log10)
-            output_table = ms_tables.transformed_table
+        output_table = ms_tables.filtered_table
         
-        # group tables by technical replicates for the following
-        # processing options
-        if tech_reps == 'yes':
-            ms_tables.group_replicates(reg_exp=r'(.*)_\d+$')
+    # transform sample values to log
+    if log_transform:
+        if transform_opt == 'log2':
+            ms_tables.transform_intensities(func=np.log2)
+        else:
+            ms_tables.transform_intensitites(func=np.log10)
+        output_table = ms_tables.transformed_table
+    
+    # group tables by technical replicates for the following
+    # processing options
+    if tech_reps == 'yes':
+        ms_tables.group_replicates(reg_exp=r'(.*)_\d+$')
 
-        # if options involve any grouping, the output table is defaulted to 
-        # grouped table
-        if merge_reps or replace_nulls:
-            output_table = ms_tables.grouped_table
+    # if options involve any grouping, the output table is defaulted to 
+    # grouped table
+    if merge_reps or replace_nulls:
+        output_table = ms_tables.grouped_table
 
-        # remove rows that do not have at least one sample
-        # that has all real values
-        if remove_incomplete_rows:
-            ms_tables.remove_invalid_rows(verbose=False)
-            output_table = ms_tables.preimpute_table
+    # remove rows that do not have at least one sample
+    # that has all real values
+    if remove_incomplete_rows:
+        ms_tables.remove_invalid_rows(verbose=False)
+        output_table = ms_tables.preimpute_table
+    
+    # various null substitution/imputation algorithms
+    if replace_nulls:
+        if replace_opt == 'zero':
+            sample_cols = ms_tables.sample_cols
+
+            # replace null values in sample columns with 0
+            output_table[sample_cols] = output_table[sample_cols].fillna(value=0)
         
-        # various null substitution/imputation algorithms
-        if replace_nulls:
-            if replace_opt == 'zero':
-                sample_cols = ms_tables.sample_cols
-
-                # replace null values in sample columns with 0
-                output_table[sample_cols] = output_table[sample_cols].fillna(value=0)
-            
-            elif replace_opt == 'sample_impute':
-                ms_tables.bait_impute(distance=impute_dist, width=impute_width)
-                output_table = ms_tables.bait_imputed_table
-            
-            else: 
-                ms_tables.prey_impute(distance=impute_dist, width=impute_width)
-                output_table = ms_tables.prey_imputed_table
+        elif replace_opt == 'sample_impute':
+            ms_tables.bait_impute(distance=impute_dist, width=impute_width)
+            output_table = ms_tables.bait_imputed_table
         
-        # merge technical replicate with mean or median
-        if merge_reps:
-            if merge_opt == 'mean':
-                mean = True
-            else:
-                mean=False
-
-            output_table = bp.median_replicates(output_table, mean=mean)
-            final_table = bp.dash_output_table(output_table,
-                ms_tables.sample_groups, ms_tables.info_cols)
-
         else: 
-            final_table = bp.dash_output_table(output_table,
-                ms_tables.sample_cols, ms_tables.info_cols)
-        
-        # convert final table into json to store in frontend
-        final_table_json = final_table.to_json()
+            ms_tables.prey_impute(distance=impute_dist, width=impute_width)
+            output_table = ms_tables.prey_imputed_table
+    
+    # merge technical replicate with mean or median
+    if merge_reps:
+        if merge_opt == 'mean':
+            mean = True
+        else:
+            mean=False
 
-        # change button color when finished
-        button_style['background-color'] = '#DCE7EC'
+        output_table = bp.median_replicates(output_table, mean=mean)
+        final_table = bp.dash_output_table(output_table,
+            ms_tables.sample_groups, ms_tables.info_cols)
 
-        return final_table_json, button_style
+    else: 
+        final_table = bp.dash_output_table(output_table,
+            ms_tables.sample_cols, ms_tables.info_cols)
+    
+    # save processed table to cache
+    _ = saved_processed_table(processed_table_slot, final_table, overwrite=True)
+
+    # change button color when finished
+    button_style['background-color'] = '#DCE7EC'
+
+    return button_style
 
 @app.callback(
     Output('download-ms-table-csv', 'data'),
@@ -377,16 +385,18 @@ def process_table(n_clicks, pp_raw_table_json, sample_cols_json,
     State('pp_processed_table', 'children'),
     State('ms_save_name', 'value'),
     State('download_table', 'style'),
+    State('session_id', 'data'),
     prevent_initial_call=True
 )
-def download_ms_table(n_clicks, table_json, save_name, button_style):
+def download_ms_table(n_clicks, table_json, save_name, button_style, session_id):
     """
     load table from the frontend json format, and save in a csv
     """
     if n_clicks is None:
         raise PreventUpdate
 
-    download = pd.read_json(table_json)
+    slot_id = session_id + 'processed'
+    download = saved_processed_table(slot_id)
 
     # json reads multi-index tuples as literal strings
     # so convert back to proper multi-level columns
@@ -560,9 +570,7 @@ def update_table_status(label_1, label_2, label_3, label_4, label_5, label_6, da
     return table.to_dict('records')
         
 @app.callback(
-    Output('slot_table_4', 'children'),
-    Output('slot_table_5', 'children'),
-    Output('slot_table_6', 'children'),
+
     Output('slot_label_4', 'children'),
     Output('slot_label_5', 'children'),
     Output('slot_label_6', 'children'),
@@ -572,36 +580,46 @@ def update_table_status(label_1, label_2, label_3, label_4, label_5, label_6, da
     Input('pp_ul_button', 'n_clicks'),
     State('slot_save_name', 'value'),
     State('save_slot', 'value'),
-    State('pp_processed_table', 'children'),
 
-    State('slot_table_4', 'children'),
-    State('slot_table_5', 'children'),
-    State('slot_table_6', 'children'),
+
     State('slot_label_4', 'children'),
     State('slot_label_5', 'children'),
     State('slot_label_6', 'children'),
     State('pp_ul_button', 'style'),
+    State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def upload_table(n_clicks, pp_save_name, pp_slot, pp_table,
-    table_1, table_2, table_3, label_1, label_2, label_3, button_style):
+def upload_table(n_clicks, pp_save_name, pp_slot,
+    label_1, label_2, label_3, button_style, session_id):
 
     if n_clicks is None:
         raise PreventUpdate
 
-    # assign tables and labels to a list for easy slot designation
-    tables = [table_1, table_2, table_3]
-    labels = [label_1, label_2, label_3]  
+    # since the cache for saved tables start at 4, add 3 to the slot number
+    cache_slot = session_id + str(pp_slot + 3)
 
-    tables[pp_slot] = pp_table
+    # load cached processed table
+    processed_slot = session_id + 'processed'
+
+    try: 
+        processed_table = saved_processed_table(processed_slot)
+    except Exception:
+        raise PreventUpdate
+
+    # assignlabels to a list for easy slot designation
+
+    labels = [label_1, label_2, label_3]  
     labels[pp_slot] = pp_save_name
+
+    # save table to designated cache
+    _ = saved_processed_table(cache_slot, processed_table, overwrite=True)
+
     button_style['background-color'] = '#DCE7EC'
 
 
 
-    return tables[0], tables[1], tables[2], labels[0], labels[1],\
-        labels[2], button_style
+    return labels[0], labels[1], labels[2], button_style
 
 if __name__ == "__main__":
     app.run_server(debug=True)

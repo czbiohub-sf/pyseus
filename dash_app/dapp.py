@@ -9,10 +9,14 @@ import pandas as pd
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 server = flask.Flask(__name__)
+
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
 	suppress_callback_exceptions=True)
 
+# set up server-side cache.
+
 cache = Cache(app.server, config={
+    "CACHE_DEFAULT_TIMEOUT": 43200,
     'CACHE_TYPE': 'redis',
     # Note that filesystem cache doesn't work on systems with ephemeral
     # filesystems like Heroku.
@@ -24,7 +28,19 @@ cache = Cache(app.server, config={
     'CACHE_THRESHOLD': 200
 })
 
-def saved_processed_table(session_id, processed_table=None):
+def saved_processed_table(session_id, processed_table=None, overwrite=False):
+    """
+    save data tables to server-side cache using unique IDs found in different app pages
+
+    """
+
+    if overwrite:
+        # delete cache to save a new one if overwrite option is True
+        try:
+            cache.delete_memoized(saved_processed_table, session_id)
+        except AttributeError:
+            pass
+
     @cache.memoize(args_to_ignore=['processed_table'])
     def save_processed_table(session_id, processed_table):
 
@@ -33,23 +49,3 @@ def saved_processed_table(session_id, processed_table=None):
     processed_table = save_processed_table(session_id, processed_table)
     
     return pd.read_json(processed_table)
-
-
-# def uploaded_processed_table(session_id, content=None):
-#     """
-#     Processed table cache for slots 1-3, and page-specific upload tables
-#     """
-#     @cache.memoize(args_to_ignore=['content'])
-#     def upload_processed_table(session_id, content):
-#         # parse file
-#         content_type, content_string = content.split(',')
-#         decoded = base64.b64decode(content_string)
-
-#         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-#             low_memory=False, header=[0,1], index_col=0)
-        
-#         return raw_table.to_json()
-    
-#     processed_table = upload_processed_table(session_id, content)
-    
-#     return pd.read_json(processed_table)
