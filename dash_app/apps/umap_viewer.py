@@ -172,7 +172,9 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
     # processing table, features, and annots for UMAP
     um_processed_table = um_raw_table.droplevel(level=0, axis=1)
     um_features = list(um_raw_table['sample'])
+    um_features.sort()
     annots = list(um_raw_table['metadata'])
+    annots.sort()
 
     dims = list(um_raw_table['sample'].shape)
 
@@ -453,6 +455,8 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         external_annots = json.loads(ext_annot)
         um_processed_table['external'] = external_annots
         annot = 'external'
+
+    _ = list(um_processed_table)
     um_processed_table.dropna(subset=um_features, inplace=True)
     matrix = um_processed_table[um_features]
 

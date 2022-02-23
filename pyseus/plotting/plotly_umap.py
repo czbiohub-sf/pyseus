@@ -42,7 +42,7 @@ def scale_table(matrix, method):
 
 
 def interaction_umap(
-        matrix, node_name, cluster, opacity=0.5,
+        matrix, node_name, cluster, opacity=0.8,
         width=800, height=600, highlight=None):
 
     matrix = matrix.copy()
@@ -69,10 +69,11 @@ def interaction_umap(
         labelling = matrix[cluster].isna()
         labelled = matrix[~labelling]
         unlabelled = matrix[labelling]
+        unlabelled[cluster] = 'unlabelled'
 
         labelled.sort_values(by=cluster, inplace=True)
 
-        fig = px.scatter(
+        fig1 = px.scatter(
             labelled,
             x='umap_1',
             y='umap_2',
@@ -85,16 +86,34 @@ def interaction_umap(
             color_continuous_scale=px.colors.cyclical.mygbm[: -1],
             opacity=opacity,
             template='simple_white')
-        fig.update_traces(marker=dict(size=5.5))
-        fig.update(layout_coloraxis_showscale=False)
-        fig.add_scatter(
-            x=unlabelled['umap_1'],
-            y=unlabelled['umap_2'],
-            mode='markers',
-            showlegend=False,
-            hoverinfo='skip',
-            opacity=0.2,
-            marker=dict(color='grey'))
+        fig1.update_traces(marker=dict(size=5.5))
+        fig1.update(layout_coloraxis_showscale=False)
+
+        # fig.add_scatter(
+        #     x=unlabelled['umap_1'],
+        #     y=unlabelled['umap_2'],
+        #     mode='markers',
+        #     showlegend=True,
+        #     name='unlabelled',
+        #     opacity=0.2,
+        #     marker=dict(color='grey'))
+
+        fig2 = px.scatter(
+            unlabelled,
+            x='umap_1',
+            y='umap_2',
+            labels={
+                'umap_1': 'UMAP 1',
+                'umap_2': 'UMAP 2'
+                },
+            color=cluster,
+            hover_name=node_name,
+            opacity=0.3,
+            color_discrete_sequence=['#D0D3D4'],
+            template='simple_white')
+        
+        fig = go.Figure(data = fig2.data + fig1.data)
+
 
         # if highlight:
         #     labelled = matrix[matrix[node_name].isin(highlight)]
@@ -108,9 +127,10 @@ def interaction_umap(
         #         text=labelled[node_name],
         #         marker=dict(color='#fc4f30', size=14))
 
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
+    fig.update_xaxes(showticklabels=False, title_text='UMAP 1', ticks="")
+    fig.update_yaxes(showticklabels=False, title_text='UMAP 2', ticks="")
     fig.update_layout(
+        template='simple_white',
         legend=dict(
             font=dict(size=14)
         )
