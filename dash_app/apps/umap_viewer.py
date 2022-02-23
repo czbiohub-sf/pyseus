@@ -390,7 +390,6 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 
     Output('umap_fig', 'figure'),
     Output('generate_umap', 'style'),
-    Output('um_table', 'children'),
     Input('generate_umap', 'n_clicks'),
     State('transpose_button', 'n_clicks'),
 
@@ -454,7 +453,6 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         external_annots = json.loads(ext_annot)
         um_processed_table['external'] = external_annots
         annot = 'external'
-
     um_processed_table.dropna(subset=um_features, inplace=True)
     matrix = um_processed_table[um_features]
 
@@ -509,6 +507,6 @@ def download_matrix(n_clicks, button_style, session_id):
     download = saved_processed_table(slot)
     button_style['background-color'] = '#DCE7EC'
 
-    return dcc.send_data_frame(download.to_csv, 'umap.csv'), 
+    return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
 
    

@@ -61,7 +61,8 @@ def interaction_umap(
             'umap_2': 'UMAP 2'
             },
             hover_name=node_name,
-            opacity=opacity)
+            opacity=opacity,
+            template='simple_white')
         fig.update_traces(marker=dict(size=5.5))       
 
     else: 
@@ -82,7 +83,8 @@ def interaction_umap(
             hover_name=node_name,
             color=cluster,
             color_continuous_scale=px.colors.cyclical.mygbm[: -1],
-            opacity=opacity)
+            opacity=opacity,
+            template='simple_white')
         fig.update_traces(marker=dict(size=5.5))
         fig.update(layout_coloraxis_showscale=False)
         fig.add_scatter(
@@ -113,6 +115,7 @@ def interaction_umap(
             font=dict(size=14)
         )
         )
+
     
     return fig
 
