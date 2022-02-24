@@ -172,7 +172,9 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
     # processing table, features, and annots for UMAP
     um_processed_table = um_raw_table.droplevel(level=0, axis=1)
     um_features = list(um_raw_table['sample'])
+    um_features.sort()
     annots = list(um_raw_table['metadata'])
+    annots.sort()
 
     dims = list(um_raw_table['sample'].shape)
 
@@ -407,6 +409,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
     State('n_neighbors', 'value'),
     State('min_dist', 'value'),
     State('umap_metric', 'value'),
+    State('random_state', 'value'),
 
     State('generate_umap', 'style'),
     State('session_id', 'data'),
@@ -415,7 +418,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 )
 def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,\
     internal_annot, ext_annot, n_cluster, scaling,\
-    n_neighbors, min_dist, metric,  button_style, session_id):
+    n_neighbors, min_dist, metric, random_state, button_style, session_id):
     """
     Generate umap from all the customizable options
     """
@@ -454,6 +457,7 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         um_processed_table['external'] = external_annots
         annot = 'external'
 
+    _ = list(um_processed_table)
     um_processed_table.dropna(subset=um_features, inplace=True)
     matrix = um_processed_table[um_features]
 
@@ -470,12 +474,22 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         um_processed_table['cluster'] = clusters
         annot = 'cluster'
 
-    # calculate umap dist
-    fit = umap.UMAP(
-        n_neighbors=n_neighbors,
-        min_dist=min_dist,
-        metric=metric
-    )
+    # configure random state
+    if random_state == 'None':
+        # calculate umap dist
+        fit = umap.UMAP(
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            metric=metric
+        )
+    else:
+        random_state = int(random_state)
+        fit = umap.UMAP(
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            metric=metric,
+            random_state=random_state
+        )
     u = fit.fit_transform(scaled)
     um_processed_table['umap_1'] = u[: , 0]
     um_processed_table['umap_2'] = u[:, 1]
@@ -508,6 +522,6 @@ def download_matrix(n_clicks, button_style, session_id):
     download = saved_processed_table(slot)
     button_style['background-color'] = '#DCE7EC'
 
-    return dcc.send_data_frame(download.to_csv, 'umap.csv'), 
+    return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
 
    

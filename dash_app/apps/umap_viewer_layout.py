@@ -482,6 +482,27 @@ def plotting_layout():
         ),
         html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
 
+        html.P('Random State',
+            style={'textAlign': 'center',
+                'fontSize': 15,
+                'marginBottom': '0%'}
+        ),
+        html.P('Enter an integer for a specific random state',
+            style={'textAlign': 'center',
+                'fontSize': 12,
+                'marginBottom': '0%'}
+        ),
+
+        dcc.Input(
+                id = 'random_state',
+                type = 'text',
+                value='None',
+                style = {'width': '80%', 'marginTop': '1.5%',
+                    'marginLeft': '10%'}
+            ),
+
+        html.Hr(style={'marginTop':'3%', 'marginBottom':'3%'}),
+
         html.P('UMAP metric',
             style={'textAlign': 'center',
                 'fontSize': 15,
