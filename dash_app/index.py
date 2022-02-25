@@ -18,7 +18,7 @@ from apps import preprocessing_layout, matrix_viewer_layout, umap_viewer_layout,
 
 session_id = str(uuid.uuid4())
 
-server = app.server
+# server = app.server
 
 
 # strings for initial population uploaded/saved table labels
@@ -28,37 +28,38 @@ no_p_table = 'No table processed'
 
 # Set up of navigation bar
 navbar = html.Div([
-html.Div(style={'background-color': '#DCE7EC', 'height':'20px', 'borderTop': '1px gray solid'}),
-html.Div([
+    html.Div(style={'background-color': '#DCE7EC', 'height': '20px', 'borderTop': '1px gray solid'}),
     html.Div([
-        dcc.Link("Home", href="/home", style={'fontSize': 20, 'marginLeft':'14%',
-            'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-    ], style={'marginLeft':'2.5%', 'width':'19%', 'textAlign':'center', 'display': 'inline-block'}),
+        html.Div([
+            dcc.Link("Home", href="/home", style={'fontSize': 20, 'marginLeft': '14%',
+                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
+        ], style={'marginLeft': '2.5%', 'width': '19%', 'textAlign': 'center',
+            'display': 'inline-block'}),
 
-    html.Div([
-        dcc.Link("Pre-processing", href="/pre_processing", style={'fontSize': 20, 'marginLeft':'10%',
-            'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-    ], style={'width':'19%', 'textAlign':'center', 'display': 'inline-block'}),
+        html.Div([
+            dcc.Link("Pre-processing", href="/pre_processing",
+                style={'fontSize': 20, 'marginLeft': '10%',
+                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
+        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
 
+        html.Div([
+            dcc.Link("Clustergram", href="/clustergram", style={'fontSize': 20, 'marginLeft': '10%',
+                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
+        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
 
-   html.Div([
-        dcc.Link("Clustergram", href="/clustergram", style={'fontSize': 20, 'marginLeft':'10%',
-            'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-    ], style={'width':'19%', 'textAlign':'center', 'display': 'inline-block'}),
+        html.Div([
+            dcc.Link("Volcano Plot", href="/volcano", style={'fontSize': 20, 'marginLeft': '10%',
+                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
 
+        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
 
-    html.Div([
-        dcc.Link("Volcano Plot", href="/volcano", style={'fontSize': 20, 'marginLeft':'10%',
-            'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
+        html.Div([
+            dcc.Link("UMAP", href="/umap", style={'fontSize': 20, 'marginLeft': '10%',
+                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
+        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'})
 
-    ], style={'width':'19%', 'textAlign':'center', 'display': 'inline-block'}),
-    html.Div([
-        dcc.Link("UMAP", href="/umap", style={'fontSize': 20, 'marginLeft':'10%',
-            'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-    ], style={'width':'19%', 'textAlign':'center', 'display': 'inline-block'})
-
-],
-style={'background-color': '#DCE7EC', 'height':'50px', 'borderBottom': '1px gray solid'})
+    ],
+        style={'background-color': '#DCE7EC', 'height': '50px', 'borderBottom': '1px gray solid'})
 ])
 
 index_layout = html.Div([
@@ -105,6 +106,7 @@ app.validation_layout = html.Div([
     volc_plot_layout,
     home.layout
 ])
+
 
 @app.callback(Output('page-content', 'children'),
               [Input('url', 'pathname')])
