@@ -46,27 +46,28 @@ from dapp import saved_processed_table
 
 # App Layout
 layout = html.Div([
-        # Header tags
-        html.P('The UMAP generator',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        dcc.Tabs(
-            id="tabs",
-            value='calculation',
-            children=[
-                dcc.Tab(
-                    label='Customize features and annotations',
-                    value='calculation',
-                    children = customize_layout()
-                ),
-                dcc.Tab(
-                    label='Plot UMAP',
-                    value='plotting',
-                    children = plotting_layout()
-                ),
-                ],
-            style={'marginBottom':'2%'}),
-    ])
+    # Header tags
+    html.P('The UMAP generator',
+        style={'textAlign': 'center', 'fontSize': 28, 'marginTop': '2%',
+            'marginBottom': '1%'}),
+    dcc.Tabs(
+        id="tabs",
+        value='calculation',
+        children=[
+            dcc.Tab(
+                label='Customize features and annotations',
+                value='calculation',
+                children=customize_layout()
+            ),
+            dcc.Tab(
+                label='Plot UMAP',
+                value='plotting',
+                children=plotting_layout()
+            ),
+        ],
+        style={'marginBottom': '2%'}),
+])
+
 
 @app.callback(
     Output('um_preloaded_dropdown', 'options'),
@@ -81,13 +82,13 @@ def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
     """
     automatically populate slot labels based on the upload/save list
     """
-    
+
     labels = [label_1, label_2, label_3, label_4, label_5, label_6]
     options = []
-    for i in np.arange(0,6):
+    for i in np.arange(0, 6):
         option = {'label': 'Slot ' + str(i+1) + ': ' + labels[i], 'value': i}
         options.append(option)
-    return options 
+    return options
 
 
 @app.callback(
@@ -102,12 +103,12 @@ def display_upload_ms_filename(filename, style):
     else:
         style['background-color'] = '#DCE7EC'
         return filename, style
-    
+
 
 @app.callback(
     Output('um_features', 'children'),
     Output('um_annots', 'children'),
-    Output('table_dims', 'children'), 
+    Output('table_dims', 'children'),
     Output('um_read_table_button', 'style'),
     Output('um_preload_button', 'style'),
     Input('um_read_table_button', 'n_clicks'),
@@ -122,12 +123,12 @@ def display_upload_ms_filename(filename, style):
     State('um_preload_button', 'style'),
     State('session_id', 'data')
 
-    )
-def parse_um_raw_table(n_clicks, preload_clicks, content, 
-    preload_slot, button_style, preload_style, session_id):
+)
+def parse_um_raw_table(n_clicks, preload_clicks, content,
+        preload_slot, button_style, preload_style, session_id):
     """
     Load cached table or upload a new table, and cache it to specific
-    UMAP-designated slot. 
+    UMAP-designated slot.
     """
 
     if n_clicks is None and preload_clicks is None:
@@ -151,10 +152,10 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
         decoded = base64.b64decode(content_string)
 
         um_raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-            low_memory=False, header=[0,1], index_col=0)
+            low_memory=False, header=[0, 1], index_col=0)
         if button_style is None:
             button_style = {}
-        button_style['background-color'] = '#DCE7EC'        
+        button_style['background-color'] = '#DCE7EC'
 
     # retrieving table from cache in specific slot
     elif button_id == 'um_preload_button':
@@ -191,7 +192,7 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
     # Transposed table, features, and annots for UMAP
     transposed_table = um_raw_table['sample'].T.reset_index().rename(
         {'index': 'samples'}, axis=1)
-    
+
     transposed_table.drop_duplicates(inplace=True)
     trans_slot = session_id + 'transposed'
     # save to transpose-specific cache
@@ -199,6 +200,7 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
 
     return um_features_json, annots_json,\
         dims_json, button_style, preload_style
+
 
 @app.callback(
     Output('feature_dims', 'children'),
@@ -217,11 +219,11 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
     State('transpose_button', 'style'),
     prevent_initial_call=True
 )
-def return_feature_selections(transpose_clicks, um_features_json, 
-    annots_json, dims_json, button_style):
+def return_feature_selections(transpose_clicks, um_features_json,
+        annots_json, dims_json, button_style):
     """
     From the data extracted from processed table, populate options for
-    features, labels, annots, etc. 
+    features, labels, annots, etc.
     """
 
     if um_features_json is None and transpose_clicks is None:
@@ -236,11 +238,11 @@ def return_feature_selections(transpose_clicks, um_features_json,
         annots = json.loads(annots_json)
         dims = json.loads(dims_json)
 
-        #dimension string formatting
+        # dimension string formatting
         dim_string = f'{dims[1]} features X {dims[0]} observations, \
             {len(annots)} annotations'
-        
-        # feature checklist options 
+
+        # feature checklist options
         um_features_opts = [{'label': feature, 'value': feature}
             for feature in um_features]
 
@@ -251,12 +253,12 @@ def return_feature_selections(transpose_clicks, um_features_json,
             annot_opts.append({'label': annot, 'value': annot})
 
         annot_val = 'None'
-        
+
         button_style['background-color'] = 'white'
-        
+
         return dim_string, um_features_opts, um_features, annot_opts,\
             annot_val, annot_opts, annot_val, annot_opts, button_style
-    
+
     # for transposed option
     else:
         dims = json.loads(dims_json)
@@ -293,6 +295,7 @@ def display_merge_filename(filename, style):
         style['background-color'] = '#DCE7EC'
         return filename, style
 
+
 @app.callback(
     Output('merge_key_annot', 'options'),
     Output('external_annot', 'options'),
@@ -314,14 +317,13 @@ def fill_external_keys(content, filename):
             annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
         elif 'tsv' in filename:
             annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
-        
+
         cols = list(annot_table)
-        # feature checklist options 
+        # feature checklist options
         opts = [{'label': feature, 'value': feature}
             for feature in cols if "Unnamed" not in feature]
-        
-        return opts, opts  
 
+        return opts, opts
 
 
 @app.callback(
@@ -338,11 +340,11 @@ def fill_external_keys(content, filename):
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def merge_tables(n_clicks, transpose_clicks, content, filename, \
-    feature_key, annot_key, annot_label, button_style, session_id):
+def merge_tables(n_clicks, transpose_clicks, content, filename,
+        feature_key, annot_key, annot_label, button_style, session_id):
     """
     Load umap table from cache, and merge it with external annotation table.
-    Save merged series to client-side. 
+    Save merged series to client-side.
     """
 
     if n_clicks is None:
@@ -358,7 +360,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
         annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
     elif 'tsv' in filename:
         annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
-        
+
 
     if transpose_clicks is None:
         transpose_clicks = 0
@@ -370,7 +372,8 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
     # for transposed option
     else:
         session_slot = session_id + 'transposed'
-    
+        feature_key = 'samples'
+
     # load cached table
     um_processed_table = saved_processed_table(session_slot)
 
@@ -379,7 +382,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 
     merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
     merge_table.drop_duplicates(subset=list(um_processed_table), inplace=True)
-    
+
     # save list to json for client-side cache
     external_annot = merge_table[annot_label].to_list()
     external_annot_json = json.dumps(external_annot)
@@ -413,12 +416,12 @@ def merge_tables(n_clicks, transpose_clicks, content, filename, \
 
     State('generate_umap', 'style'),
     State('session_id', 'data'),
-    
+
     prevent_initial_call=True
 )
-def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,\
-    internal_annot, ext_annot, n_cluster, scaling,\
-    n_neighbors, min_dist, metric, random_state, button_style, session_id):
+def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
+        internal_annot, ext_annot, n_cluster, scaling,
+        n_neighbors, min_dist, metric, random_state, button_style, session_id):
     """
     Generate umap from all the customizable options
     """
@@ -446,7 +449,7 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         um_features = list(um_processed_table)
         um_features.remove('samples')
         label = 'samples'
-    
+
     # designate appropriate annotation for colormap
     if annot_opts == 'no_annot':
         annot = 'None'
@@ -499,12 +502,13 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
 
 
     # save table with umap coordinates for downloadable cache
-    complete_slot = session_id +'completed'
+    complete_slot = session_id + 'completed'
     um_processed_table = saved_processed_table(complete_slot, um_processed_table, overwrite=True)
 
 
 
     return fig, button_style
+
 
 @app.callback(
     Output('download_umap', 'data'),
@@ -523,5 +527,3 @@ def download_matrix(n_clicks, button_style, session_id):
     button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
-
-   

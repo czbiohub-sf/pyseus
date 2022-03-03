@@ -33,37 +33,42 @@ from pyseus import basic_processing as bp
 from pyseus.plotting import plotly_umap as pu
 from pyseus.plotting import plotly_heatmap as ph
 
+from dapp import app
+from dapp import saved_processed_table
+
 # global, immutable variables
 transposed_annots = ('sample')
 
 # initiate app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-from dapp import app
-from dapp import saved_processed_table
+
+
+
 
 # App Layout
 layout = html.Div([
-        # Header tags
-        html.P('Clustergram generator',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        dcc.Tabs(
-            id="tabs",
-            value='options',
-            children=[
-                dcc.Tab(
-                    label='Clustergram options',
-                    value='options',
-                    children = calculation_layout()
-                ),
-                dcc.Tab(
-                    label='Plot Clustergram',
-                    value='plotting',
-                    children = plotting_layout()
-                ),
-                ]),
-    ])
+    # Header tags
+    html.P('Clustergram generator',
+        style={'textAlign': 'center', 'fontSize': 28, 'marginTop': '2%',
+            'marginBottom': '1%'}),
+    dcc.Tabs(
+        id="tabs",
+        value='options',
+        children=[
+            dcc.Tab(
+                label='Clustergram options',
+                value='options',
+                children=calculation_layout()
+            ),
+            dcc.Tab(
+                label='Plot Clustergram',
+                value='plotting',
+                children=plotting_layout()
+            ),
+        ]),
+])
+
 
 @app.callback(
     Output('mat_preloaded_dropdown', 'options'),
@@ -80,10 +85,10 @@ def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
     """
     labels = [label_1, label_2, label_3, label_4, label_5, label_6]
     options = []
-    for i in np.arange(0,6):
+    for i in np.arange(0, 6):
         option = {'label': 'Slot ' + str(i+1) + ': ' + labels[i], 'value': i}
         options.append(option)
-    return options 
+    return options
 
 
 @app.callback(
@@ -124,14 +129,15 @@ def display_upload_ms_filename(filename, style):
     State('session_id', 'data'),
 
     prevent_initial_call=True
-    )
-def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_clicks,\
-    preload_slot, preload_style, session_id):
+)
+def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_clicks,
+        preload_slot, preload_style, session_id):
+
     """
     Load cached table or upload a new table, and cache it to specific
     clustergram-designated slot.
     """
-    
+
     if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
 
@@ -152,12 +158,12 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         decoded = base64.b64decode(content_string)
 
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-            low_memory=False, header=[0,1], index_col=0)
-        
+            low_memory=False, header=[0, 1], index_col=0)
+
         if button_style is None:
             button_style = {}
         button_style['background-color'] = '#DCE7EC'
-    
+
     elif button_id == 'mat_preload_button':
 
         table = saved_processed_table(session_slot)
@@ -175,10 +181,11 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
 
 
     features = list(raw_table['sample'])
+    features.sort()
     labels = list(raw_table['metadata'])
+    labels.sort()
 
-
-    # feature checklist options 
+    # feature checklist options
     features_opts = [{'label': feature, 'value': feature}
         for feature in features]
 
@@ -200,10 +207,10 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
 
     matrix = processed_table[features]
     metrics = [{
-        'min': [np.round(matrix.values.min(),2)],
-        'max': [np.round(matrix.values.max(),2)],
-        'avg': [np.round(matrix.values.mean(),2)],
-        'stdev': [np.round(matrix.values.std(),2)]
+        'min': [np.round(matrix.values.min(), 2)],
+        'max': [np.round(matrix.values.max(), 2)],
+        'avg': [np.round(matrix.values.mean(), 2)],
+        'stdev': [np.round(matrix.values.std(), 2)]
     }]
 
     return features_opts, features,\
@@ -220,11 +227,11 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
     State('colormap', 'value')
 )
 def generate_colormap(scale_data_clicks, color_clicks,
-    min, max, colormap):
-    
+        min, max, colormap):
+
     fig, _ = ph.color_map(min, max, colors=colormap)
     return fig
-    
+
 
 @app.callback(
     Output('matrix_fig', 'figure'),
@@ -247,8 +254,8 @@ def generate_colormap(scale_data_clicks, color_clicks,
 
     prevent_initial_call=True
 )
-def generate_clustergram(n_clicks, features, label, index,\
-    zmin, zmax, colormap, cluster_checks, tick_checks, button_style, session_id):
+def generate_clustergram(n_clicks, features, label, index,
+        zmin, zmax, colormap, cluster_checks, tick_checks, button_style, session_id):
     """
     returns plotly figure of cluster heatmap
     """
@@ -261,25 +268,25 @@ def generate_clustergram(n_clicks, features, label, index,\
     # read cache of cluster table
     clust_id = session_id + 'clust'
     processed_table = saved_processed_table(clust_id)
-    
+
 
     # generate the color map
     _, hexmap = ph.color_map(zmin, zmax, colormap)
 
-    
+
     # default bait clustering variables
     bait_leaves = None
     bait_clust = False
 
     # cluster samples
     if 'bait_clust' in cluster_checks:
-        bait_leaves = ph.bait_leaves(processed_table, features, index_id=index, grouped=False,
+        bait_leaves = ph.bait_leaves(processed_table, features, grouped=False,
             verbose=False)
         bait_clust = True
 
     prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
         verbose=False)
-    
+
     heatmap = ph.dendro_heatmap(processed_table, prey_leaves, hexmap,
         zmin, zmax, label, features, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
         verbose=False)
@@ -292,9 +299,9 @@ def generate_clustergram(n_clicks, features, label, index,\
         y_tick = True
 
     layout = go.Layout(
-                  xaxis={'showticklabels':x_tick},
-                 yaxis={'showticklabels':y_tick})
-    
+        xaxis={'showticklabels': x_tick},
+        yaxis={'showticklabels': y_tick})
+
     fig = go.Figure(data=heatmap, layout=layout)
 
     return fig, button_style

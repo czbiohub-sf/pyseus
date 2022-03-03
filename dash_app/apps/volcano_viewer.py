@@ -45,26 +45,27 @@ from dapp import saved_processed_table
 
 # App Layout
 layout = html.Div([
-        # Header tags
-        html.P('Enrichment calculation & Volcano plot generator',
-            style={'textAlign': 'center', 'fontSize': 28, 'marginTop':'2%',
-                'marginBottom': '1%'}),
-        dcc.Tabs(
-            id="tabs",
-            value='calculation',
-            children=[
-                dcc.Tab(
-                    label='Calculate Enrichment & Significance',
-                    value='calculation',
-                    children = calculation_layout()
-                ),
-                dcc.Tab(
-                    label='Hit-calling & Volcano plot',
-                    value='plotting',
-                    children = plotting_layout()
-                ),
-                ]),
-    ])
+    # Header tags
+    html.P('Enrichment calculation & Volcano plot generator',
+        style={'textAlign': 'center', 'fontSize': 28, 'marginTop': '2%',
+            'marginBottom': '1%'}),
+    dcc.Tabs(
+        id="tabs",
+        value='calculation',
+        children=[
+            dcc.Tab(
+                label='Calculate Enrichment & Significance',
+                value='calculation',
+                children=calculation_layout()
+            ),
+            dcc.Tab(
+                label='Hit-calling & Volcano plot',
+                value='plotting',
+                children=plotting_layout()
+            ),
+        ]),
+])
+
 
 @app.callback(
     Output('vol_preloaded_dropdown', 'options'),
@@ -79,13 +80,13 @@ def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
     """
     automatically load slot labels for the dropdown
     """
-    
+
     labels = [label_1, label_2, label_3, label_4, label_5, label_6]
     options = []
-    for i in np.arange(0,6):
+    for i in np.arange(0, 6):
         option = {'label': 'Slot ' + str(i+1) + ': ' + labels[i], 'value': i}
         options.append(option)
-    return options 
+    return options
 
 
 @app.callback(
@@ -103,6 +104,7 @@ def display_upload_ms_filename(filename, style):
         style['background-color'] = '#DCE7EC'
         return filename, style
 
+
 @app.callback(
     Output('null_matrix_upload', 'children'),
     Output('null_matrix_upload', 'style'),
@@ -118,9 +120,10 @@ def display_upload_filename(filename, style):
         style['background-color'] = '#DCE7EC'
         return filename, style
 
+
 @app.callback(
     Output('samples', 'children'),
-    Output('vol_read_table_button',   'style'),
+    Output('vol_read_table_button', 'style'),
     Output('vol_preload_button', 'style'),
     Input('vol_read_table_button', 'n_clicks'),
     Input('vol_preload_button', 'n_clicks'),
@@ -136,15 +139,15 @@ def display_upload_filename(filename, style):
 
     State('session_id', 'data'),
     prevent_initial_call=True
-    )
-def parse_raw_table(n_clicks, preload_clicks, content,  preload_slot,\
+)
+def parse_raw_table(n_clicks, preload_clicks, content, preload_slot,
         button_style, preload_style, session_id):
     """
     group replicates again from the standard file format
     and save the grouped table
     """
 
-  
+
     if n_clicks is None and preload_clicks is None:
         raise PreventUpdate
 
@@ -163,13 +166,13 @@ def parse_raw_table(n_clicks, preload_clicks, content,  preload_slot,\
         decoded = base64.b64decode(content_string)
 
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-            low_memory=False, header=[0,1], index_col=0)
+            low_memory=False, header=[0, 1], index_col=0)
         if button_style is None:
             button_style = {}
         button_style['background-color'] = '#DCE7EC'
-    
+
     elif button_id == 'vol_preload_button':
-        
+
         table = saved_processed_table(session_slot)
 
         column_tuples = [eval(name) for name in list(table)]
@@ -180,11 +183,11 @@ def parse_raw_table(n_clicks, preload_clicks, content,  preload_slot,\
         preload_style['background-color'] = '#DCE7EC'
 
 
-    
+
     processed_table = raw_table.droplevel(level=0, axis=1).copy()
     processed_table.reset_index(drop=True, inplace=True)
     features = list(raw_table['sample'])
-    labels = list(raw_table['metadata'])        
+    labels = list(raw_table['metadata'])
 
     processing = bp.RawTables(file_designated=True)
     processing.transformed_table = processed_table
@@ -198,12 +201,13 @@ def parse_raw_table(n_clicks, preload_clicks, content,  preload_slot,\
     samples = list(set(samples))
     samples.remove('metadata')
     samples.sort()
-    
+
     samples_json = json.dumps(samples)
-    
+
     _ = saved_processed_table(grouped_table_slot, grouped, overwrite=True)
 
     return samples_json, button_style, preload_style
+
 
 @app.callback(
     Output('control_matrix', 'children'),
@@ -227,33 +231,33 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
         matrix_content, matrix, edit_samples, edit_controls, upload_style, apply_style):
     """
     Process or update the manual control sample matrix
-    used in significance calculation 
+    used in significance calculation
     """
 
-    if (samples_json == None) and (upload_clicks == None):
+    if (samples_json is None) and (upload_clicks is None):
         raise PreventUpdate
 
     # get the context of the callback trigger
     ctx = dash.callback_context
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
+
     # generate a new null matrix with upload of standard table
     if button_id == 'samples':
         samples = json.loads(samples_json)
-        
+
         control_matrix = pd.DataFrame()
         # Create a boolean table
         for sample in samples:
             sample_bools = [True if x != sample else False for x in samples]
             control_matrix[sample] = sample_bools
-        
+
         control_matrix['Samples'] = samples
 
         control_matrix_json = control_matrix.to_json()
 
         return control_matrix_json, upload_style, apply_style
         # return control_matrix_json
-    
+
     # process and update the uploaded custom null matrix
     elif button_id == 'null_matrix_button':
 
@@ -261,12 +265,12 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
         decoded = base64.b64decode(content_string)
         control_matrix = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, index_col=0)
-        
+
         control_matrix_json = control_matrix.to_json()
         upload_style['background-color'] = '#DCE7EC'
-        
+
         return control_matrix_json, upload_style, apply_style
-    
+
     # if there are controls to be manually added, apply those changes
     elif button_id == 'control_apply_button':
         matrix = pd.read_json(matrix)
@@ -276,11 +280,12 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
             else False for sample in samples]
         for sample in edit_samples:
             matrix[sample] = new_controls
-        
+
         control_matrix_json = matrix.to_json()
         apply_style['background-color'] = '#DCE7EC'
 
         return control_matrix_json, upload_style, apply_style
+
 
 @app.callback(
     Output('view_sample_controls', 'options'),
@@ -299,8 +304,9 @@ def populate_control_options(control_matrix_json):
         for sample in samples:
             option_dict = {'label': sample, 'value': sample}
             options.append(option_dict)
-        
+
         return options, options, options
+
 
 @app.callback(
     Output('sample_controls', 'data'),
@@ -316,11 +322,12 @@ def review_controls(sample, control_matrix_json):
 
         # Get a list of controls
         controls = control_matrix[['Samples', sample]]
-        controls = controls[controls[sample] == True]
+        controls = controls[controls[sample] is True]
         controls_table = pd.DataFrame(controls[['Samples']])
         controls_table.rename(columns={'Samples': 'sample_control'}, inplace=True)
-        
+
         return controls_table.to_dict('records')
+
 
 @app.callback(
     Output('download_control_matrix', 'data'),
@@ -336,6 +343,7 @@ def download_matrix(n_clicks, matrix_json, button_style):
     button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'control_matrix.csv'), button_style
+
 
 @app.callback(
     Output('calculate_button', 'style'),
@@ -354,7 +362,7 @@ def download_matrix(n_clicks, matrix_json, button_style):
 
     prevent_initial_call=True
 )
-def calculate_significance(n_clicks, load_clicks, control_opt, 
+def calculate_significance(n_clicks, load_clicks, control_opt,
         control_matrix_json, enrichment_opt, load_opt, sig_table_json,
         upload_contents, button_style, load_style, session_id):
     """
@@ -370,12 +378,13 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
     grouped_slot = session_id + 'grouped'
     # specify slot for enrichment table
     enriched_slot = session_id + 'enriched'
+    download_enriched_slot = session_id + 'download'
 
 
 
 
-   # When user uploads the hits table, it is processed by process_hits
-   # callback, so do nothing here except change button style
+    # When user uploads the hits table, it is processed by process_hits
+    # callback, so do nothing here except change button style
 
     if (button_id == 'load_button') and (load_opt == 'pre_hits'):
         if upload_contents is not None:
@@ -384,11 +393,11 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
             return button_style, load_style
         else:
             raise PreventUpdate
-    
+
     # User decides to use calculated enrichment table from calculation tab
     # just need to verify that the enrichment table exists
     elif (button_id == 'load_button') and (load_opt == 'calculated'):
-       
+
         try:
             # verify that the enrichment table is available
             _ = saved_processed_table(enriched_slot)
@@ -397,10 +406,10 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
             raise PreventUpdate
 
         load_style['background-color'] = '#DCE7EC'
-        
+
         return button_style, load_style
-    
-    # if the user is uploading calculated enrichment table, add it to 
+
+    # if the user is uploading calculated enrichment table, add it to
     # the enrichment table cache
     elif (button_id == 'load_button') and (load_opt == 'pre_enrichment'):
         if upload_contents is None:
@@ -435,10 +444,10 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         # json reads multi-index tuples as literal strings
         # so convert back to proper multi-level columns
         column_tuples = [eval(name) for name in list(grouped)]
-        grouped.columns = pd.MultiIndex.from_tuples(column_tuples) 
+        grouped.columns = pd.MultiIndex.from_tuples(column_tuples)
         grouped.columns = grouped.columns.rename("Samples", level=0)
-        grouped.columns = grouped.columns.rename("Replicates", level=1) 
-        
+        grouped.columns = grouped.columns.rename("Replicates", level=1)
+
 
 
         # if control option is manual, import control matrix to assign controls
@@ -447,23 +456,29 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
             analysis = pa.AnalysisTables(imputed_table=grouped,
                 exclusion_matrix=control_matrix)
-            analysis.simple_pval_enrichment(std_enrich=control_opt)
+            analysis.simple_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
             enrichment_table = analysis.standard_hits_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)     
-            
-            
+            download_table = analysis.simple_pval_table.copy()
+            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
+            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
+
+
+
             return button_style, load_style
 
-        elif control_opt =='automatic':
+        elif control_opt == 'automatic':
             analysis = pa.AnalysisTables(imputed_table=grouped)
             analysis.two_step_bootstrap_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=False, perseus=False)
 
             enrichment_table = analysis.standard_hits_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)   
+            download_table = analysis.two_step_pval_table.copy()
+            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
+            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
 
             return button_style, load_style
+
 
 @app.callback(
     Output('download_pval_table', 'data'),
@@ -473,8 +488,8 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def download_matrix(n_clicks, button_style, session_id):
-    enriched_slot = session_id + 'enriched'
+def download_pval(n_clicks, button_style, session_id):
+    enriched_slot = session_id + 'download'
     download = saved_processed_table(enriched_slot)
     button_style['background-color'] = '#DCE7EC'
 
@@ -489,7 +504,7 @@ def download_matrix(n_clicks, button_style, session_id):
 
     prevent_initial_call=True
 )
-def display_upload_filename(filename, style):
+def display_upload_name(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
@@ -517,7 +532,8 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
     except Exception:
         raise PreventUpdate
 
-    meta_cols = [col for col in list(sig_table) if col not in ['Unnamed: 0', 'target', 'pvals', 'enrichment']]
+    meta_cols = [col for col in list(sig_table) if col not in
+        ['Unnamed: 0', 'target', 'pvals', 'enrichment']]
     options = []
     for col in meta_cols:
         option = {'label': col, 'value': col}
@@ -527,7 +543,7 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
 
     return options, 'Enrichment table calculated', style
 
-    
+
 @app.callback(
 
     Output('hits_button', 'style'),
@@ -545,8 +561,8 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
     prevent_initial_call=True
 
 )
-def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
-    fdr, offset, curvature, hits_style, session_id):
+def calculate_hits(hits_clicks, load_clicks, load_opt, contents, thresh_opt,
+        fdr, offset, curvature, hits_style, session_id):
     """
     Calculate the right FDR threshold given options, and call significant hits
     """
@@ -558,9 +574,9 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
     hits_slot = session_id + 'hits'
     enriched_slot = session_id + 'enriched'
 
-    # load hits table to cache if the user is uploading a 
+    # load hits table to cache if the user is uploading a
     # pre-calculated hits table
-    if button_id =='load_button':
+    if button_id == 'load_button':
         if (contents is None) or (load_opt != 'pre_hits'):
             raise PreventUpdate
         content_type, content_string = contents.split(',')
@@ -568,7 +584,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
 
         upload_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False)
-        
+
         _ = saved_processed_table(hits_slot, upload_table, overwrite=True)
 
 
@@ -583,7 +599,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
             raise PreventUpdate
 
         # calculate FDR
-        vali = va.Validation(hit_table = sig_table, target_col='target', 
+        vali = va.Validation(hit_table=sig_table, target_col='target',
             prey_col='prey')
         if thresh_opt == 'hawaii':
             vali.hawaii_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
@@ -591,7 +607,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
         elif thresh_opt == 'indiv':
             vali.dynamic_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
                 experiment=False)
-        
+
         hits_table = vali.called_table.copy()
         # save hits table to cache
         _ = saved_processed_table(hits_slot, hits_table, overwrite=True)
@@ -599,6 +615,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
         hits_style['background-color'] = '#DCE7EC'
 
         return hits_style
+
 
 @app.callback(
     Output('hits_table_status', 'children'),
@@ -608,7 +625,7 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents,thresh_opt,
     State('hits_table_status', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
-    )
+)
 def check_hits_status(hits_style, load_style, style, session_id):
 
     hits_slot = session_id + 'hits'
@@ -618,9 +635,11 @@ def check_hits_status(hits_style, load_style, style, session_id):
     except Exception:
         raise PreventUpdate
 
+    _ = hits_table
     style['background-color'] = '#DCE7EC'
-    
+
     return 'Hits table ready!', style
+
 
 @app.callback(
     Output('download_hits_table', 'data'),
@@ -630,7 +649,7 @@ def check_hits_status(hits_style, load_style, style, session_id):
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def download_matrix(n_clicks, button_style, session_id):
+def download_hits(n_clicks, button_style, session_id):
 
     hits_slot = session_id + 'hits'
 
@@ -638,7 +657,8 @@ def download_matrix(n_clicks, button_style, session_id):
     button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'hits_table.csv'), button_style
- 
+
+
 @app.callback(
     Output('volcano_dropdown_1', 'options'),
     Output('volcano_dropdown_2', 'options'),
@@ -665,8 +685,9 @@ def populate_volcano_samples(hits_button, loads_button, session_id):
     for sample in targets:
         option_dict = {'label': sample, 'value': sample}
         options.append(option_dict)
-    
+
     return options, options
+
 
 @app.callback(
     Output('matrix_fig_1', 'figure'),
@@ -685,6 +706,7 @@ def plot_volcano(click_1, sample, marker, session_id):
 
     return fig
 
+
 @app.callback(
     Output('matrix_fig_2', 'figure'),
     Input('volcano_button_2', 'n_clicks'),
@@ -693,7 +715,7 @@ def plot_volcano(click_1, sample, marker, session_id):
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano(click_1, sample, marker, session_id):
+def plot_volcano2(click_1, sample, marker, session_id):
 
     hits_slot = session_id + 'hits'
 
@@ -701,5 +723,3 @@ def plot_volcano(click_1, sample, marker, session_id):
     fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A')
 
     return fig
-
-
