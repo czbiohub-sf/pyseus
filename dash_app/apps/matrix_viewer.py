@@ -181,8 +181,9 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
 
 
     features = list(raw_table['sample'])
+    features.sort()
     labels = list(raw_table['metadata'])
-
+    labels.sort()
 
     # feature checklist options
     features_opts = [{'label': feature, 'value': feature}
@@ -279,7 +280,7 @@ def generate_clustergram(n_clicks, features, label, index,
 
     # cluster samples
     if 'bait_clust' in cluster_checks:
-        bait_leaves = ph.bait_leaves(processed_table, features, index_id=index, grouped=False,
+        bait_leaves = ph.bait_leaves(processed_table, features, grouped=False,
             verbose=False)
         bait_clust = True
 

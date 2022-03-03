@@ -116,8 +116,8 @@ def prey_kmeans(imputed_df, k=20, method='single', ordering=True, verbose=True):
     return leaves
 
 
-def bait_leaves(imputed_df, features, method='average', distance='euclidean',
-    grouped=True, verbose=True):
+def bait_leaves(imputed_df, features, method='average', distance='cosine',
+        grouped=True, verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance
     rtype: prey_leaves list"""
@@ -150,8 +150,8 @@ def bait_leaves(imputed_df, features, method='average', distance='euclidean',
     return bait_leaves
 
 
-def prey_leaves(imputed_df, features,  method='average', distance='euclidean', grouped=True,
-    index_id = 'Protein IDs', verbose=True):
+def prey_leaves(imputed_df, features, method='average', distance='euclidean', grouped=True,
+        index_id='Protein IDs', verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
 
@@ -168,7 +168,7 @@ def prey_leaves(imputed_df, features,  method='average', distance='euclidean', g
         # Create a median_df, taking median of all replicates
         median_df = pys.median_replicates(imputed_df, save_info=True, col_str='')
         median_df = median_df[features]
-    
+
     else:
         median_df = imputed_df[features]
 
@@ -192,7 +192,7 @@ def prey_leaves(imputed_df, features,  method='average', distance='euclidean', g
 
 
 def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features, index_id='Protein IDs',
-    bait_leaves=None, bait_clust=False, verbose=True):
+     bait_leaves=None, bait_clust=False, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -210,16 +210,18 @@ def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features,
 
     # Correctly order the plot df according to dendro leaves
     plot_df = plot_df.T[prey_leaves].T
-    
+
     # Reset index to set label
     plot_df.set_index(label, inplace=True)
+
+    # Informational columns are unnecessary now, drop them
+    plot_df = plot_df[features]
 
     # Reorder columns based on bait_leaves
     if bait_clust:
         plot_df = plot_df[bait_leaves]
 
-    # Informational columns are unnecessary now, drop them
-    plot_df = plot_df[features]
+
 
     # Generate the heatmap
     heatmap = go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=plot_df.values.tolist(),
