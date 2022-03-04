@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 import umap
 
+
 def scale_table(matrix, method):
     """
     takes a feature table and scale the data accordingly
@@ -43,11 +44,12 @@ def scale_table(matrix, method):
 
 def interaction_umap(
         matrix, node_name, cluster, opacity=0.8,
-        width=800, height=600, highlight=None):
+        width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
+        unlabelled_opacity=0.1):
 
     matrix = matrix.copy()
     matrix.reset_index(inplace=True, drop=False)
-    
+
     if node_name == 'None':
         node_name = None
 
@@ -57,15 +59,15 @@ def interaction_umap(
             x='umap_1',
             y='umap_2',
             labels={
-            'umap_1': 'UMAP 1',
-            'umap_2': 'UMAP 2'
+                'umap_1': 'UMAP 1',
+                'umap_2': 'UMAP 2'
             },
             hover_name=node_name,
             opacity=opacity,
             template='simple_white')
-        fig.update_traces(marker=dict(size=5.5))       
+        fig.update_traces(marker=dict(size=5.5))
 
-    else: 
+    else:
         labelling = matrix[cluster].isna()
         labelled = matrix[~labelling]
         unlabelled = matrix[labelling]
@@ -78,8 +80,8 @@ def interaction_umap(
             x='umap_1',
             y='umap_2',
             labels={
-            'umap_1': 'UMAP 1',
-            'umap_2': 'UMAP 2'
+                'umap_1': 'UMAP 1',
+                'umap_2': 'UMAP 2'
             },
             hover_name=node_name,
             color=cluster,
@@ -89,14 +91,6 @@ def interaction_umap(
         fig1.update_traces(marker=dict(size=5.5))
         fig1.update(layout_coloraxis_showscale=False)
 
-        # fig.add_scatter(
-        #     x=unlabelled['umap_1'],
-        #     y=unlabelled['umap_2'],
-        #     mode='markers',
-        #     showlegend=True,
-        #     name='unlabelled',
-        #     opacity=0.2,
-        #     marker=dict(color='grey'))
 
         fig2 = px.scatter(
             unlabelled,
@@ -105,14 +99,14 @@ def interaction_umap(
             labels={
                 'umap_1': 'UMAP 1',
                 'umap_2': 'UMAP 2'
-                },
+            },
             color=cluster,
             hover_name=node_name,
-            opacity=0.3,
-            color_discrete_sequence=['#D0D3D4'],
+            opacity=unlabelled_opacity,
+            color_discrete_sequence=[unlabelled_color],
             template='simple_white')
-        
-        fig = go.Figure(data = fig2.data + fig1.data)
+
+        fig = go.Figure(data=fig2.data + fig1.data)
 
 
         # if highlight:
@@ -134,9 +128,7 @@ def interaction_umap(
         legend=dict(
             font=dict(size=14)
         )
-        )
+    )
 
-    
+
     return fig
-
-

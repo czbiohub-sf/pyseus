@@ -401,8 +401,8 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         try:
             # verify that the enrichment table is available
             _ = saved_processed_table(enriched_slot)
-        # I need to fix this exception to be specific
-        except Exception:
+
+        except AttributeError:
             raise PreventUpdate
 
         load_style['background-color'] = '#DCE7EC'
