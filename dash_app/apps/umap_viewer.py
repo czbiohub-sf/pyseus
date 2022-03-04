@@ -413,6 +413,8 @@ def merge_tables(n_clicks, transpose_clicks, content, filename,
     State('min_dist', 'value'),
     State('umap_metric', 'value'),
     State('random_state', 'value'),
+    State('marker_color', 'value'),
+    State('opacity', 'value'),
 
     State('generate_umap', 'style'),
     State('session_id', 'data'),
@@ -421,7 +423,8 @@ def merge_tables(n_clicks, transpose_clicks, content, filename,
 )
 def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         internal_annot, ext_annot, n_cluster, scaling,
-        n_neighbors, min_dist, metric, random_state, button_style, session_id):
+        n_neighbors, min_dist, metric, random_state,
+        marker_color, opacity, button_style, session_id):
     """
     Generate umap from all the customizable options
     """
@@ -498,7 +501,8 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     um_processed_table['umap_2'] = u[:, 1]
 
     # umap generation
-    fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot)
+    fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot,
+        unlabelled_color=marker_color, unlabelled_opacity=opacity)
 
 
     # save table with umap coordinates for downloadable cache
@@ -527,3 +531,106 @@ def download_matrix(n_clicks, button_style, session_id):
     button_style['background-color'] = '#DCE7EC'
 
     return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
+
+
+@app.callback(
+    Output('umap_x', 'min'),
+    Output('umap_x', 'max'),
+    Output('umap_x', 'step'),
+    Output('umap_x', 'value'),
+    Output('umap_x', 'marks'),
+    Output('umap_y', 'min'),
+    Output('umap_y', 'max'),
+    Output('umap_y', 'step'),
+    Output('umap_y', 'value'),
+    Output('umap_y', 'marks'),
+
+    Input('generate_umap', 'style'),
+    State('session_id', 'data'),
+)
+def populate_subspacesliders(button_style, session_id):
+    """
+    When UMAP table is calculated, automatically populate range slider options
+    for subspace download
+    """
+
+    umap_slot = session_id + 'completed'
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+
+    # Get min and max values with padding
+    x_min = umap_table['umap_1'].min() - 1
+    x_max = umap_table['umap_1'].max() + 1
+
+    x_steps = np.round((x_max - x_min) / 400, decimals=3)
+
+    y_min = umap_table['umap_2'].min() - 1
+    y_max = umap_table['umap_2'].max() + 1
+
+    y_steps = np.round((y_max - y_min) / 400, decimals=3)
+
+    # Set marks, rounded to two decimals
+    x_marks = np.linspace(x_min, x_max, 5)
+    x_marks = np.around(x_marks, decimals=2)
+
+    y_marks = np.linspace(y_min, y_max, 5)
+    y_marks = np.around(y_marks, decimals=2)
+
+    # set values
+    x_vals = [x_marks[1], x_marks[3]]
+    y_vals = [y_marks[1], y_marks[3]]
+
+    # set marks as dicts
+    x_labels = {}
+    y_labels = {}
+    for i in np.arange(len(x_marks)):
+        x_labels[x_marks[i]] = str(x_marks[i])
+        y_labels[y_marks[i]] = str(y_marks[i])
+
+    # return every option
+    return x_min, x_max, x_steps, x_vals, x_labels,\
+        y_min, y_max, y_steps, y_vals, y_labels
+
+
+@app.callback(
+    Output('download_subspace', 'data'),
+    Output('download_subspace_button', 'style'),
+    Input('download_subspace_button', 'n_clicks'),
+
+    State('umap_x', 'value'),
+    State('umap_y', 'value'),
+    State('download_subspace_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def download_subspace(n_clicks, x_range, y_range, button_style, session_id):
+
+    umap_slot = session_id + 'completed'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    # set UMAP coordinates to the subspace range specified
+    umap_table2 = umap_table[(umap_table['umap_1'] >= x_range[0])
+        & (umap_table['umap_1'] <= x_range[1])]
+
+    umap_table3 = umap_table2[(umap_table2['umap_2'] >= y_range[0])
+        & (umap_table2['umap_2'] <= y_range[1])]
+
+    umap_table3.reset_index(drop=True, inplace=True)
+
+    button_style['background-color'] = '#DCE7EC'
+
+    return dcc.send_data_frame(umap_table3.to_csv, 'umap_subspace.csv'), button_style
