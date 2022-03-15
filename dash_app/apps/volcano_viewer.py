@@ -322,7 +322,7 @@ def review_controls(sample, control_matrix_json):
 
         # Get a list of controls
         controls = control_matrix[['Samples', sample]]
-        controls = controls[controls[sample] is True]
+        controls = controls[controls[sample]]
         controls_table = pd.DataFrame(controls[['Samples']])
         controls_table.rename(columns={'Samples': 'sample_control'}, inplace=True)
 
