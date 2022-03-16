@@ -52,3 +52,21 @@ def saved_processed_table(session_id, processed_table=None, overwrite=False):
     processed_table = save_processed_table(session_id, processed_table)
 
     return pd.read_json(processed_table)
+
+
+def cycle_style_colors(style, color_1='#DCE7EC', color_2='#dcdfec'):
+    """
+    cycle between two colors of button
+    """
+    if style is None:
+        style = {}
+
+    if 'background-color' not in style.keys():
+        style['background-color'] = color_1
+
+    elif style['background-color'] == color_1:
+        style['background-color'] = color_2
+    else:
+        style['background-color'] = color_1
+
+    return style

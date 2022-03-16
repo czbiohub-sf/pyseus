@@ -41,7 +41,7 @@ from pyseus.plotting import plotly_volcano as pv
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 from dapp import app
-from dapp import saved_processed_table
+from dapp import saved_processed_table, cycle_style_colors
 
 # App Layout
 layout = html.Div([
@@ -101,7 +101,7 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -117,7 +117,7 @@ def display_upload_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -167,9 +167,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, preload_slot,
 
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0, 1], index_col=0)
-        if button_style is None:
-            button_style = {}
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
     elif button_id == 'vol_preload_button':
 
@@ -178,9 +176,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, preload_slot,
         column_tuples = [eval(name) for name in list(table)]
         table.columns = pd.MultiIndex.from_tuples(column_tuples)
         raw_table = table.copy()
-        if preload_style is None:
-            preload_style = {}
-        preload_style['background-color'] = '#DCE7EC'
+        preload_style = cycle_style_colors(preload_style)
 
 
 
@@ -267,7 +263,7 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
             low_memory=False, index_col=0)
 
         control_matrix_json = control_matrix.to_json()
-        upload_style['background-color'] = '#DCE7EC'
+        upload_style = cycle_style_colors(upload_style)
 
         return control_matrix_json, upload_style, apply_style
 
@@ -282,7 +278,7 @@ def process_control_matrix(upload_clicks, apply_clicks, samples_json,
             matrix[sample] = new_controls
 
         control_matrix_json = matrix.to_json()
-        apply_style['background-color'] = '#DCE7EC'
+        apply_style = cycle_style_colors(apply_style)
 
         return control_matrix_json, upload_style, apply_style
 
@@ -340,7 +336,7 @@ def review_controls(sample, control_matrix_json):
 def download_matrix(n_clicks, matrix_json, button_style):
     download = pd.read_json(matrix_json)
     download = download.set_index('Samples').reset_index(drop=False)
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv, 'control_matrix.csv'), button_style
 
@@ -400,7 +396,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
             _ = saved_processed_table(hits_slot, upload_table, overwrite=True)
 
-            load_style['background-color'] = '#DCE7EC'
+            load_style = cycle_style_colors(load_style)
 
             return button_style, load_style
         else:
@@ -417,7 +413,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         except AttributeError:
             raise PreventUpdate
 
-        load_style['background-color'] = '#DCE7EC'
+        load_style = cycle_style_colors(load_style)
 
         return button_style, load_style
 
@@ -433,7 +429,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
             low_memory=False)
         _ = saved_processed_table(enriched_slot, upload_table, overwrite=True)
 
-        load_style['background-color'] = '#DCE7EC'
+        load_style = cycle_style_colors(load_style)
 
         return button_style, load_style
 
@@ -445,7 +441,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         else:
             enrichment_opt = False
 
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
         try:
             # import cached grouped table
             grouped = saved_processed_table(grouped_slot)
@@ -521,7 +517,7 @@ def download_umap(n_clicks, button_style, session_id):
     download = saved_processed_table(enriched_slot)
     column_tuples = [eval(name) for name in list(download)]
     download.columns = pd.MultiIndex.from_tuples(column_tuples)
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv, 'umap_enrichment_table.csv'), button_style
 
@@ -537,7 +533,7 @@ def download_umap(n_clicks, button_style, session_id):
 def download_pval(n_clicks, button_style, session_id):
     enriched_slot = session_id + 'enriched'
     download = saved_processed_table(enriched_slot)
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv, 'volcano_enrichment_table.csv'), button_style
 
@@ -554,7 +550,7 @@ def display_upload_name(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -596,7 +592,7 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
 
 
     if enrichment:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return options, 'Enrichment table calculated', style
 
     else:
@@ -650,7 +646,7 @@ def calculate_hits(hits_clicks, contents, thresh_opt,
     # save hits table to cache
     _ = saved_processed_table(hits_slot, hits_table, overwrite=True)
 
-    hits_style['background-color'] = '#DCE7EC'
+    hits_style = cycle_style_colors(hits_style)
 
     return hits_style
 
@@ -677,11 +673,11 @@ def check_hits_status(hits_style, load_style, marker, style, session_id):
     _ = hits_table
 
     if marker:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return 'Hits table ready!', style
 
     else:
-        style['background-color'] = '#f76868'
+        style = cycle_style_colors(style, color_1='#f76868', color_2='#f76868')
         return 'Please select a marker', style
 
 
@@ -698,7 +694,7 @@ def download_hits(n_clicks, button_style, session_id):
     hits_slot = session_id + 'hits'
 
     download = saved_processed_table(hits_slot)
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv, 'hits_table.csv'), button_style
 

@@ -34,7 +34,7 @@ from pyseus.plotting import plotly_umap as pu
 from pyseus.plotting import plotly_heatmap as ph
 
 from dapp import app
-from dapp import saved_processed_table
+from dapp import saved_processed_table, cycle_style_colors
 
 # global, immutable variables
 transposed_annots = ('sample')
@@ -101,7 +101,7 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -160,9 +160,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0, 1], index_col=0)
 
-        if button_style is None:
-            button_style = {}
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
     elif button_id == 'mat_preload_button':
 
@@ -171,9 +169,7 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
         column_tuples = [eval(name) for name in list(table)]
         table.columns = pd.MultiIndex.from_tuples(column_tuples)
         raw_table = table.copy()
-        if preload_style is None:
-            preload_style = {}
-        preload_style['background-color'] = '#DCE7EC'
+        preload_style = cycle_style_colors(preload_style)
 
 
     # regular table, features, and annots for matrix
@@ -263,7 +259,7 @@ def generate_clustergram(n_clicks, features, label, index,
     if n_clicks is None:
         raise PreventUpdate
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     # read cache of cluster table
     clust_id = session_id + 'clust'
