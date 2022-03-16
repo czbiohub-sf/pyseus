@@ -12,6 +12,7 @@ server = flask.Flask(__name__)
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
     suppress_callback_exceptions=True)
+app.enable_dev_tools(debug=True)
 
 # set up server-side cache.
 
