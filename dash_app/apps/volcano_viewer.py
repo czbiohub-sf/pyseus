@@ -322,7 +322,7 @@ def review_controls(sample, control_matrix_json):
 
         # Get a list of controls
         controls = control_matrix[['Samples', sample]]
-        controls = controls[controls[sample] is True]
+        controls = controls[controls[sample]]
         controls_table = pd.DataFrame(controls[['Samples']])
         controls_table.rename(columns={'Samples': 'sample_control'}, inplace=True)
 
@@ -470,14 +470,10 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
                 exclusion_matrix=control_matrix)
             analysis.simple_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
+
             enrichment_table = analysis.standard_hits_table.copy()
             download_table = analysis.simple_pval_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
-            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
 
-
-
-            return button_style, load_style
 
         elif control_opt == 'automatic':
             analysis = pa.AnalysisTables(imputed_table=grouped)
@@ -486,10 +482,48 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
             enrichment_table = analysis.standard_hits_table.copy()
             download_table = analysis.two_step_pval_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
-            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
 
-            return button_style, load_style
+        # process download table for UMAP
+        take_cols = []
+        for col in list(download_table):
+            if col[1] == 'pvals':
+                continue
+            else:
+                take_cols.append(col)
+
+        enrichs = download_table[take_cols].copy()
+        new_cols = []
+        for col in list(enrichs):
+            if col[1] == 'enrichment':
+                new_cols.append(('sample', col[0]))
+            else:
+                new_cols.append(col)
+
+        enrichs.columns = pd.MultiIndex.from_tuples(new_cols)
+
+
+        _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
+        _ = saved_processed_table(download_enriched_slot, enrichs, overwrite=True)
+
+        return button_style, load_style
+
+
+@app.callback(
+    Output('download_umap_table', 'data'),
+    Output('download_UMAP_button', 'style'),
+    Input('download_UMAP_button', 'n_clicks'),
+    State('download_UMAP_button', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def download_umap(n_clicks, button_style, session_id):
+    enriched_slot = session_id + 'download'
+    download = saved_processed_table(enriched_slot)
+    column_tuples = [eval(name) for name in list(download)]
+    download.columns = pd.MultiIndex.from_tuples(column_tuples)
+    button_style['background-color'] = '#DCE7EC'
+
+    return dcc.send_data_frame(download.to_csv, 'umap_enrichment_table.csv'), button_style
 
 
 @app.callback(
@@ -501,11 +535,11 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
     prevent_initial_call=True
 )
 def download_pval(n_clicks, button_style, session_id):
-    enriched_slot = session_id + 'download'
+    enriched_slot = session_id + 'enriched'
     download = saved_processed_table(enriched_slot)
     button_style['background-color'] = '#DCE7EC'
 
-    return dcc.send_data_frame(download.to_csv, 'significance_table.csv'), button_style
+    return dcc.send_data_frame(download.to_csv, 'volcano_enrichment_table.csv'), button_style
 
 
 @app.callback(

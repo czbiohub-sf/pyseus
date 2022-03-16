@@ -17,15 +17,16 @@ import plotly.express as px
 import sys
 sys.path.append('../../')
 
+
 def calculation_layout():
     return html.Div([
 
         html.Div([
-            
+
             html.P('Upload a processed feature table or use a pre-loaded one',
                 style={'textAlign': 'center',
                     'fontSize': 20,
-                    'marginBottom':'0%',
+                    'marginBottom': '0%',
                     'marginTop': '4%'}),
             html.P("""The script requires a standard format
                 of feature table. Please use the Process Table page to create one.""",
@@ -56,25 +57,23 @@ def calculation_layout():
                     # Only single file
                     multiple=False
                 ),
-                
+
                 html.Div([
-                    html.Button('Read table!', id = 'vol_read_table_button')],
+                    html.Button('Read table!', id='vol_read_table_button')],
                     style={
                         'marginTop': '2%',
-                        'marginLeft': '30%', 
+                        'marginLeft': '30%',
                         'width': '40%',
                         'verticalAlign': 'top',
-                        'white-space': 'normal'
-                    }),
-            ],
-            style = {
+                        'white-space': 'normal'}),
+
+            ], style={
                 'display': 'inline-block',
                 'borderRight': '1px #A6ACAF solid',
                 'width': '49%',
                 'textAlign': 'center',
-                'vertical-align': 'top',
-                }
-            ),
+                'vertical-align': 'top'}),
+
             html.Div([
 
                 dcc.Dropdown(id='vol_preloaded_dropdown',
@@ -88,69 +87,60 @@ def calculation_layout():
                         'textAlign': 'center',
                         'width': '90%',
                         'marginLeft': '5%',
-                        'marginTop': '2%'
-                    }
-                ),
+                        'marginTop': '2%'}),
+
                 html.Div([
                     html.Button(
                         'Load data!',
-                        id =  'vol_preload_button',)
-                    ], style={
-                        'marginTop': '2%',
-                        'textAlign': 'center',
-                        'display': 'inline-block',
-                        'width': '40%',
-                        'marginLeft': '30%'
-
-                    }),
+                        id='vol_preload_button',)
+                ], style={
+                    'marginTop': '2%',
+                    'textAlign': 'center',
+                    'display': 'inline-block',
+                    'width': '40%',
+                    'marginLeft': '30%'}),
 
 
-            ],
-            style = {
+            ], style={
                 'display': 'inline-block',
                 'width': '50%',
-                'vertical-align': 'top',
-                }
-            ),
+                'vertical-align': 'top'}),
+
         ]),
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
         html.P('Enrichment / Significance calculation',
-                style={'textAlign': 'center',
-                    'fontSize':20, 'marginBottom':'1.5%'}),
+            style={'textAlign': 'center',
+                'fontSize': 20, 'marginBottom': '1.5%'}),
         html.Div([
             html.Div([
                 html.P('Select a control selection mode',
                     style={'textAlign': 'center',
-                        'fontSize':18,
-                        'marginBottom':'0%'}),
+                        'fontSize': 18,
+                        'marginBottom': '0%'}),
                 html.P('By default, manual control selection includes all samples \
                     except the sample itself.',
                     style={'textAlign': 'center',
-                        'fontSize':14,
-                        'marginTop':'0%',
-                        'lineHeight':'15px'})
+                        'fontSize': 14,
+                        'marginTop': '0%',
+                        'lineHeight': '15px'})
             ],
                 style={
                     'vertical-align': 'top',
                     'marginLeft': '10%',
-                    'width': '80%' ,
-                }
-            ),
+                    'width': '80%'}),
 
             dcc.RadioItems(id='calculation_options',
                 options=[
                     {'label': 'Manually select control samples',
                     'value': 'manual'},
                     {'label': 'Automatically calulate the null model',
-                    'value': 'automatic'}
-                    ],
-        
+                    'value': 'automatic'}],
+
                 style={
                     'textAlign': 'left',
                     'width': '90%',
-                    'marginLeft': '5%'
-                },
+                    'marginLeft': '5%'},
                 value='manual'
             ),
 
@@ -160,10 +150,9 @@ def calculation_layout():
                 'fontSize': 18}),
             html.Button('Download', id='download_matrix_button',
                 style={
-                    'marginLeft':'7.5%',
+                    'marginLeft': '7.5%',
                     'width': '85%',
-                    'white-space': 'normal'
-                }
+                    'white-space': 'normal'}
             ),
             dcc.Download(id="download_control_matrix"),
 
@@ -185,18 +174,16 @@ def calculation_layout():
                     'borderStyle': 'dashed',
                     'borderRadius': '5px',
                     'textAlign': 'center',
-                    'background-color': '#E5E7E9'
-                },
+                    'background-color': '#E5E7E9'},
                 # Only single file
                 multiple=False
             ),
             html.Button('Apply uploaded matrix', id='null_matrix_button',
                 style={
-                    'marginLeft':'7.5%',
+                    'marginLeft': '7.5%',
                     'width': '85%',
                     'marginTop': '4%',
-                    'white-space': 'normal'
-                }
+                    'white-space': 'normal'}
             ),
 
         ],
@@ -206,14 +193,13 @@ def calculation_layout():
                 'height': '420px',
                 'marginTop': '1%',
                 'width': '32%',
-                'borderRight': '1px #A6ACAF solid'
-            }),
-        
+                'borderRight': '1px #A6ACAF solid'}),
+
 
         html.Div([
             html.P('Review controls for a selected sample', style={'textAlign': 'center',
                 'fontSize': 18, 'marginTop': '4%'}),
-            
+
             dcc.Dropdown(id='view_sample_controls',
                 placeholder='Select a sample',
                 style={
@@ -221,41 +207,37 @@ def calculation_layout():
                     'width': '90%',
                     'marginLeft': '5%',
                     'marginTop': '2%',
-                    'marginBottom':'3%'
-                }
+                    'marginBottom': '3%'}
             ),
             dash_table.DataTable(
                 id='sample_controls',
-                columns=[{'name':'control sample names', 'id': 'sample_control'}],
+                columns=[{'name': 'control sample names', 'id': 'sample_control'}],
                 style_header={
-                    'fontWeight':'bold'
+                    'fontWeight': 'bold'
                 },
                 style_cell={
                     'textAlign': 'center'
                 },
                 style_table={
-                        'marginLeft': '10%',
-                        'overflowY': 'auto',
-                        'overflowX': 'auto',
-                        'height': '300px',
-                        'width': '80%',
-                        'border' : '0.5px #BDC3C7 solid'
-                    },
-                    fixed_rows={'headers':True, 'data':0}
-                ),
-            ],
+                    'marginLeft': '10%',
+                    'overflowY': 'auto',
+                    'overflowX': 'auto',
+                    'height': '300px',
+                    'width': '80%',
+                    'border' : '0.5px #BDC3C7 solid'},
+
+                fixed_rows={'headers': True, 'data': 0})],
 
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '420px',
                 'width': '32%',
-                'borderRight': '1px #A6ACAF solid'
-            }
-        ),
+                'borderRight': '1px #A6ACAF solid'}),
+
         html.Div([
             html.P('Samples to edit', style={'textAlign': 'center',
-                'fontSize': 16, 'lineHeight':'10px'}),
+                'fontSize': 16, 'lineHeight': '10px'}),
             dcc.Checklist(
                 id='edit_samples',
                 style={
@@ -264,10 +246,10 @@ def calculation_layout():
                     'height': '140px',
                     'marginLeft': '10%',
                     'width': '80%',
-                    'border': '0.5px #BDC3C7 solid',
-                }),
+                    'border': '0.5px #BDC3C7 solid'}),
+
             html.P('Select controls for the chosen samples', style={'textAlign': 'center',
-                'fontSize': 16, 'lineHeight':'15px', 'marginTop':'2%'}),
+                'fontSize': 16, 'lineHeight': '15px', 'marginTop': '2%'}),
             dcc.Checklist(
                 id='edit_controls',
                 style={
@@ -275,34 +257,31 @@ def calculation_layout():
                     'overflowX': 'auto',
                     'height': '170px',
                     'marginLeft': '10%',
-                    'marginTop':'1%',
+                    'marginTop': '1%',
                     'width': '80%',
-                    'border': '0.5px #BDC3C7 solid',
-                }),
+                    'border': '0.5px #BDC3C7 solid'}),
+
             html.Button('Apply control selection', id='control_apply_button',
                 style={
-                    'marginLeft':'7.5%',
+                    'marginLeft': '7.5%',
                     'width': '85%',
                     'marginTop': '4%',
-                    'white-space': 'normal'
-                }
+                    'white-space': 'normal'}
             )
-           
+
         ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '420px',
-                'width': '33%'
-            }
-        ),
+                'width': '33%'}),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
         html.Div([
 
             html.P('Enrichment option', style={'textAlign': 'center',
-                'fontSize': 18, 'lineHeight':'15px', 'marginTop':'2%'}),
+                'fontSize': 18, 'lineHeight': '15px', 'marginTop': '2%'}),
 
             dcc.RadioItems(id='enrichment_option',
                 options=[
@@ -310,8 +289,8 @@ def calculation_layout():
                     'value': 'False'},
                     {'label': 'Relative enrichment (stdev units)',
                     'value': 'True'}
-                    ],
-        
+                ],
+
                 style={
                     'textAlign': 'center',
                     'width': '90%',
@@ -319,46 +298,43 @@ def calculation_layout():
                 },
                 value='True'
             ),
-            ],
-
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '100px',
-                'width': '50%',
-            }
-        ),
+        ], style={
+            'vertical-align': 'top',
+            'display': 'inline-block',
+            'height': '100px',
+            'width': '50%'}),
 
         html.Div([
 
             html.Button('Calculate enrichment!', id='calculate_button',
                 style={
-                    'marginLeft':'0%',
+                    'marginLeft': '0%',
                     'width': '85%',
                     'marginTop': '0%',
                     'white-space': 'normal',
-                    'background-color': 'white'
-                }
+                    'background-color': 'white'}
             ),
             dcc.Download(id="download_pval_table"),
-            html.Button('Download calculated table!', id='download_pval_button',
+            dcc.Download(id="download_umap_table"),
+            html.Button('Download table for volcano', id='download_pval_button',
                 style={
-                    'marginLeft':'0%',
-                    'width': '85%',
+                    'marginLeft': '0%',
+                    'width': '40%',
                     'marginTop': '2%',
-                    'white-space': 'normal'
-                }
-            )
-
-            ],
+                    'white-space': 'normal'}
+            ),
+            html.Button('Download table for UMAP', id='download_UMAP_button',
+                style={
+                    'marginLeft': '5%',
+                    'width': '40%',
+                    'marginTop': '2%',
+                    'white-space': 'normal'})],
 
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '100px',
-                'width': '50%',
-            }
-        ),
+                'width': '50%'}),
 
 
 
@@ -380,7 +356,7 @@ def calculation_layout():
 
 
 
-        # html.P('Uploaded feature table', id='raw_table_filename', 
+        # html.P('Uploaded feature table', id='raw_table_filename',
         #             style={
         #                 'textAlign': 'center',
         #                 'border' : '0.5px #BDC3C7 solid',
