@@ -41,7 +41,7 @@ from pyseus.plotting import plotly_umap as pu
 transposed_annots = ('sample')
 
 from dapp import app
-from dapp import saved_processed_table
+from dapp import saved_processed_table, cycle_style_colors
 
 
 # App Layout
@@ -101,7 +101,7 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -153,9 +153,7 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
 
         um_raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False, header=[0, 1], index_col=0)
-        if button_style is None:
-            button_style = {}
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
     # retrieving table from cache in specific slot
     elif button_id == 'um_preload_button':
@@ -166,9 +164,7 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
         table.columns = pd.MultiIndex.from_tuples(column_tuples)
         um_raw_table = table.copy()
 
-        if preload_style is None:
-            preload_style = {}
-        preload_style['background-color'] = '#DCE7EC'
+        preload_style = cycle_style_colors(preload_style)
 
     # processing table, features, and annots for UMAP
     um_processed_table = um_raw_table.droplevel(level=0, axis=1)
@@ -276,7 +272,7 @@ def return_feature_selections(transpose_clicks, um_features_json,
         annot_opts = [{'label': annot_str, 'value': 'None'}]
         annot_val = 'None'
 
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
         return dim_string, feature_opts, feature_val, label_opts, annot_val,\
             annot_opts, annot_val, label_opts, button_style
@@ -292,7 +288,7 @@ def display_merge_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
         return filename, style
 
 
@@ -350,7 +346,7 @@ def merge_tables(n_clicks, transpose_clicks, content, filename,
     if n_clicks is None:
         raise PreventUpdate
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     # parse txt (tsv) file as pd df from upload
     content_type, content_string = content.split(',')
@@ -431,7 +427,7 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     if umap_clicks is None:
         raise PreventUpdate
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
 
     if transpose_clicks is None:
@@ -528,7 +524,7 @@ def download_matrix(n_clicks, button_style, session_id):
         raise PreventUpdate
     slot = session_id + 'completed'
     download = saved_processed_table(slot)
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
 
@@ -631,6 +627,6 @@ def download_subspace(n_clicks, x_range, y_range, button_style, session_id):
 
     umap_table3.reset_index(drop=True, inplace=True)
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(umap_table3.to_csv, 'umap_subspace.csv'), button_style

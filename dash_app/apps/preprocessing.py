@@ -28,7 +28,7 @@ sys.path.append(head)
 from pyseus import basic_processing as bp
 
 from dapp import app
-from dapp import saved_processed_table
+from dapp import saved_processed_table, cycle_style_colors
 
 
 # App Layout
@@ -66,7 +66,8 @@ def display_upload_ms_config(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
+
         return filename, style
 
 
@@ -80,7 +81,8 @@ def display_upload_ms_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
-        style['background-color'] = '#DCE7EC'
+        style = cycle_style_colors(style)
+
         return filename, style
 
 
@@ -131,9 +133,7 @@ def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style, 
 
         checklist_options = [{'label': col, 'value': col} for col in all_cols]
 
-        if button_style is None:
-            button_style = {}
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
         return all_cols_json, checklist_options,\
             checklist_options, button_style
@@ -154,7 +154,7 @@ def sample_cols_re_search(n_clicks, search_re, all_cols_json, button_style):
     if n_clicks is None:
         raise PreventUpdate
     else:
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
         all_cols = json.loads(all_cols_json)
         selected_sample_cols = []
         for col in all_cols:
@@ -209,7 +209,7 @@ def select_cols(n_clicks, sample_cols, meta_cols, button_style):
         col_table = pd.DataFrame()
         col_table['column names'] = sample_cols
 
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
         return sample_cols_json, meta_cols_json, col_table.to_dict('records'),\
             button_style
@@ -249,7 +249,7 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
 
         col_table = pd.DataFrame()
         col_table['new column names'] = new_cols
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
         return col_table.to_dict('records'), '', button_style
 
@@ -389,7 +389,7 @@ def process_table(n_clicks, sample_cols_json,
     _ = saved_processed_table(processed_table_slot, final_table, overwrite=True)
 
     # change button color when finished
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return button_style
 
@@ -420,7 +420,7 @@ def download_ms_table(n_clicks, table_json, save_name, button_style, session_id)
     download.columns = pd.MultiIndex.from_tuples(column_tuples)
 
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(download.to_csv,
         save_name), button_style
@@ -481,7 +481,7 @@ def download_configs(n_clicks, table_sep, top_row_skip, sample_search_re,
     configs['tech_reps'] = [tech_reps]
 
 
-    button_style['background-color'] = '#DCE7EC'
+    button_style = cycle_style_colors(button_style)
 
 
     return dcc.send_data_frame(configs.to_csv,
@@ -539,8 +539,7 @@ def preload_configs(n_clicks, content, button_style):
             configs[col] = configs[col].apply(lambda x: x if
                 isinstance(x, list) else [])
 
-        button_style = {}
-        button_style['background-color'] = '#DCE7EC'
+        button_style = cycle_style_colors(button_style)
 
         return configs['raw_table_sep'].item(),\
             configs['top_row_skip'].item(),\
@@ -633,9 +632,7 @@ def upload_table(n_clicks, pp_save_name, pp_slot,
     # save table to designated cache
     _ = saved_processed_table(cache_slot, processed_table, overwrite=True)
 
-    button_style['background-color'] = '#DCE7EC'
-
-
+    button_style = cycle_style_colors(button_style)
 
     return labels[0], labels[1], labels[2], button_style
 
