@@ -241,6 +241,12 @@ def preview_rename_cols(n_clicks, cols_json, search_re, replacement_re, button_s
         new_cols = bp.sample_rename(intensity_cols,
             search_re, replacement_re)
 
+        set_cols = set(new_cols)
+        if len(new_cols) != len(set_cols):
+            return None,\
+                "Results in duplicate column names!",\
+                {'background-color': '#EF5538'}
+
         col_table = pd.DataFrame()
         col_table['new column names'] = new_cols
         button_style['background-color'] = '#DCE7EC'

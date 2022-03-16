@@ -378,6 +378,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
     grouped_slot = session_id + 'grouped'
     # specify slot for enrichment table
     enriched_slot = session_id + 'enriched'
+    hits_slot = session_id + 'hits'
     download_enriched_slot = session_id + 'download'
 
 
@@ -388,6 +389,17 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
     if (button_id == 'load_button') and (load_opt == 'pre_hits'):
         if upload_contents is not None:
+
+            content_type, content_string = upload_contents.split(',')
+            decoded = base64.b64decode(content_string)
+
+            upload_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
+                low_memory=False)
+
+            upload_table['fdr'] = upload_table['fdr'].apply(eval)
+
+            _ = saved_processed_table(hits_slot, upload_table, overwrite=True)
+
             load_style['background-color'] = '#DCE7EC'
 
             return button_style, load_style
@@ -458,14 +470,10 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
                 exclusion_matrix=control_matrix)
             analysis.simple_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
+
             enrichment_table = analysis.standard_hits_table.copy()
             download_table = analysis.simple_pval_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
-            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
 
-
-
-            return button_style, load_style
 
         elif control_opt == 'automatic':
             analysis = pa.AnalysisTables(imputed_table=grouped)
@@ -474,10 +482,48 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
             enrichment_table = analysis.standard_hits_table.copy()
             download_table = analysis.two_step_pval_table.copy()
-            _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
-            _ = saved_processed_table(download_enriched_slot, download_table, overwrite=True)
 
-            return button_style, load_style
+        # process download table for UMAP
+        take_cols = []
+        for col in list(download_table):
+            if col[1] == 'pvals':
+                continue
+            else:
+                take_cols.append(col)
+
+        enrichs = download_table[take_cols].copy()
+        new_cols = []
+        for col in list(enrichs):
+            if col[1] == 'enrichment':
+                new_cols.append(('sample', col[0]))
+            else:
+                new_cols.append(col)
+
+        enrichs.columns = pd.MultiIndex.from_tuples(new_cols)
+
+
+        _ = saved_processed_table(enriched_slot, enrichment_table, overwrite=True)
+        _ = saved_processed_table(download_enriched_slot, enrichs, overwrite=True)
+
+        return button_style, load_style
+
+
+@app.callback(
+    Output('download_umap_table', 'data'),
+    Output('download_UMAP_button', 'style'),
+    Input('download_UMAP_button', 'n_clicks'),
+    State('download_UMAP_button', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def download_umap(n_clicks, button_style, session_id):
+    enriched_slot = session_id + 'download'
+    download = saved_processed_table(enriched_slot)
+    column_tuples = [eval(name) for name in list(download)]
+    download.columns = pd.MultiIndex.from_tuples(column_tuples)
+    button_style['background-color'] = '#DCE7EC'
+
+    return dcc.send_data_frame(download.to_csv, 'umap_enrichment_table.csv'), button_style
 
 
 @app.callback(
@@ -489,11 +535,11 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
     prevent_initial_call=True
 )
 def download_pval(n_clicks, button_style, session_id):
-    enriched_slot = session_id + 'download'
+    enriched_slot = session_id + 'enriched'
     download = saved_processed_table(enriched_slot)
     button_style['background-color'] = '#DCE7EC'
 
-    return dcc.send_data_frame(download.to_csv, 'significance_table.csv'), button_style
+    return dcc.send_data_frame(download.to_csv, 'volcano_enrichment_table.csv'), button_style
 
 
 @app.callback(
@@ -526,11 +572,20 @@ def display_upload_name(filename, style):
 def check_enrichment_status(load_style, calculate_style, style, session_id):
 
     enriched_slot = session_id + 'enriched'
-
+    hits_slot = session_id + 'hits'
+    enrichment = False
     try:
         sig_table = saved_processed_table(enriched_slot)
-    except Exception:
-        raise PreventUpdate
+        enrichment = True
+
+
+    except AttributeError:
+        try:
+            sig_table = saved_processed_table(hits_slot)
+
+        except AttributeError:
+            raise PreventUpdate
+
 
     meta_cols = [col for col in list(sig_table) if col not in
         ['Unnamed: 0', 'target', 'pvals', 'enrichment']]
@@ -539,17 +594,19 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
         option = {'label': col, 'value': col}
         options.append(option)
 
-    style['background-color'] = '#DCE7EC'
 
-    return options, 'Enrichment table calculated', style
+    if enrichment:
+        style['background-color'] = '#DCE7EC'
+        return options, 'Enrichment table calculated', style
+
+    else:
+        return options, 'Enrichment table not calculated', style
 
 
 @app.callback(
 
     Output('hits_button', 'style'),
     Input('hits_button', 'n_clicks'),
-    Input('load_button', 'n_clicks'),
-    State('load_options', 'value'),
     State('prep_table_upload', 'contents'),
     State('thresh_option', 'value'),
     State('fdr', 'value'),
@@ -561,60 +618,41 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
     prevent_initial_call=True
 
 )
-def calculate_hits(hits_clicks, load_clicks, load_opt, contents, thresh_opt,
+def calculate_hits(hits_clicks, contents, thresh_opt,
         fdr, offset, curvature, hits_style, session_id):
     """
     Calculate the right FDR threshold given options, and call significant hits
     """
     # get the context of the callback trigger
-    ctx = dash.callback_context
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
 
     # set up cache slots
     hits_slot = session_id + 'hits'
     enriched_slot = session_id + 'enriched'
 
-    # load hits table to cache if the user is uploading a
-    # pre-calculated hits table
-    if button_id == 'load_button':
-        if (contents is None) or (load_opt != 'pre_hits'):
-            raise PreventUpdate
-        content_type, content_string = contents.split(',')
-        decoded = base64.b64decode(content_string)
+    # load enrichment table from cache
+    try:
+        sig_table = saved_processed_table(enriched_slot)
+    except Exception:
+        raise PreventUpdate
 
-        upload_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
-            low_memory=False)
+    # calculate FDR
+    vali = va.Validation(hit_table=sig_table, target_col='target',
+        prey_col='prey')
+    if thresh_opt == 'hawaii':
+        vali.hawaii_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
+            experiment=False)
+    elif thresh_opt == 'indiv':
+        vali.dynamic_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
+            experiment=False)
 
-        _ = saved_processed_table(hits_slot, upload_table, overwrite=True)
+    hits_table = vali.called_table.copy()
+    # save hits table to cache
+    _ = saved_processed_table(hits_slot, hits_table, overwrite=True)
 
+    hits_style['background-color'] = '#DCE7EC'
 
-        return hits_style
-
-    elif button_id == 'hits_button':
-
-        # load enrichment table from cache
-        try:
-            sig_table = saved_processed_table(enriched_slot)
-        except Exception:
-            raise PreventUpdate
-
-        # calculate FDR
-        vali = va.Validation(hit_table=sig_table, target_col='target',
-            prey_col='prey')
-        if thresh_opt == 'hawaii':
-            vali.hawaii_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
-                experiment=False)
-        elif thresh_opt == 'indiv':
-            vali.dynamic_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
-                experiment=False)
-
-        hits_table = vali.called_table.copy()
-        # save hits table to cache
-        _ = saved_processed_table(hits_slot, hits_table, overwrite=True)
-
-        hits_style['background-color'] = '#DCE7EC'
-
-        return hits_style
+    return hits_style
 
 
 @app.callback(
@@ -622,11 +660,12 @@ def calculate_hits(hits_clicks, load_clicks, load_opt, contents, thresh_opt,
     Output('hits_table_status', 'style'),
     Input('hits_button', 'style'),
     Input('load_button', 'style'),
+    Input('vol_marker_label', 'value'),
     State('hits_table_status', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def check_hits_status(hits_style, load_style, style, session_id):
+def check_hits_status(hits_style, load_style, marker, style, session_id):
 
     hits_slot = session_id + 'hits'
 
@@ -636,9 +675,14 @@ def check_hits_status(hits_style, load_style, style, session_id):
         raise PreventUpdate
 
     _ = hits_table
-    style['background-color'] = '#DCE7EC'
 
-    return 'Hits table ready!', style
+    if marker:
+        style['background-color'] = '#DCE7EC'
+        return 'Hits table ready!', style
+
+    else:
+        style['background-color'] = '#f76868'
+        return 'Please select a marker', style
 
 
 @app.callback(
@@ -702,7 +746,7 @@ def plot_volcano(click_1, sample, marker, session_id):
     hits_slot = session_id + 'hits'
 
     hits_table = saved_processed_table(hits_slot)
-    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A')
+    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A', experiment=False)
 
     return fig
 
@@ -720,6 +764,6 @@ def plot_volcano2(click_1, sample, marker, session_id):
     hits_slot = session_id + 'hits'
 
     hits_table = saved_processed_table(hits_slot)
-    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A')
+    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A', experiment=False)
 
     return fig

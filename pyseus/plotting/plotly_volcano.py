@@ -9,6 +9,7 @@ import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import math
 
+
 def simple_volcano(v_df, bait, fcd, width=None, height=None):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
@@ -19,7 +20,7 @@ def simple_volcano(v_df, bait, fcd, width=None, height=None):
     bait_vals['thresh'] = bait_vals['enrichment'].apply(calc_thresh,
         args=[fcd[0], fcd[1]])
     bait_vals['hits'] = np.where((bait_vals['pvals'] > bait_vals['thresh']), True, False)
-    
+
 
     hits = bait_vals[bait_vals['hits']]
     print("Number of Significant Hits: " + str(hits.shape[0]))
@@ -66,23 +67,25 @@ def simple_volcano(v_df, bait, fcd, width=None, height=None):
         fig.update_layout(
             width=width,
             height=height,
-            )
+        )
     fig.update_xaxes(range=[-1 * xmax, xmax])
     fig.update_yaxes(range=[-1, ymax])
-    
+
     return fig
 
 
-def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None):
+def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None, experiment=False):
     # initiate dfs
     sel_df = v_df.copy()
     sel_df = v_df.set_index(marker)
 
     # start a subplot
     fig = go.Figure()
-    i = 1
 
-    bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['experiment'] == plate)]
+    if experiment:
+        bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['experiment'] == plate)]
+    else:
+        bait_vals = sel_df[sel_df['target'] == bait]
 
 
     hits = bait_vals[bait_vals['interaction']]
@@ -124,21 +127,22 @@ def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None):
     # axis customization
     fig.update_xaxes(title_text='Enrichment (log2)',
         range=[-1 * xmax, xmax])
-    fig.update_yaxes(title_text='p-value (-log10)', 
+    fig.update_yaxes(title_text='p-value (-log10)',
         range=[-1, ymax])
 
     fig.update_layout(
-            xaxis_title='Enrichment (log2)',
-            yaxis_title='P value (-log10)',
-            showlegend=False,
-            margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+        xaxis_title='Enrichment (log2)',
+        yaxis_title='P value (-log10)',
+        showlegend=False,
+        margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
     if width:
         fig.update_layout(
             width=width,
             height=height,
-            )
+        )
 
     return fig
+
 
 def comparison_volcano(v_df, v2_df, bait, fcd, fcd2):
     """plot volcano plots from two analyses for qualitative comparisons"""
@@ -260,15 +264,12 @@ def mult_volcano(v_df, baits):
     fig.update_yaxes(range=[-1, g_ymax])
     fig.show()
 
-
-
-
-def calc_thresh(enrich, fc_var1, fc_var2):
-    """simple function to get FCD thresh to recognize hits"""
-    if enrich < fc_var2:
-        return np.inf
-    else:
-        return fc_var1 / (abs(enrich) - fc_var2)
+# def calc_thresh(enrich, fc_var1, fc_var2):
+#     """simple function to get FCD thresh to recognize hits"""
+#     if enrich < fc_var2:
+#         return np.inf
+#     else:
+#         return fc_var1 / (abs(enrich) - fc_var2)
 
 
 def two_fdrs(pval_df, fdr1, fdr2):
