@@ -302,7 +302,7 @@ def calculation_layout():
             'vertical-align': 'top',
             'display': 'inline-block',
             'height': '100px',
-            'width': '50%'}),
+            'width': '30%'}),
 
         html.Div([
 
@@ -316,14 +316,14 @@ def calculation_layout():
             ),
             dcc.Download(id="download_pval_table"),
             dcc.Download(id="download_umap_table"),
-            html.Button('Download table for volcano', id='download_pval_button',
+            html.Button('Download volcano table', id='download_pval_button',
                 style={
                     'marginLeft': '0%',
                     'width': '40%',
                     'marginTop': '2%',
                     'white-space': 'normal'}
             ),
-            html.Button('Download table for UMAP', id='download_UMAP_button',
+            html.Button('Download UMAP table', id='download_UMAP_button',
                 style={
                     'marginLeft': '5%',
                     'width': '40%',
@@ -334,7 +334,7 @@ def calculation_layout():
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '100px',
-                'width': '50%'}),
+                'width': '70%'}),
 
 
 
