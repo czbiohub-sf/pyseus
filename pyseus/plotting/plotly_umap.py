@@ -45,7 +45,7 @@ def scale_table(matrix, method):
 def interaction_umap(
         matrix, node_name, cluster, opacity=0.8,
         width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
-        unlabelled_opacity=0.1):
+        unlabelled_opacity=0.1, hover_data=None):
 
     matrix = matrix.copy()
     matrix.reset_index(inplace=True, drop=False)
@@ -63,6 +63,7 @@ def interaction_umap(
                 'umap_2': 'UMAP 2'
             },
             hover_name=node_name,
+            hover_data=hover_data,
             opacity=opacity,
             template='simple_white')
         fig.update_traces(marker=dict(size=5.5))
@@ -87,6 +88,7 @@ def interaction_umap(
             color=cluster,
             color_continuous_scale=px.colors.cyclical.mygbm[: -1],
             opacity=opacity,
+            hover_data=hover_data,
             template='simple_white')
         fig1.update_traces(marker=dict(size=5.5))
         fig1.update(layout_coloraxis_showscale=False)
@@ -103,6 +105,7 @@ def interaction_umap(
             color=cluster,
             hover_name=node_name,
             opacity=unlabelled_opacity,
+            hover_data=hover_data,
             color_discrete_sequence=[unlabelled_color],
             template='simple_white')
 
