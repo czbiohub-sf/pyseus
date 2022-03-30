@@ -41,7 +41,7 @@ from pyseus.plotting import plotly_volcano as pv
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 from dapp import app
-from dapp import saved_processed_table, cycle_style_colors
+from dapp import saved_processed_table, cycle_style_colors, query_panther
 
 # App Layout
 layout = html.Div([
@@ -326,6 +326,16 @@ def review_controls(sample, control_matrix_json):
 
 
 @app.callback(
+    Output('vol_annot_label', 'value'),
+    Input('vol_external_annot', 'value'),
+    prevent_initial_call=True
+)
+def fill(annot):
+    if annot:
+        return annot
+
+
+@app.callback(
     Output('download_control_matrix', 'data'),
     Output('download_matrix_button', 'style'),
     Input('download_matrix_button', 'n_clicks'),
@@ -556,6 +566,11 @@ def display_upload_name(filename, style):
 
 @app.callback(
     Output('vol_marker_label', 'options'),
+    Output('vol_marker_label', 'value'),
+    Output('vol_gene_selector', 'options'),
+    Output('vol_gene_selector', 'value'),
+    Output('vol_merge_key_feature', 'options'),
+    Output('vol_merge_key_feature', 'value'),
     Output('enrichment_table_status', 'children'),
     Output('enrichment_table_status', 'style'),
     Input('load_button', 'style'),
@@ -586,21 +601,25 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
     meta_cols = [col for col in list(sig_table) if col not in
         ['Unnamed: 0', 'target', 'pvals', 'enrichment']]
     options = []
+    label_val = meta_cols[0]
     for col in meta_cols:
         option = {'label': col, 'value': col}
         options.append(option)
+        if 'gene' in col.lower():
+            label_val = col
 
 
     if enrichment:
         style = cycle_style_colors(style)
-        return options, 'Enrichment table calculated', style
+        return options, label_val, options, label_val, options, label_val,\
+            'Enrichment table calculated', style
 
     else:
-        return options, 'Enrichment table not calculated', style
+        return options, label_val, options, label_val, options, label_val,\
+            'Enrichment table not calculated', style
 
 
 @app.callback(
-
     Output('hits_button', 'style'),
     Input('hits_button', 'n_clicks'),
     State('prep_table_upload', 'contents'),
@@ -701,7 +720,6 @@ def download_hits(n_clicks, button_style, session_id):
 
 @app.callback(
     Output('volcano_dropdown_1', 'options'),
-    Output('volcano_dropdown_2', 'options'),
     Input('hits_button', 'style'),
     Input('load_button', 'style'),
     State('session_id', 'data'),
@@ -726,40 +744,323 @@ def populate_volcano_samples(hits_button, loads_button, session_id):
         option_dict = {'label': sample, 'value': sample}
         options.append(option_dict)
 
-    return options, options
+    return options
+
+
+@app.callback(
+    Output('vol_annot_table_upload', 'children'),
+    Output('vol_annot_table_upload', 'style'),
+    Input('vol_annot_table_upload', 'filename'),
+    State('vol_annot_table_upload', 'style')
+)
+def display_merge_filename(filename, style):
+    if filename is None:
+        raise PreventUpdate
+    else:
+        style = cycle_style_colors(style)
+        return filename, style
+
+
+@app.callback(
+    Output('vol_merge_key_annot', 'options'),
+    Output('vol_external_annot', 'options'),
+    Input('vol_annot_table_upload', 'contents'),
+    State('vol_annot_table_upload', 'filename')
+
+)
+def fill_external_keys(content, filename):
+    """
+    populate dropdown options from uploaded annotation table
+    """
+    if content is None:
+        raise PreventUpdate
+    else:
+        # parse txt (tsv) file as pd df from upload
+        content_type, content_string = content.split(',')
+        decoded = base64.b64decode(content_string)
+        if 'csv' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif 'tsv' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
+
+        cols = list(annot_table)
+        # feature checklist options
+        opts = [{'label': feature, 'value': feature}
+            for feature in cols if "Unnamed" not in feature]
+
+        return opts, opts
+
+
+@app.callback(
+    Output('vol_merge_button', 'style'),
+    Input('vol_merge_button', 'n_clicks'),
+    State('vol_annot_table_upload', 'contents'),
+    State('vol_annot_table_upload', 'filename'),
+    State('vol_merge_key_feature', 'value'),
+    State('vol_merge_key_annot', 'value'),
+    State('vol_external_annot', 'value'),
+    State('vol_annot_label', 'value'),
+    State('vol_merge_button', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def merge_tables(n_clicks, content, filename,
+        feature_key, annot_key, annot_col, annot_label, button_style, session_id):
+    """
+    Load umap table from cache, and merge it with external annotation table.
+    Save merged series to client-side.
+    """
+
+    if n_clicks is None:
+        raise PreventUpdate
+
+    button_style = cycle_style_colors(button_style)
+
+    # parse txt (tsv) file as pd df from upload
+    content_type, content_string = content.split(',')
+    decoded = base64.b64decode(content_string)
+
+    if 'csv' in filename:
+        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+    elif 'tsv' in filename or 'txt' in filename:
+        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
+
+    annot_table = annot_table[[annot_key, annot_col]]
+
+    session_slot = session_id + 'hits'
+
+    # load cached table
+    um_processed_table = saved_processed_table(session_slot)
+
+    # rename keys for proper merge
+    annot_table.rename(columns={annot_key: feature_key}, inplace=True)
+
+    merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
+
+    drop_subset = list(um_processed_table)
+    if 'fdr' in drop_subset:
+        drop_subset.remove('fdr')
+    merge_table.drop_duplicates(subset=drop_subset, inplace=True)
+
+    rename_label = 'ext_' + annot_label
+    merge_table.rename(columns={annot_col: rename_label}, inplace=True)
+
+    _ = saved_processed_table(session_slot, merge_table, overwrite=True)
+
+    return button_style
+
+
+@app.callback(
+    Output('vol_annot_select', 'options'),
+    Input('vol_merge_button', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def fill_ext_options(style, session_id):
+
+    hits_slot = session_id + 'hits'
+    try:
+        hits_table = saved_processed_table(hits_slot)
+    except Exception:
+        raise PreventUpdate
+
+    meta_cols = [col for col in list(hits_table) if 'ext_' in col]
+    options = []
+    for col in meta_cols:
+        option = {'label': col, 'value': col}
+        options.append(option)
+
+    return options
 
 
 @app.callback(
     Output('matrix_fig_1', 'figure'),
     Input('volcano_button_1', 'n_clicks'),
+    State('plot_options', 'value'),
     State('volcano_dropdown_1', 'value'),
     State('vol_marker_label', 'value'),
+    State('vol_annot_select', 'value'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano(click_1, sample, marker, session_id):
+def plot_volcano(click_1, checklist, sample, marker, annots, session_id):
 
     hits_slot = session_id + 'hits'
 
     hits_table = saved_processed_table(hits_slot)
-    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A', experiment=False)
+
+    fcd = False
+    label = False
+    annot = None
+    if 'fdr' in checklist:
+        fcd = True
+    if 'label' in checklist:
+        label = True
+    if 'ext' in checklist:
+        annot = annots
+
+    fig = pv.volcano_plot(hits_table, sample, marker_mode=label, fcd=fcd, marker=marker,
+        plate='N/A', experiment=False, color=annot)
 
     return fig
 
 
 @app.callback(
-    Output('matrix_fig_2', 'figure'),
-    Input('volcano_button_2', 'n_clicks'),
-    State('volcano_dropdown_2', 'value'),
-    State('vol_marker_label', 'value'),
+    Output('vol_selection_count', 'children'),
+    Input('matrix_fig_1', 'selectedData'),
+    prevent_initial_call=True
+)
+def print_selection_count(selectedData):
+    if selectedData is None:
+        PreventUpdate
+
+    num_points = len(selectedData['points'])
+    new_str = str(num_points) + ' data points selected'
+
+    return new_str
+
+
+@app.callback(
+    Output('vol_select_button', 'style'),
+    Input('vol_select_button', 'n_clicks'),
+    State('matrix_fig_1', 'selectedData'),
+    State('vol_select_button', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano2(click_1, sample, marker, session_id):
+def save_selected_data(n_clicks, selectedData, style, session_id):
 
-    hits_slot = session_id + 'hits'
+    # designate cache ids
+    selected_slot = session_id + 'vol_selected'
+    complete_slot = session_id + 'hits'
 
-    hits_table = saved_processed_table(hits_slot)
-    fig = pv.volcano_plot(hits_table, sample, marker=marker, plate='N/A', experiment=False)
+    umap_table = saved_processed_table(complete_slot)
 
-    return fig
+    points = selectedData['points']
+    indices = []
+    for point in points:
+        indices.append(point['customdata'][0])
+
+    selected_table = umap_table[umap_table.index.isin(indices)]
+    _ = saved_processed_table(selected_slot, selected_table, overwrite=True)
+
+
+    style = cycle_style_colors(style)
+
+
+    return style
+
+
+@app.callback(
+    Output('vol_download_subspace', 'data'),
+    Output('vol_download_subspace_button', 'style'),
+    Input('vol_download_subspace_button', 'n_clicks'),
+    State('vol_download_subspace_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def download_subspace(n_clicks, button_style, session_id):
+
+    umap_slot = session_id + 'vol_selected'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+        umap_table.reset_index(drop=True, inplace=True)
+
+    except AttributeError:
+        raise PreventUpdate
+
+    button_style = cycle_style_colors(button_style)
+
+    return dcc.send_data_frame(umap_table.to_csv, 'volcano_subspace.csv'), button_style
+
+
+@app.callback(
+    Output('vol_go_top_table', 'data'),
+    Output('vol_go_analysis', 'style'),
+    Input('vol_go_analysis', 'n_clicks'),
+    State('vol_gene_selector', 'value'),
+    State('vol_go_cat', 'value'),
+    State('vol_pval_cutoff', 'value'),
+    State('vol_enrich_cutoff', 'value'),
+    State('vol_go_analysis', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def calculate_go(n_clicks, gene_names, category, pval_cutoff, enrch_cutoff, button_style, session_id):
+
+    completed_slot = session_id + 'hits'
+    selected_slot = session_id + 'vol_selected'
+    go_slot = session_id + 'vol_go'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        completed = saved_processed_table(completed_slot).copy()
+        selected = saved_processed_table(selected_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    all_genes = completed[gene_names].apply(
+        lambda x: str(x).upper().split(';')).explode().drop_duplicates().to_list()
+    selected_genes = selected[gene_names].apply(
+        lambda x: str(x).upper().split(';')).explode().drop_duplicates().to_list()
+
+
+
+    go_table = query_panther(selected_genes, all_genes, pval_thresh=pval_cutoff,
+        enrichment_thresh=enrch_cutoff, biological=category)
+
+    _ = saved_processed_table(go_slot, go_table, overwrite=True)
+
+    button_style = cycle_style_colors(button_style)
+
+    top_ten = go_table.iloc[:10]
+
+    top_ten['expected'] = top_ten['expected'].apply(lambda x: np.round(x, 2))
+    top_ten['fold_enrichment'] = top_ten['fold_enrichment'].apply(lambda x: np.round(x, 2))
+
+    top_ten.rename(columns={
+        'go_term_label': 'go_term',
+        'number_in_list': 'num',
+        'fold_enrichment': 'fold',
+        'pValue': 'pval'
+    }, inplace=True)
+
+
+    return top_ten.to_dict('records'), button_style
+
+
+
+@app.callback(
+    Output('vol_download_go', 'data'),
+    Output('vol_download_go_button', 'style'),
+    Input('vol_download_go_button', 'n_clicks'),
+    State('vol_download_go_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def download_go(n_clicks, button_style, session_id):
+
+    umap_slot = session_id + 'vol_go'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    button_style = cycle_style_colors(button_style)
+
+    return dcc.send_data_frame(umap_table.to_csv, 'go_analysis.csv'), button_style

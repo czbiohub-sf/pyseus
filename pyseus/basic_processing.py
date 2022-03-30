@@ -14,12 +14,12 @@ from multiprocessing import Pool
 class RawTables:
     """
     Raw Tables class contains DataFrame objects, functions, and metadata that cover
-    multiple pre-processing steps to create a final processed imputed table. 
-    
+    multiple pre-processing steps to create a final processed imputed table.
+
     """
-    
+
     # initiate raw table by importing from data directory
-    def __init__(self, analysis= '', experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
+    def __init__(self, analysis='', experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
             sample_cols=None, intensity_type='Intensity ', proteingroup=None,
             file_designated=False):
         # set up root folders for the experiment and standard for comparison
@@ -37,7 +37,7 @@ class RawTables:
                 'Majority protein IDs',
                 'Protein names',
                 'Gene names']
-        else: 
+        else:
             self.info_cols = info_cols
         self.sample_cols = sample_cols
 
@@ -48,7 +48,7 @@ class RawTables:
         analysis_dir = self.root + self.analysis
         if len(option_str) > 0:
             option_str = '_' + option_str
-        file_dir = analysis_dir + "/preprocessed_tables" + option_str + '.pkl' 
+        file_dir = analysis_dir + "/preprocessed_tables" + option_str + '.pkl'
         if not os.path.isdir(analysis_dir):
             print(analysis_dir)
             print('Directory does not exist! Creating new directory')
@@ -62,7 +62,7 @@ class RawTables:
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
 
-        try: 
+        try:
             ms_table = self.renamed_table.copy()
         except AttributeError:
             # if table has not been renamed use the raw pg table
@@ -82,8 +82,8 @@ class RawTables:
         filtered = pre_filter - ms_table.shape[0]
         if verbose:
             print("Filtered " + str(filtered) + ' of '
-                    + str(pre_filter) + ' rows. Now '
-                    + str(ms_table.shape[0]) + ' rows.')
+                + str(pre_filter) + ' rows. Now '
+                + str(ms_table.shape[0]) + ' rows.')
 
         # select necessary columns
         if select_intensity:
@@ -91,7 +91,7 @@ class RawTables:
             int_cols, sample_cols = select_intensity_cols(all_cols, self.intensity_type)
             rename = {i: j for i, j in zip(int_cols, sample_cols)}
 
-            ms_table = ms_table.rename(columns=rename)           
+            ms_table = ms_table.rename(columns=rename)
             info_cols = self.info_cols
             self.sample_cols = sample_cols
         else:
@@ -101,7 +101,7 @@ class RawTables:
 
 
         self.filtered_table = ms_table
-    
+
 
 
     def rename_columns(self, RE, replacement_RE, repl_search=False):
@@ -116,7 +116,7 @@ class RawTables:
                 expressions used in search, and all specified groups are used in substitution
 
         """
-        try: 
+        try:
             df = self.filtered_table.copy()
         except AttributeError:
             # if table has not been filtered yet use the raw pg table
@@ -153,12 +153,12 @@ class RawTables:
 
     def transform_intensities(self, func=np.log2):
         """transform intensity values in the dataframe to a given function"""
-        
+
         try:
             filtered = self.filtered_table.copy()
         except AttributeError:
             print(
-                "Raw table has not been filtered yet, use filter_table() method"\
+                "Raw table has not been filtered yet, use filter_table() method"
                 "before transforming intensities")
             return
 
@@ -177,22 +177,22 @@ class RawTables:
                 # Replace neg inf values is np.nan
                 filtered[int_col] = filtered[int_col].apply(
                     lambda x: np.nan if np.isneginf(x) else x)
-        
+
         self.transformed_table = filtered
-    
+
     def group_replicates(self, reg_exp=r'(.*_.*)_\d+$'):
         """Group the replicates of intensities into replicate groups"""
 
-        try: 
+        try:
             self.transformed_table
             transformed = self.transformed_table.copy()
         except AttributeError:
             print(
-            'Intensity values have not been transformed yet from '\
-            'filtered table,\nwe recommend using transform_intensities() '\
-            'method before grouping replicates.\n')
+                'Intensity values have not been transformed yet from '
+                'filtered table,\nwe recommend using transform_intensities() '
+                'method before grouping replicates.\n')
 
-            try: 
+            try:
                 print("Using filtered_table to group replicates.")
                 transformed = self.filtered_table.copy()
             except AttributeError:
@@ -231,7 +231,7 @@ class RawTables:
         grouped = pd.concat(dict((*transformed.groupby(group_dict, 1),)), axis=1)
 
         grouped.columns = grouped.columns.rename("Samples", level=0)
-        grouped.columns = grouped.columns.rename("Replicates", level=1) 
+        grouped.columns = grouped.columns.rename("Replicates", level=1)
 
         self.grouped_table = grouped
 
@@ -244,7 +244,7 @@ class RawTables:
         try:
             grouped = self.grouped_table.reset_index(drop=True).copy()
         except AttributeError:
-            print("Replicates need to be grouped before this method."\
+            print("Replicates need to be grouped before this method."
                 "Please use group_replicates() to group replicates under same sample")
             return
 
@@ -275,7 +275,7 @@ class RawTables:
                 + str(unfiltered) + " rows remaining.")
 
         self.preimpute_table = filtered_df
-    
+
     def bait_impute(self, distance=1.8, width=0.3, local=True):
         """
         bait-imputation for sets of data without enough samples.
@@ -286,17 +286,17 @@ class RawTables:
             mean of the sample distribution upon which to impute. Default = 0
             width: float, width of the distribution to impute in standard deviations. Default = 0.3
         """
-        
+
         try:
             imputed = self.preimpute_table.copy()
         except AttributeError:
-            try: 
+            try:
                 imputed = self.grouped_table.copy()
             except AttributeError:
                 print('Please group replicates first using group_replicates()\
                     method.')
                 return
-        
+
         self.bait_impute_params = {'distance': distance, 'width': width}
 
         # Retrieve all col names that are not classified as metadata
@@ -315,8 +315,10 @@ class RawTables:
 
 
 
+
         bait_params = zip(
-            bait_series, repeat(distance), repeat(width), repeat(local), repeat(global_mean), repeat(global_stdev))
+            bait_series, repeat(distance), repeat(width), repeat(local),
+            repeat(global_mean), repeat(global_stdev))
 
         # Use multiprocessing pool to parallel impute
         p = Pool()
@@ -328,7 +330,7 @@ class RawTables:
             imputed[bait] = impute_list[i]
 
         self.bait_imputed_table = imputed
-    
+
     def prey_impute(self, distance=0, width=0.3, thresh=100):
         """
         default mode of imputation. For protein groups with less than threshold number
@@ -342,14 +344,14 @@ class RawTables:
                 Default = 0.3
             threshold: int, max number of samples required for imputation
         """
-        
+
         try:
             imputed = self.preimpute_table.copy()
         except AttributeError:
-            print("group_replicates() and remove_invalid_rows() need to be run"\
+            print("group_replicates() and remove_invalid_rows() need to be run"
                 "before imputation")
             return
-        
+
         imputed = self.preimpute_table.copy()
         imputed.drop(columns='metadata', inplace=True)
         imputed = imputed.T
@@ -375,15 +377,15 @@ class RawTables:
 
         info_cols = [x for x in list(self.preimpute_table) if x[0] == 'metadata']
         for col in info_cols:
-            imputed[col] = self.preimpute_table[col]      
+            imputed[col] = self.preimpute_table[col]
 
-        self.prey_imputed_table = imputed  
-    
+        self.prey_imputed_table = imputed
+
 
     def generate_export_bait_matrix(self, export=False):
         """
         Generates and creates a Boolean bait matrix that will be used for control
-        exclusion in p-val and enrichment analysis. 
+        exclusion in p-val and enrichment analysis.
         """
         grouped = self.grouped_table.copy()
         baits = list(set(grouped.columns.get_level_values('Samples').to_list()))
@@ -410,9 +412,9 @@ class RawTables:
 
 
 def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
-    intensity_type='LFQ intensity', bait_impute=True, distance=1.8, width=0.3,
-    thresh=100, local=True):
-    
+        intensity_type='LFQ intensity', bait_impute=True, distance=1.8, width=0.3,
+        thresh=100, local=True):
+
     """
     wrapper script for all the pre-processing up to imputation using
     PyseusRawTables Class. Saves and returns the PyseusRawTables in the
@@ -423,7 +425,7 @@ def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
 
     if not os.path.isdir(analysis_dir):
         os.mkdir(analysis_dir)
-    
+
     # Run all the processing methods
     pyseus_tables = RawTables(experiment_dir=root,
         intensity_type=intensity_type, pg_file=pg_file)
@@ -446,7 +448,7 @@ def load_raw_tables(file_dir):
     """
     return pickle.load(open(file_dir, 'rb', -1))
 
-        
+
 def select_intensity_cols(orig_cols, intensity_type):
     """from table column names, return a list of only intensity cols
     rtype: intensity_cols list """
@@ -461,7 +463,7 @@ def select_intensity_cols(orig_cols, intensity_type):
     # for loop to include all the intensity col names
     intensity_type = intensity_type
     for col in orig_cols:
- 
+
         # check if col name has intensity str
         if re.search(re_intensity, col):
             sample = re.search(re_intensity + ' (.*)', col).groups()[1]
@@ -474,18 +476,18 @@ def select_intensity_cols(orig_cols, intensity_type):
 
 def pool_impute(bait_group, distance=1.8, width=0.3, local=True, global_mean=0, global_stdev=0):
     """target for multiprocessing pool from multi_impute_nans"""
-    all_vals = bait_group.stack()
-    mean = all_vals.mean()
-    stdev = all_vals.std()
-    
+
     if local:
+        all_vals = bait_group.stack()
+        mean = all_vals.mean()
+        stdev = all_vals.std()
         # get imputation distribution mean and stdev
         imp_mean = mean - distance * stdev
         imp_stdev = stdev * width
     else:
         # use global mean and stdev
-        imp_mean = global_mean
-        imp_stdev = global_stdev
+        imp_mean = global_mean - distance * global_stdev
+        imp_stdev = global_stdev * width
 
 
     # copy a df of the group to impute values
@@ -532,6 +534,7 @@ def random_imputation_val(x, mean, std):
         return np.random.normal(mean, std, 1)[0]
     else:
         return np.round(x, 4)
+
 
 def sample_rename(col_names, RE, replacement_RE, repl_search=False):
     """
@@ -595,18 +598,18 @@ def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
 def dash_output_table(data_table, sample_cols, metadata_cols):
     """
     Method to force any tables from RawTables class to fit into a standard
-    output table used in the custon DASH app. 
-    Strips any multi-level columns, and create a new level of columns 
+    output table used in the custon DASH app.
+    Strips any multi-level columns, and create a new level of columns
     that specify samples and metadata
     """
-    
+
     data_table = data_table.copy()
 
     if data_table.columns.nlevels > 1:
         # strip the grouping multi-level columns
         data_table = data_table.droplevel('Samples', axis=1)
         data_table.columns.name = None
-    
+
     # divide into sample table and meta table
     sample_table = data_table[sample_cols].copy()
     meta_table = data_table[metadata_cols].copy()
@@ -619,4 +622,3 @@ def dash_output_table(data_table, sample_cols, metadata_cols):
     data_table = pd.concat([meta_table, sample_table], axis=1)
 
     return data_table
-    

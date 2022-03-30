@@ -364,6 +364,10 @@ def process_table(n_clicks, sample_cols_json,
             ms_tables.bait_impute(distance=impute_dist, width=impute_width)
             output_table = ms_tables.bait_imputed_table
 
+        elif replace_opt == 'global_impute':
+            ms_tables.bait_impute(distance=impute_dist, width=impute_width, local=False)
+            output_table = ms_tables.bait_imputed_table
+
         else:
             ms_tables.prey_impute(distance=impute_dist, width=impute_width)
             output_table = ms_tables.prey_imputed_table

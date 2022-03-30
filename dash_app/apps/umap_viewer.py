@@ -41,7 +41,7 @@ from pyseus.plotting import plotly_umap as pu
 transposed_annots = ('sample')
 
 from dapp import app
-from dapp import saved_processed_table, cycle_style_colors
+from dapp import saved_processed_table, cycle_style_colors, query_panther
 
 
 # App Layout
@@ -98,6 +98,20 @@ def load_options(label_1, label_2, label_3, label_4, label_5, label_6):
     State('um_raw_table_upload', 'style')
 )
 def display_upload_ms_filename(filename, style):
+    if filename is None:
+        raise PreventUpdate
+    else:
+        style = cycle_style_colors(style)
+        return filename, style
+
+
+@app.callback(
+    Output('umap_table_upload', 'children'),
+    Output('umap_table_upload', 'style'),
+    Input('umap_table_upload', 'filename'),
+    State('umap_table_upload', 'style')
+)
+def display_upload_umap_filename(filename, style):
     if filename is None:
         raise PreventUpdate
     else:
@@ -202,11 +216,6 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
     Output('feature_dims', 'children'),
     Output('um_features_checklist', 'options'),
     Output('um_features_checklist', 'value'),
-    Output('um_label_select', 'options'),
-    Output('um_label_select', 'value'),
-    Output('annot_select', 'options'),
-    Output('annot_select', 'value'),
-    Output('merge_key_feature', 'options'),
     Output('transpose_button', 'style'),
     Input('transpose_button', 'n_clicks'),
     Input('um_features', 'children'),
@@ -242,18 +251,10 @@ def return_feature_selections(transpose_clicks, um_features_json,
         um_features_opts = [{'label': feature, 'value': feature}
             for feature in um_features]
 
-        # labels/annots options
-        annot_opts = []
-        annot_opts.append({'label': 'None', 'value': 'None'})
-        for annot in annots:
-            annot_opts.append({'label': annot, 'value': annot})
-
-        annot_val = 'None'
 
         button_style['background-color'] = 'white'
 
-        return dim_string, um_features_opts, um_features, annot_opts,\
-            annot_val, annot_opts, annot_val, annot_opts, button_style
+        return dim_string, um_features_opts, um_features, button_style
 
     # for transposed option
     else:
@@ -265,17 +266,10 @@ def return_feature_selections(transpose_clicks, um_features_json,
         feature_opts = [{'label': feature_str, 'value': 'None'}]
         feature_val = ['None']
 
-        label_opts = [{'label': 'sample names', 'value': 'sample'}]
-
-        annot_str = 'No internal annotation available\
-            on transposed table'
-        annot_opts = [{'label': annot_str, 'value': 'None'}]
-        annot_val = 'None'
 
         button_style = cycle_style_colors(button_style)
 
-        return dim_string, feature_opts, feature_val, label_opts, annot_val,\
-            annot_opts, annot_val, label_opts, button_style
+        return dim_string, feature_opts, feature_val, button_style
 
 
 @app.callback(
@@ -323,21 +317,20 @@ def fill_external_keys(content, filename):
 
 
 @app.callback(
-    Output('external_annot_series', 'children'),
     Output('merge_button', 'style'),
     Input('merge_button', 'n_clicks'),
-    State('transpose_button', 'n_clicks'),
     State('annot_table_upload', 'contents'),
     State('annot_table_upload', 'filename'),
     State('merge_key_feature', 'value'),
     State('merge_key_annot', 'value'),
     State('external_annot', 'value'),
+    State('annot_label', 'value'),
     State('merge_button', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def merge_tables(n_clicks, transpose_clicks, content, filename,
-        feature_key, annot_key, annot_label, button_style, session_id):
+def merge_tables(n_clicks, content, filename,
+        feature_key, annot_key, annot_col, annot_label, button_style, session_id):
     """
     Load umap table from cache, and merge it with external annotation table.
     Save merged series to client-side.
@@ -354,21 +347,12 @@ def merge_tables(n_clicks, transpose_clicks, content, filename,
 
     if 'csv' in filename:
         annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-    elif 'tsv' in filename:
+    elif 'tsv' in filename or 'txt' in filename:
         annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
 
+    annot_table = annot_table[[annot_key, annot_col]]
 
-    if transpose_clicks is None:
-        transpose_clicks = 0
-
-    # for non transposed option
-    if transpose_clicks % 2 == 0:
-        session_slot = session_id + 'umap'
-
-    # for transposed option
-    else:
-        session_slot = session_id + 'transposed'
-        feature_key = 'samples'
+    session_slot = session_id + 'completed'
 
     # load cached table
     um_processed_table = saved_processed_table(session_slot)
@@ -379,55 +363,113 @@ def merge_tables(n_clicks, transpose_clicks, content, filename,
     merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
     merge_table.drop_duplicates(subset=list(um_processed_table), inplace=True)
 
-    # save list to json for client-side cache
-    external_annot = merge_table[annot_label].to_list()
-    external_annot_json = json.dumps(external_annot)
+    rename_label = 'ext_' + annot_label
+    merge_table.rename(columns={annot_col: rename_label}, inplace=True)
 
+    _ = saved_processed_table(session_slot, merge_table, overwrite=True)
 
-    return external_annot_json, button_style
+    return button_style
 
 
 @app.callback(
-
-    Output('umap_fig', 'figure'),
-    Output('generate_umap', 'style'),
-    Input('generate_umap', 'n_clicks'),
-    State('transpose_button', 'n_clicks'),
-
-    State('um_features_checklist', 'value'),
-    State('um_label_select', 'value'),
-
-    State('annot_options', 'value'),
-    State('annot_select', 'value'),
-    State('external_annot_series', 'children'),
-
+    Output('cluster_button', 'style'),
+    Input('cluster_button', 'n_clicks'),
     State('n_cluster', 'value'),
+    State('final_features', 'children'),
+    State('cluster_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def make_clusters(n_clicks, num_clust, um_features_json, button_style, session_id):
+
+    session_slot = session_id + 'completed'
+
+    button_style = cycle_style_colors(button_style)
+
+    # load cached table
+    um_processed_table = saved_processed_table(session_slot)
+
+    um_features = json.loads(um_features_json)
+
+    matrix = um_processed_table[um_features]
+
+    # scale matrix
+    scaled = pu.scale_table(matrix.values, 'standard')
+    # K means
+    clusters = KMeans(n_clusters=num_clust).fit_predict(scaled)
+    clusters = [str(x) for x in clusters]
 
 
+    um_processed_table['cluster_' + str(num_clust)] = clusters
+
+    _ = saved_processed_table(session_slot, um_processed_table, overwrite=True)
+
+    return button_style
+
+
+@app.callback(
+    Output('generate_umap', 'style'),
+    Output('umap_load_button', 'style'),
+    Output('final_features', 'children'),
+    Input('generate_umap', 'n_clicks'),
+
+    Input('umap_load_button', 'n_clicks'),
+    State('umap_table_upload', 'contents'),
+    State('umap_load_button', 'style'),
+
+
+
+    State('transpose_button', 'n_clicks'),
+    State('um_annots', 'children'),
+    State('um_features_checklist', 'value'),
     State('feature_scaling', 'value'),
     State('n_neighbors', 'value'),
     State('min_dist', 'value'),
     State('umap_metric', 'value'),
     State('random_state', 'value'),
-    State('marker_color', 'value'),
-    State('opacity', 'value'),
 
     State('generate_umap', 'style'),
     State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
-        internal_annot, ext_annot, n_cluster, scaling,
-        n_neighbors, min_dist, metric, random_state,
-        marker_color, opacity, button_style, session_id):
+def generate_umap(umap_clicks, upload_clicks, content, upload_style, transpose_clicks, um_annots_json,
+        um_features, scaling, n_neighbors, min_dist, metric, random_state, generate_style, session_id):
     """
     Generate umap from all the customizable options
     """
-    if umap_clicks is None:
+    if umap_clicks is None and upload_clicks is None:
         raise PreventUpdate
 
-    button_style = cycle_style_colors(button_style)
+
+
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Condition for processing uploaded table
+    if button_id == 'umap_load_button':
+
+        # parse txt (tsv) file as pd df from upload
+        content_type, content_string = content.split(',')
+        decoded = base64.b64decode(content_string)
+
+        um_raw_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
+            low_memory=False, header=[0, 1], index_col=0)
+
+        upload_style = cycle_style_colors(upload_style)
+
+        um_features = list(um_raw_table['sample'])
+        um_features.sort()
+        um_features_json = json.dumps(um_features)
+
+        umap_table = um_raw_table.droplevel(level=0, axis=1)
+        session_slot = session_id + 'completed'
+
+        _ = saved_processed_table(session_slot, umap_table, overwrite=True)
+
+        return generate_style, upload_style, um_features_json
 
 
     if transpose_clicks is None:
@@ -438,6 +480,9 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         session_slot = session_id + 'umap'
         um_processed_table = saved_processed_table(session_slot)
 
+        annots = json.loads(um_annots_json)
+        um_processed_table = um_processed_table[um_features + annots]
+
     # cached load for transposed option
     else:
         session_slot = session_id + 'transposed'
@@ -447,17 +492,7 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
         # manual assignment of features and label
         um_features = list(um_processed_table)
         um_features.remove('samples')
-        label = 'samples'
 
-    # designate appropriate annotation for colormap
-    if annot_opts == 'no_annot':
-        annot = 'None'
-    elif annot_opts == 'internal':
-        annot = internal_annot
-    elif annot_opts == 'external':
-        external_annots = json.loads(ext_annot)
-        um_processed_table['external'] = external_annots
-        annot = 'external'
 
     _ = list(um_processed_table)
     um_processed_table.dropna(subset=um_features, inplace=True)
@@ -467,14 +502,6 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     # scale matrix
     scaled = pu.scale_table(matrix.values, scaling)
 
-
-    # since clustering annotation must follow dropping Nans, if statement
-    # is separately placed here
-    if annot_opts == 'cluster':
-        clusters = KMeans(n_clusters=n_cluster).fit_predict(scaled)
-        clusters = [str(x) for x in clusters]
-        um_processed_table['cluster'] = clusters
-        annot = 'cluster'
 
     # configure random state
     if random_state == 'None':
@@ -496,61 +523,138 @@ def generate_umap(umap_clicks, transpose_clicks, um_features, label, annot_opts,
     um_processed_table['umap_1'] = u[: , 0]
     um_processed_table['umap_2'] = u[:, 1]
 
-    # umap generation
-    fig = pu.interaction_umap(um_processed_table, node_name=label, cluster=annot,
-        unlabelled_color=marker_color, unlabelled_opacity=opacity)
 
 
-    # save table with umap coordinates for downloadable cache
+    # save table with umap coordinates for able cache
     complete_slot = session_id + 'completed'
     um_processed_table = saved_processed_table(complete_slot, um_processed_table, overwrite=True)
 
+    um_features_json = json.dumps(um_features)
+    generate_style = cycle_style_colors(generate_style)
 
+
+
+    return generate_style, upload_style, um_features_json
+
+
+@app.callback(
+    Output('gene_selector', 'options'),
+    Output('gene_selector', 'value'),
+    Output('merge_key_feature', 'options'),
+    Output('merge_key_feature', 'value'),
+    Output('um_label_select', 'options'),
+    Output('um_label_select', 'value'),
+    Output('annot_select', 'options'),
+    Output('annot_select', 'value'),
+    Input('generate_umap', 'style'),
+    Input('umap_load_button', 'style'),
+    Input('merge_button', 'style'),
+    Input('cluster_button', 'style'),
+    State('final_features', 'children'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def populate_options(input_1, input_2, input_3, input_4, features_json, session_id):
+
+    umap_slot = session_id + 'completed'
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    features = json.loads(features_json)
+
+    cols = list(umap_table)
+    annots = [col for col in cols if col not in features and 'umap_' not in col]
+    labels = [col for col in annots if 'cluster_' not in col and 'ext_' not in col]
+
+
+    # labels/annots options
+    annot_opts = []
+    annot_opts.append({'label': 'None', 'value': 'None'})
+    for annot in annots:
+        annot_opts.append({'label': annot, 'value': annot})
+
+    annot_val = 'None'
+
+    label_val = 'None'
+    # labels/annots options
+    label_opts = []
+    label_opts.append({'label': 'None', 'value': 'None'})
+    for label in labels:
+        label_opts.append({'label': label, 'value': label})
+        if 'gene' in label.lower():
+            label_val = label
+
+    return label_opts, label_val, label_opts, label_val, label_opts, label_val, annot_opts, annot_val
+
+
+@app.callback(
+    Output('umap_fig', 'figure'),
+    Output('plot_button', 'style'),
+    Input('plot_button', 'n_clicks'),
+    State('um_label_select', 'value'),
+    State('annot_select', 'value'),
+    State('marker_color', 'value'),
+    State('opacity', 'value'),
+    State('plot_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def plot_umap(n_clicks, label, annot, marker_color, opacity, button_style, session_id):
+
+    umap_slot = session_id + 'completed'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+
+    # umap generation
+    fig = pu.interaction_umap(umap_table, node_name=label, cluster=annot,
+        unlabelled_color=marker_color, unlabelled_opacity=opacity)
+
+    button_style = cycle_style_colors(button_style)
 
     return fig, button_style
+
+
+@app.callback(
+    Output('annot_label', 'value'),
+    Input('external_annot', 'value'),
+    prevent_initial_call=True
+)
+def fill(annot):
+    if annot:
+        return annot
 
 
 @app.callback(
     Output('download_umap', 'data'),
     Output('download_umap_button', 'style'),
     Input('download_umap_button', 'n_clicks'),
-
+    State('um_features', 'children'),
+    State('final_features', 'children'),
     State('download_umap_button', 'style'),
     State('session_id', 'data'),
+
     prevent_initial_call=True
 )
-def download_matrix(n_clicks, button_style, session_id):
-    if n_clicks is None:
-        raise PreventUpdate
-    slot = session_id + 'completed'
-    download = saved_processed_table(slot)
-    button_style = cycle_style_colors(button_style)
-
-    return dcc.send_data_frame(download.to_csv, 'umap.csv'), button_style
-
-
-@app.callback(
-    Output('umap_x', 'min'),
-    Output('umap_x', 'max'),
-    Output('umap_x', 'step'),
-    Output('umap_x', 'value'),
-    Output('umap_x', 'marks'),
-    Output('umap_y', 'min'),
-    Output('umap_y', 'max'),
-    Output('umap_y', 'step'),
-    Output('umap_y', 'value'),
-    Output('umap_y', 'marks'),
-
-    Input('generate_umap', 'style'),
-    State('session_id', 'data'),
-)
-def populate_subspacesliders(button_style, session_id):
-    """
-    When UMAP table is calculated, automatically populate range slider options
-    for subspace download
-    """
+def download_umap(n_clicks, orig_features_json, final_features_json, button_style, session_id):
 
     umap_slot = session_id + 'completed'
+    if n_clicks is None:
+        raise PreventUpdate
+
     try:
         # verify that the enrichment table is available
         umap_table = saved_processed_table(umap_slot).copy()
@@ -558,56 +662,154 @@ def populate_subspacesliders(button_style, session_id):
     except AttributeError:
         raise PreventUpdate
 
+    if orig_features_json:
+        features = json.loads(orig_features_json)
+    elif final_features_json:
+        features = json.loads(final_features_json)
 
-    # Get min and max values with padding
-    x_min = umap_table['umap_1'].min() - 1
-    x_max = umap_table['umap_1'].max() + 1
+    column_tups = []
+    for col in list(umap_table):
+        if col in features:
+            column_tups.append(('sample', col))
+        else:
+            column_tups.append(('metadata', col))
 
-    x_steps = np.round((x_max - x_min) / 400, decimals=3)
+    umap_table.columns = pd.MultiIndex.from_tuples(column_tups)
 
-    y_min = umap_table['umap_2'].min() - 1
-    y_max = umap_table['umap_2'].max() + 1
+    button_style = cycle_style_colors(button_style)
 
-    y_steps = np.round((y_max - y_min) / 400, decimals=3)
+    return dcc.send_data_frame(umap_table.to_csv, 'umap_table.csv'), button_style
 
-    # Set marks, rounded to two decimals
-    x_marks = np.linspace(x_min, x_max, 5)
-    x_marks = np.around(x_marks, decimals=2)
 
-    y_marks = np.linspace(y_min, y_max, 5)
-    y_marks = np.around(y_marks, decimals=2)
+@app.callback(
+    Output('annot_table_dl', 'data'),
+    Output('annot_dl_button', 'style'),
+    Input('annot_dl_button', 'n_clicks'),
+    State('um_features', 'children'),
+    State('final_features', 'children'),
+    State('annot_dl_button', 'style'),
+    State('session_id', 'data'),
 
-    # set values
-    x_vals = [x_marks[1], x_marks[3]]
-    y_vals = [y_marks[1], y_marks[3]]
+    prevent_initial_call=True
+)
+def download_annot_umap(n_clicks, orig_features_json, final_features_json, button_style, session_id):
 
-    # set marks as dicts
-    x_labels = {}
-    y_labels = {}
-    for i in np.arange(len(x_marks)):
-        x_labels[x_marks[i]] = str(x_marks[i])
-        y_labels[y_marks[i]] = str(y_marks[i])
+    umap_slot = session_id + 'completed'
+    if n_clicks is None:
+        raise PreventUpdate
 
-    # return every option
-    return x_min, x_max, x_steps, x_vals, x_labels,\
-        y_min, y_max, y_steps, y_vals, y_labels
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    if orig_features_json:
+        features = json.loads(orig_features_json)
+    elif final_features_json:
+        features = json.loads(final_features_json)
+
+    column_tups = []
+    for col in list(umap_table):
+        if col in features:
+            column_tups.append(('sample', col))
+        else:
+            column_tups.append(('metadata', col))
+
+    umap_table.columns = pd.MultiIndex.from_tuples(column_tups)
+
+    button_style = cycle_style_colors(button_style)
+
+    return dcc.send_data_frame(umap_table.to_csv, 'annotated_umap_table.csv'), button_style
+
+
+@app.callback(
+    Output('umap_table_status', 'children'),
+    Output('umap_table_status', 'style'),
+    Input('generate_umap', 'style'),
+    Input('umap_load_button', 'style'),
+    State('umap_table_status', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def check_umap_status(hits_style, load_style, style, session_id):
+
+    hits_slot = session_id + 'completed'
+
+    try:
+        hits_table = saved_processed_table(hits_slot)
+    except Exception:
+        raise PreventUpdate
+
+    _ = hits_table
+
+    style = cycle_style_colors(style)
+    return 'UMAP table ready!', style
+
+
+
+
+@app.callback(
+    Output('selection_count', 'children'),
+    Input('umap_fig', 'selectedData'),
+    prevent_initial_call=True
+)
+def print_selection_count(selectedData):
+    if selectedData is None:
+        PreventUpdate
+
+    num_points = len(selectedData['points'])
+    new_str = str(num_points) + ' data points selected'
+
+    return new_str
+
+
+
+@app.callback(
+    Output('select_button', 'style'),
+    Input('select_button', 'n_clicks'),
+    State('umap_fig', 'selectedData'),
+    State('select_button', 'style'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
+)
+def save_selected_data(n_clicks, selectedData, style, session_id):
+
+    # designate cache ids
+    selected_slot = session_id + 'selected'
+    complete_slot = session_id + 'completed'
+
+    umap_table = saved_processed_table(complete_slot)
+
+    points = selectedData['points']
+    indices = []
+    for point in points:
+        indices.append(point['customdata'][0])
+
+    selected_table = umap_table[umap_table.index.isin(indices)]
+    selected_table.reset_index(drop=True, inplace=True)
+    _ = saved_processed_table(selected_slot, selected_table, overwrite=True)
+
+
+    style = cycle_style_colors(style)
+
+
+    return style
 
 
 @app.callback(
     Output('download_subspace', 'data'),
     Output('download_subspace_button', 'style'),
     Input('download_subspace_button', 'n_clicks'),
-
-    State('umap_x', 'value'),
-    State('umap_y', 'value'),
     State('download_subspace_button', 'style'),
     State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def download_subspace(n_clicks, x_range, y_range, button_style, session_id):
+def download_subspace(n_clicks, button_style, session_id):
 
-    umap_slot = session_id + 'completed'
+    umap_slot = session_id + 'selected'
     if n_clicks is None:
         raise PreventUpdate
 
@@ -618,15 +820,91 @@ def download_subspace(n_clicks, x_range, y_range, button_style, session_id):
     except AttributeError:
         raise PreventUpdate
 
-    # set UMAP coordinates to the subspace range specified
-    umap_table2 = umap_table[(umap_table['umap_1'] >= x_range[0])
-        & (umap_table['umap_1'] <= x_range[1])]
+    button_style = cycle_style_colors(button_style)
 
-    umap_table3 = umap_table2[(umap_table2['umap_2'] >= y_range[0])
-        & (umap_table2['umap_2'] <= y_range[1])]
+    return dcc.send_data_frame(umap_table.to_csv, 'umap_subspace.csv'), button_style
 
-    umap_table3.reset_index(drop=True, inplace=True)
+
+@app.callback(
+    Output('go_top_table', 'data'),
+    Output('go_analysis', 'style'),
+    Input('go_analysis', 'n_clicks'),
+    State('gene_selector', 'value'),
+    State('go_cat', 'value'),
+    State('pval_cutoff', 'value'),
+    State('enrich_cutoff', 'value'),
+    State('go_analysis', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def calculate_go(n_clicks, gene_names, category, pval_cutoff, enrch_cutoff, button_style, session_id):
+
+    completed_slot = session_id + 'completed'
+    selected_slot = session_id + 'selected'
+    go_slot = session_id + 'umap_go'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        completed = saved_processed_table(completed_slot).copy()
+        selected = saved_processed_table(selected_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    all_genes = completed[gene_names].apply(
+        lambda x: str(x).upper().split(';')).explode().drop_duplicates().to_list()
+    selected_genes = selected[gene_names].apply(
+        lambda x: str(x).upper().split(';')).explode().drop_duplicates().to_list()
+
+
+
+    go_table = query_panther(selected_genes, all_genes, pval_thresh=pval_cutoff,
+        enrichment_thresh=enrch_cutoff, biological=category)
+
+    _ = saved_processed_table(go_slot, go_table, overwrite=True)
 
     button_style = cycle_style_colors(button_style)
 
-    return dcc.send_data_frame(umap_table3.to_csv, 'umap_subspace.csv'), button_style
+    top_ten = go_table.iloc[:10]
+
+    top_ten['expected'] = top_ten['expected'].apply(lambda x: np.round(x, 2))
+    top_ten['fold_enrichment'] = top_ten['fold_enrichment'].apply(lambda x: np.round(x, 2))
+
+    top_ten.rename(columns={
+        'go_term_label': 'go_term',
+        'number_in_list': 'num',
+        'fold_enrichment': 'fold',
+        'pValue': 'pval'}, inplace=True)
+
+
+    return top_ten.to_dict('records'), button_style
+
+
+@app.callback(
+    Output('download_go', 'data'),
+    Output('download_go_button', 'style'),
+    Input('download_go_button', 'n_clicks'),
+    State('download_go_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def download_go(n_clicks, button_style, session_id):
+
+    umap_slot = session_id + 'umap_go'
+    if n_clicks is None:
+        raise PreventUpdate
+
+    try:
+        # verify that the enrichment table is available
+        umap_table = saved_processed_table(umap_slot).copy()
+
+    except AttributeError:
+        raise PreventUpdate
+
+    button_style = cycle_style_colors(button_style)
+
+    return dcc.send_data_frame(umap_table.to_csv, 'umap_go_analysis.csv'), button_style
