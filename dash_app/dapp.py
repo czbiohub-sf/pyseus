@@ -3,6 +3,7 @@ from dash import html
 import flask
 from flask_caching import Cache
 import pandas as pd
+import requests
 
 
 # initiate app
@@ -70,3 +71,48 @@ def cycle_style_colors(style, color_1='#DCE7EC', color_2='#dcdfec'):
         style['background-color'] = color_1
 
     return style
+
+
+def query_panther(target_names, all_target_names, pval_thresh=0.1, enrichment_thresh=2, biological=True):
+    url = 'http://pantherdb.org/services/oai/pantherdb/enrich/overrep'
+    # dataset ids from http://pantherdb.org/services/oai/pantherdb/supportedannotdatasets
+
+
+    panther_datasets = {
+        "molecular_function": "ANNOT_TYPE_ID_PANTHER_GO_SLIM_MF",
+        "biological_process": "ANNOT_TYPE_ID_PANTHER_GO_SLIM_BP",
+        "cellular_component": "ANNOT_TYPE_ID_PANTHER_GO_SLIM_CC"
+    }
+    if biological == 'bp':
+        panth = panther_datasets['biological_process']
+    elif biological == 'cc':
+
+        panth = panther_datasets['cellular_component']
+    else:
+        panth = panther_datasets['molecular_function']
+
+    panther_human_organism_id = 9606
+    params = {
+        'geneInputList': (','.join(target_names)),
+        'refInputList': (','.join(all_target_names)),
+        'organism': panther_human_organism_id,
+        'refOrganism': panther_human_organism_id,
+        'annotDataSet': panth,
+        'enrichmentTestType': 'FISHER',
+        'correction': 'FDR'
+    }
+    result = requests.post(url, params)
+    d = result.json()
+    # these are the hits (already sorted by p-value)
+    annot = pd.DataFrame(data=d['results']['result'])
+    annot['go_term_id'] = annot.term.apply(lambda s: s.get('id'))
+    annot['go_term_label'] = annot.term.apply(lambda s: s.get('label'))
+    annot.drop('term', axis=1, inplace=True)
+
+    annot = annot[annot['pValue'] < pval_thresh]
+    annot = annot[annot['fold_enrichment'] >= enrichment_thresh]
+    annot.reset_index(drop=True, inplace=True)
+    annot = annot[['number_in_list', 'expected', 'fold_enrichment', 'fdr',
+        'pValue', 'go_term_id', 'go_term_label']].copy()
+
+    return annot

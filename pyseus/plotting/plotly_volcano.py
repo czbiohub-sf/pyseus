@@ -7,6 +7,7 @@ import plotly.offline
 from plotly import graph_objs as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
+import plotly.express as px
 import math
 
 
@@ -74,20 +75,21 @@ def simple_volcano(v_df, bait, fcd, width=None, height=None):
     return fig
 
 
-def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None, experiment=False):
+def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
+        height=None, experiment=False, fcd=True, color=None):
     # initiate dfs
     sel_df = v_df.copy()
-    sel_df = v_df.set_index(marker)
 
-    # start a subplot
-    fig = go.Figure()
 
     if experiment:
         bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['experiment'] == plate)]
     else:
         bait_vals = sel_df[sel_df['target'] == bait]
 
+    if color:
+        bait_vals[color] = bait_vals[color].fillna('Unlabelled')
 
+    bait_vals.reset_index(drop=False, inplace=True)
     hits = bait_vals[bait_vals['interaction']]
     # print("Number of Significant Hits: " + str(hits.shape[0]))
 
@@ -96,44 +98,71 @@ def volcano_plot(v_df, bait, plate, marker='prey', width=None, height=None, expe
 
 
     # calculations for x axis min, max parameters
-    xmax = hits['enrichment'].max() + 3
-    if hits.shape[0] > 0:
-        ymax = hits['pvals'].max() + 4
+    xmax = bait_vals['enrichment'].max() + bait_vals['enrichment'].max() * 0.1
+
+    ymax = bait_vals['pvals'].max() + bait_vals['pvals'].max() * 0.1
+
+    if marker_mode:
+        text = marker
     else:
-        ymax = 30
+        text = None
 
-    # FCD plot calculation
-    fcd1 = bait_vals.iloc[0]['fdr']
-
-
-    x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
-        + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
-    y1 = fcd1[0] / (abs(x1) - fcd1[1])
+    if fcd:
+        # FCD plot calculation
+        fcd1 = bait_vals.iloc[0]['fdr']
 
 
-    # add significant hits
-    fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
-        mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10, line=dict(width=2))))
+        x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
+            + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
+        y1 = fcd1[0] / (abs(x1) - fcd1[1])
 
-    # add non-significant hits
-    fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
-        mode='markers', text=no_hits.index.tolist(), opacity=0.4,
-        marker=dict(size=8)))
 
-    fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
-        line=dict(color='royalblue', dash='dash')))
+        # add significant hits
+        fig1 = px.scatter(hits, x='enrichment', y='pvals',
+            hover_name=marker, text=text, custom_data=['index'],
+            opacity=0.6, color=color)
+        fig1.update_traces(marker_size=10, marker_line_width=1,
+            textposition='bottom right')
+        if not color:
+            fig1.update_traces(marker_color='#EF553B')
+
+        # add non-significant hits
+        fig2 = px.scatter(no_hits, x='enrichment', y='pvals',
+            hover_name=marker, custom_data=['index'],
+            opacity=0.6, color=color)
+        fig2.update_traces(marker_size=8)
+        if not color:
+            fig2.update_traces(marker_color='#70aee0')
+
+        fig = go.Figure(data=fig2.data + fig1.data)
+
+
+        fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='fcd_line',
+            line=dict(color='DarkSlateGrey', dash='dash')))
+
+    else:
+
+        fig = px.scatter(bait_vals, x='enrichment', y='pvals',
+            hover_name=marker, custom_data=['index'],
+            opacity=0.6, color=color)
+        fig.update_traces(marker_size=8)
+        if not color:
+            fig.update_traces(marker_color='#70aee0')
+
 
     # axis customization
     fig.update_xaxes(title_text='Enrichment (log2)',
         range=[-1 * xmax, xmax])
     fig.update_yaxes(title_text='p-value (-log10)',
         range=[-1, ymax])
-
+    for trace in fig['data']:
+        if trace['name'] == 'fcd_line':
+            trace['showlegend'] = False
     fig.update_layout(
+        template='ggplot2',
         xaxis_title='Enrichment (log2)',
         yaxis_title='P value (-log10)',
-        showlegend=False,
+        showlegend=True,
         margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
     if width:
         fig.update_layout(

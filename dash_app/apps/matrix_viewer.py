@@ -303,6 +303,5 @@ def generate_clustergram(n_clicks, features, label, index,
     return fig, button_style
 
 
-
 if __name__ == "__main__":
     app.run_server(debug=True)
