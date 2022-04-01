@@ -65,7 +65,7 @@ def interaction_umap(
             hover_name=node_name,
             hover_data=hover_data,
             opacity=opacity,
-            custom_data='index',
+            custom_data=['index'],
             template='simple_white')
         fig.update_traces(marker=dict(size=5.5))
 
