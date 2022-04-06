@@ -361,6 +361,7 @@ def merge_tables(n_clicks, content, filename,
     annot_table.rename(columns={annot_key: feature_key}, inplace=True)
 
     merge_table = um_processed_table.merge(annot_table, on=feature_key, how='left')
+
     merge_table.drop_duplicates(subset=list(um_processed_table), inplace=True)
 
     rename_label = 'ext_' + annot_label
@@ -369,6 +370,25 @@ def merge_tables(n_clicks, content, filename,
     _ = saved_processed_table(session_slot, merge_table, overwrite=True)
 
     return button_style
+
+
+@app.callback(
+    Output('x_select', 'options'),
+    Output('y_select', 'options'),
+    Input('final_features', 'children'),
+    prevent_initial_call=True
+)
+def populate_data_opts(final_features_json):
+
+    features = json.loads(final_features_json)
+    default_opts = [
+        {'label': 'UMAP 1', 'value': 'umap_1'},
+        {'label': 'UMAP 2', 'value': 'umap_2'}]
+
+    for feature in features:
+        default_opts.append({'label': feature, 'value': feature})
+
+    return default_opts, default_opts
 
 
 @app.callback(
@@ -435,7 +455,8 @@ def make_clusters(n_clicks, num_clust, um_features_json, button_style, session_i
     prevent_initial_call=True
 )
 def generate_umap(umap_clicks, upload_clicks, content, upload_style, transpose_clicks, um_annots_json,
-        um_features, scaling, n_neighbors, min_dist, metric, random_state, generate_style, session_id):
+        um_features, scaling, n_neighbors, min_dist, metric, random_state,
+        generate_style, session_id):
     """
     Generate umap from all the customizable options
     """
@@ -600,12 +621,15 @@ def populate_options(input_1, input_2, input_3, input_4, features_json, session_
     State('annot_select', 'value'),
     State('marker_color', 'value'),
     State('opacity', 'value'),
+    State('x_select', 'value'),
+    State('y_select', 'value'),
     State('plot_button', 'style'),
     State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def plot_umap(n_clicks, label, annot, marker_color, opacity, button_style, session_id):
+def plot_umap(n_clicks, label, annot, marker_color, opacity, x_val, y_val,
+        button_style, session_id):
 
     umap_slot = session_id + 'completed'
     if n_clicks is None:
@@ -621,7 +645,12 @@ def plot_umap(n_clicks, label, annot, marker_color, opacity, button_style, sessi
 
     # umap generation
     fig = pu.interaction_umap(umap_table, node_name=label, cluster=annot,
-        unlabelled_color=marker_color, unlabelled_opacity=opacity)
+        unlabelled_color=marker_color, unlabelled_opacity=opacity, x=x_val, y=y_val)
+
+    if 'umap' not in x_val:
+        fig.add_vline(x=0, line_width=1)
+        fig.add_hline(y=0, line_width=1)
+
 
     button_style = cycle_style_colors(button_style)
 
@@ -752,29 +781,19 @@ def check_umap_status(hits_style, load_style, style, session_id):
 
 @app.callback(
     Output('selection_count', 'children'),
+    Output('selected_data', 'data'),
     Input('umap_fig', 'selectedData'),
+    State('um_label_select', 'value'),
+    State('session_id', 'data'),
     prevent_initial_call=True
 )
-def print_selection_count(selectedData):
+def print_selection_count(selectedData, label, session_id):
     if selectedData is None:
         PreventUpdate
 
     num_points = len(selectedData['points'])
     new_str = str(num_points) + ' data points selected'
 
-    return new_str
-
-
-
-@app.callback(
-    Output('select_button', 'style'),
-    Input('select_button', 'n_clicks'),
-    State('umap_fig', 'selectedData'),
-    State('select_button', 'style'),
-    State('session_id', 'data'),
-    prevent_initial_call=True
-)
-def save_selected_data(n_clicks, selectedData, style, session_id):
 
     # designate cache ids
     selected_slot = session_id + 'selected'
@@ -789,13 +808,14 @@ def save_selected_data(n_clicks, selectedData, style, session_id):
 
     selected_table = umap_table[umap_table.index.isin(indices)]
     selected_table.reset_index(drop=True, inplace=True)
+
+    labels = selected_table.rename(columns={label: 'marker'})[['marker']].sort_values(
+        by='marker')
+
+
     _ = saved_processed_table(selected_slot, selected_table, overwrite=True)
 
-
-    style = cycle_style_colors(style)
-
-
-    return style
+    return new_str, labels.to_dict('records')
 
 
 @app.callback(

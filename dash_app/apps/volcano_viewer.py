@@ -1,5 +1,6 @@
 import base64
 import datetime
+from inspect import Attribute
 import markdown
 import io
 import json
@@ -640,7 +641,6 @@ def calculate_hits(hits_clicks, contents, thresh_opt,
     """
     # get the context of the callback trigger
 
-
     # set up cache slots
     hits_slot = session_id + 'hits'
     enriched_slot = session_id + 'enriched'
@@ -648,8 +648,13 @@ def calculate_hits(hits_clicks, contents, thresh_opt,
     # load enrichment table from cache
     try:
         sig_table = saved_processed_table(enriched_slot)
-    except Exception:
-        raise PreventUpdate
+
+    except AttributeError:
+        try:
+            sig_table = saved_processed_table(hits_slot)
+
+        except AttributeError:
+            raise PreventUpdate
 
     # calculate FDR
     vali = va.Validation(hit_table=sig_table, target_col='target',
@@ -875,34 +880,111 @@ def fill_ext_options(style, session_id):
 
 @app.callback(
     Output('matrix_fig_1', 'figure'),
+    Output('estimated_FDR', 'children'),
+    Output('preview', 'style'),
+    Output('volcano_button_1', 'style'),
+
+    Input('preview', 'n_clicks'),
+
     Input('volcano_button_1', 'n_clicks'),
     State('plot_options', 'value'),
     State('volcano_dropdown_1', 'value'),
     State('vol_marker_label', 'value'),
     State('vol_annot_select', 'value'),
+
+    State('offset', 'value'),
+    State('curvature', 'value'),
+    State('estimated_FDR', 'children'),
+    State('preview', 'style'),
+    State('volcano_button_1', 'style'),
+
+
+
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano(click_1, checklist, sample, marker, annots, session_id):
+def plot_volcano(volc_click, click_1, checklist, sample, marker, annots,
+        offset, curvature, estimate, preview_style, volc_style, session_id):
 
     hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
+    enriched = False
 
-    hits_table = saved_processed_table(hits_slot)
+    try:
+        # import cached grouped table
+        hits_table = saved_processed_table(hits_slot)
+    except AttributeError:
+        try:
+            hits_table = saved_processed_table(enriched_slot)
+            enriched = True
+        except AttributeError:
+            raise PreventUpdate
+
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # creating a preview for seed FDR
+    if button_id == 'preview':
+
+        # estimate FDR percentage
+        neg_select = hits_table[hits_table['enrichment'] < 0]
+        pos_select = hits_table[hits_table['enrichment'] > 0]
+
+        neg_hit = va.hit_count(neg_select, curvature, offset)
+        pos_hit = va.hit_count(pos_select, curvature, offset)
+        if pos_hit == 0:
+            pos_perc = 0
+        else:
+            pos_perc = np.round(100 * neg_hit / pos_hit, 1)
+
+        estimate = str(pos_perc) + '%'
+
+        # divide the samples to reduce points to plot
+        stdev = hits_table['enrichment'].std()
+        higher = hits_table[hits_table['enrichment'] > stdev]
+        lower = hits_table[hits_table['enrichment'] < -stdev]
+        mid = hits_table[~(hits_table.index.isin(higher.index))
+            | ~(hits_table.index.isin(lower.index))]
+
+        # sample 5% of the whole data
+        mid = mid.sample(frac=0.1, ignore_index=True)
+        hits_table = pd.concat([higher, lower, mid])
+
+        # set target name and fdr for Hawaii analysis
+        hits_table['target'] = 'hawaii'
+        hits_table['interaction'] = False
+        hits_table['fdr'] = [[curvature, offset]] * hits_table.shape[0]
+
+        fig = pv.volcano_plot(hits_table, bait='hawaii', marker_mode=False,
+            fcd=True, marker=marker, plate='N/A', experiment=False, color=None)
+
+        preview_style = cycle_style_colors(preview_style)
+
+        return fig, estimate, preview_style, volc_style
+
+
+    # standard-context volcano plotting
+    volc_style = cycle_style_colors(volc_style)
 
     fcd = False
     label = False
     annot = None
     if 'fdr' in checklist:
         fcd = True
+        if enriched:
+            raise PreventUpdate
     if 'label' in checklist:
         label = True
+        if enriched:
+            raise PreventUpdate
     if 'ext' in checklist:
         annot = annots
 
     fig = pv.volcano_plot(hits_table, sample, marker_mode=label, fcd=fcd, marker=marker,
         plate='N/A', experiment=False, color=annot)
 
-    return fig
+    return fig, estimate, preview_style, volc_style
 
 
 @app.callback(

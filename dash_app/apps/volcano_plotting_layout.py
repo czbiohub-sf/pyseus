@@ -145,8 +145,6 @@ def plotting_layout():
         html.Div([
             html.P('Thresholding options', style={'textAlign': 'center',
                 'fontSize': 18, 'lineHeight': '15px', 'marginTop': '6%'}),
-            html.P('Hawaiian option is buggy atm.', style={'textAlign': 'center',
-                'fontSize': 12, 'lineHeight': '15px', 'marginTop': '1%'}),
 
             dcc.RadioItems(id='thresh_option',
                 options=[
@@ -170,7 +168,7 @@ def plotting_layout():
                 dcc.Slider(
                     id='fdr',
                     min=0,
-                    max=10,
+                    max=20,
                     step=0.5,
                     value=5,
                     tooltip={"placement": "bottom", "always_visible": True},
@@ -178,6 +176,8 @@ def plotting_layout():
                         0: '0',
                         5: '5',
                         10: '10',
+                        15: '15',
+                        20: '20',
                     },
                 )
             ],
@@ -216,7 +216,7 @@ def plotting_layout():
                     },
                 )
             ],
-                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                style={'width': '95%', 'marginLeft': '2%', 'marginTop': '3%'}
             ),
 
             html.P('Set seeding threshold curvature',
@@ -229,18 +229,18 @@ def plotting_layout():
                 dcc.Slider(
                     id='curvature',
                     min=0,
-                    max=5,
+                    max=10,
                     step=0.2,
                     value=3,
                     tooltip={"placement": "bottom", "always_visible": True},
                     marks={
                         0: '0',
-                        2: '2',
-                        4: '4',
+                        5: '5',
+                        10: '10',
                     },
                 )
             ],
-                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                style={'width': '95%', 'marginLeft': '3%', 'marginTop': '3%'}
             ),
 
         ],
@@ -249,9 +249,38 @@ def plotting_layout():
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '200px',
-                'width': '40%',
-                'borderRight': '1px #A6ACAF solid'}
+                'width': '27%'}
         ),
+
+        html.Div([
+            html.Button('Preview seeding FDR', id='preview',
+                style={
+                    'fontSize': '13',
+                    'marginLeft': '1%',
+                    'width': '95%',
+                    'marginTop': '8%',
+                    'white-space': 'normal',
+                    'background-color': 'white'}),
+
+            html.Hr(style={'marginTop': '8%', 'marginBottom': '2%'}),
+            html.P("estimated FDR:",
+                style={'textAlign': 'center',
+                    'fontSize': 16,
+                    'marginTop': '4%'}),
+            html.P("  %", id='estimated_FDR',
+                style={'textAlign': 'center',
+                    'fontSize': 16,
+                    'marginTop': '2%'}),
+        ], style={
+            'vertical-align': 'top',
+            'display': 'inline-block',
+            'height': '200px',
+            'width': '23%',
+            'borderRight': '1px #A6ACAF solid'}
+        ),
+
+
+
 
         html.Div([
             html.Button('Call significant hits!', id='hits_button',
@@ -288,7 +317,7 @@ def plotting_layout():
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '200px',
-                'width': '35%'}
+                'width': '25%'}
         ),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),

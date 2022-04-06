@@ -29,14 +29,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 class Validation():
     """
     Validation class takes as input standard_hits_table from
-    AnalysisTables class (from primary_analysis.py) as input tables for various 
+    AnalysisTables class (from primary_analysis.py) as input tables for various
     post-processing or validation methods
     """
 
     def __init__(self, hit_table, target_col, prey_col, corum=None, localization_table=None,
-        interaction_table=None):
+            interaction_table=None):
         """
-        initiate class with a hit table (without interactions called) and other 
+        initiate class with a hit table (without interactions called) and other
         necessary tables required for precision-recall analysis =
         """
 
@@ -46,7 +46,7 @@ class Validation():
         self.corum = corum
         self.localization_table = localization_table
         self.interaction_table = interaction_table
-    
+
     def static_fdr(self, curvature, offset):
         """
         Call significant interactors from standard hits table with user input
@@ -89,21 +89,20 @@ class Validation():
         DataFrame, all_hits df with fdr threshold columns added
         """
         hits = self.hit_table.copy()
-        
-        # group hits table by experiment & target and place them into a bin of lists
-        selects = []
+
+
         if not experiment:
             hits['experiment'] = 'N/A'
- 
-        
+
+
         # parallel processing for calculating FDR seed
 
-        seed = hawaii_find_thresh(hits, 'None', perc, curvature, offset_seed)
-   
+        seed = hawaii_find_thresh(hits, perc, curvature, offset_seed)
+
         fdr = [curvature, seed]
 
-        enrichment = hits['enrichment']  
-        pvals = hits['pvals']     
+        enrichment = hits['enrichment']
+        pvals = hits['pvals']
         thresh = enrichment.apply(pa.calc_thresh,
             args=[fdr[0], fdr[1]])
 
@@ -128,7 +127,7 @@ class Validation():
         DataFrame, all_hits df with fdr threshold columns added
         """
         hits = self.hit_table.copy()
-        
+
         # group hits table by experiment & target and place them into a bin of lists
         selects = []
         if not experiment:
@@ -141,7 +140,7 @@ class Validation():
             experiments.append(bait[0])
             baits.append(bait[1])
             selects.append(group)
-        
+
         # parallel processing for calculating FDR seed
 
         p = Pool()
@@ -151,23 +150,23 @@ class Validation():
         p.join()
 
         fdr_full = [[curvature, seed] for seed in seeds]
-        
+
         fdr_df = pd.DataFrame()
         fdr_df['experiment'] = experiments
         fdr_df['target'] = baits
         fdr_df['fdr'] = fdr_full
-        # fdr_df.set_index('bait', inplace=True)    
-        
-        ############ Have to reconcile proper hits table format #######
+        # fdr_df.set_index('bait', inplace=True)
+
+        # Have to reconcile proper hits table format
         new_groups = []
         for bait, group in grouped:
             group = group.copy()
             experiment = bait[0]
             target = bait[1]
-            fdr = fdr_df[(fdr_df['experiment']==experiment) &
-                (fdr_df['target']==target)].fdr.item()           
+            fdr = fdr_df[(fdr_df['experiment'] == experiment)
+                & (fdr_df['target'] == target)].fdr.item()
 
-            
+
             bait_pval = group['pvals']
             enrichment = group['enrichment']
 
@@ -200,7 +199,7 @@ class Validation():
 
         # combine values from two columns to a list and sort alphabetically
         dataset = dataset[[target_col, prey_col]]
-        
+
         # force values in target and prey columns to be string
         dataset[target_col] = dataset[target_col].astype(str)
         dataset[prey_col] = dataset[prey_col].astype(str)
@@ -242,7 +241,7 @@ class Validation():
     def corum_interaction_coverage(self, distance=False, directional=False):
         """
         calculate db's coverage of possible corum interactions
-        if distance = True, an interaction is a true positive if a target's 
+        if distance = True, an interaction is a true positive if a target's
         second neighbor is a corum interactor.
         if directional = True, recall considers all possible corum interactors for each target
         if directional = False, recall considers a corum interactor covered if the interaction appears
@@ -252,7 +251,7 @@ class Validation():
         prey_col = self.prey
         network = self.interaction_table[[target_col, prey_col]]
         corum = self.corum.copy()
-        
+
         # get a list of all unique targets in the ppi network
         targets = set(network[target_col].to_list())
 
@@ -318,9 +317,9 @@ class Validation():
         """
 
         # use unique interactions for co-localization analysis
-        try: 
+        try:
             network = self.unique_interaction_table.copy()
-        except AttributeError: 
+        except AttributeError:
             self.convert_to_unique_interactions()
             network = self.unique_interaction_table.copy()
 
@@ -359,20 +358,21 @@ class Validation():
             elif 'B' in target or 'B' in prey:
                 intersections.append(i)
 
-        self.precision =  merge2.loc[intersections].shape[0] / merge2.shape[0]
+        self.precision = merge2.loc[intersections].shape[0] / merge2.shape[0]
+
 
 def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
     """
     Find the proper p-val/enrichment threshold for a bait
     """
-    
+
     # filter for negative hits
     neg_select = select[select['enrichment'] < 0]
     pos_select = select[select['enrichment'] > 0]
 
     # calcuate initial hit count by given curvature and seed
     hit = hit_count(neg_select, curvature, seed)
-    
+
     # Find a threshold that lies just outside one hit detection
     if hit > 0:
         while hit > 0 and seed < 10:
@@ -386,8 +386,8 @@ def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
             seed -= 0.1
             hit = hit_count(neg_select, curvature, seed)
         seed += 0.1
-    
-    # With the calculated seed, find the threshold that meets the 
+
+    # With the calculated seed, find the threshold that meets the
     # requirement of less than 2 neg hits or less than designated % of positive hits
     neg_hit = hit_count(neg_select, curvature, seed)
     pos_hit = hit_count(pos_select, curvature, seed)
@@ -409,18 +409,19 @@ def dfdr_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
     if pos_perc > perc:
         seed += 0.1
 
-    return round(seed, 2)    
+    return round(seed, 2)
 
-def hawaii_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
+
+def hawaii_find_thresh(select, perc=10, curvature=3, seed=2.5):
     """
     Find the proper p-val/enrichment threshold for a bait
     """
-    
+
     # filter for negative hits
     neg_select = select[select['enrichment'] < 0]
     pos_select = select[select['enrichment'] > 0]
-    
-    # With the calculated seed, find the threshold that meets the 
+
+    # With the calculated seed, find the threshold that meets the
     # requirement of less than 2 neg hits or less than designated % of positive hits
     neg_hit = hit_count(neg_select, curvature, seed)
     pos_hit = hit_count(pos_select, curvature, seed)
@@ -428,7 +429,7 @@ def hawaii_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
         pos_perc = 0
     else:
         pos_perc = 100 * neg_hit / pos_hit
-    
+
     if pos_perc < perc:
         while pos_perc < perc and seed > 0.1:
             seed -= 0.1
@@ -441,7 +442,7 @@ def hawaii_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
 
         if pos_perc > perc:
             seed += 0.1
-    else: 
+    else:
         while pos_perc > perc and seed < 30:
             if seed > 5:
                 seed += 0.5
@@ -458,8 +459,8 @@ def hawaii_find_thresh(select, bait, perc=10, curvature=3, seed=2.5):
             seed -= 0.2
 
 
-    
-    return round(seed, 2)    
+
+    return round(seed, 2)
 
 
 def hit_count(bait_series, curvature, offset):
@@ -471,6 +472,7 @@ def hit_count(bait_series, curvature, offset):
     hit = np.where(bait_series['pvals'] > thresh, True, False)
 
     return hit.sum()
+
 
 def calc_thresh(enrich, curvature, offset):
     """simple function to get FCD thresh to recognize hits"""
