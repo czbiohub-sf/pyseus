@@ -43,7 +43,7 @@ def scale_table(matrix, method):
 
 
 def interaction_umap(
-        matrix, node_name, cluster, opacity=0.8,
+        matrix, node_name, cluster, x='umap_1', y='umap_2', opacity=0.8,
         width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
         unlabelled_opacity=0.1, hover_data=None):
 
@@ -52,15 +52,21 @@ def interaction_umap(
 
     if node_name == 'None':
         node_name = None
+    if 'umap' in x:
+        label_x = 'UMAP 1'
+        label_y = 'UMAP 2'
+    else:
+        label_x = x
+        label_y = y
 
     if cluster == 'None':
         fig = px.scatter(
             matrix,
-            x='umap_1',
-            y='umap_2',
+            x=x,
+            y=y,
             labels={
-                'umap_1': 'UMAP 1',
-                'umap_2': 'UMAP 2'
+                x: label_x,
+                y: label_y
             },
             hover_name=node_name,
             hover_data=hover_data,
@@ -79,11 +85,11 @@ def interaction_umap(
 
         fig1 = px.scatter(
             labelled,
-            x='umap_1',
-            y='umap_2',
+            x=x,
+            y=y,
             labels={
-                'umap_1': 'UMAP 1',
-                'umap_2': 'UMAP 2'
+                x: label_x,
+                y: label_y
             },
             hover_name=node_name,
             color=cluster,
@@ -98,11 +104,11 @@ def interaction_umap(
 
         fig2 = px.scatter(
             unlabelled,
-            x='umap_1',
-            y='umap_2',
+            x=x,
+            y=y,
             labels={
-                'umap_1': 'UMAP 1',
-                'umap_2': 'UMAP 2'
+                x: label_x,
+                y: label_y
             },
             color=cluster,
             hover_name=node_name,
@@ -127,8 +133,8 @@ def interaction_umap(
         #         text=labelled[node_name],
         #         marker=dict(color='#fc4f30', size=14))
 
-    fig.update_xaxes(showticklabels=False, title_text='UMAP 1', ticks="")
-    fig.update_yaxes(showticklabels=False, title_text='UMAP 2', ticks="")
+    fig.update_xaxes(showticklabels=False, title_text=label_x, ticks="")
+    fig.update_yaxes(showticklabels=False, title_text=label_y, ticks="")
     fig.update_layout(
         template='simple_white',
         legend=dict(

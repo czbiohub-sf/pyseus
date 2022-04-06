@@ -580,52 +580,103 @@ def plotting_layout():
             'width': '47%'}),
 
 
-        html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
+        html.Hr(style={'marginTop': '1%', 'marginBottom': '0%'}),
 
 
         html.Div([
+            dcc.Tabs(
+                id='um_tabs',
+                value='data_select',
+                children=[
+                    dcc.Tab(
+                        label='Data Selection',
+                        value='data_select',
+                        children=html.Div([
+                            html.P('x - axis',
+                                style={'textAlign': 'center',
+                                    'fontSize': 16,
+                                    'marginTop': '2%',
+                                    'marginBottom': '1%'}),
+                            html.Div([
+                                dcc.Dropdown(id='x_select',
+                                    options=[
+                                        {'label': 'UMAP 1', 'value': 'umap_1'},
+                                        {'label': 'UMAP 2', 'value': 'umap_2'},
+                                    ],
+                                    value='umap_1')],
+                                style={
+                                    'textAlign': 'center',
+                                    'width': '80%',
+                                    'marginLeft': '10%',
+                                    'marginTop': '1%'}),
+                            html.P('y - axis',
+                                style={'textAlign': 'center',
+                                    'fontSize': 16,
+                                    'marginTop': '2%',
+                                    'marginBottom': '1%'}),
+                            html.Div([
+                                dcc.Dropdown(id='y_select',
+                                    options=[
+                                        {'label': 'UMAP 1', 'value': 'umap_1'},
+                                        {'label': 'UMAP 2', 'value': 'umap_2'},
+                                    ],
+                                    value='umap_2')],
+                                style={
+                                    'textAlign': 'center',
+                                    'width': '80%',
+                                    'marginLeft': '10%',
+                                    'marginTop': '1%'}),
 
-            html.P('K-Means clustering',
-                style={'textAlign': 'center',
-                    'fontSize': 20,
-                    'marginTop': '4%'}),
 
+                        ]),
 
-            html.P('Designate # of clusters',
-                style={'textAlign': 'center',
-                    'fontSize': 16,
-                    'marginTop': '2%',
-                    'marginBottom': '2%'}),
+                    ),
+                    dcc.Tab(
+                        label='Clustering',
+                        value='clustering',
+                        children=html.Div([
 
-            html.Div([
-                dcc.Slider(
-                    id='n_cluster',
-                    min=0,
-                    max=30,
-                    step=1,
-                    value=10,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        10: '10',
-                        20: '20',
-                        30: '30',
-                    },
-                )],
-                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                            html.P('Designate # of clusters',
+                                style={'textAlign': 'center',
+                                    'fontSize': 16,
+                                    'marginTop': '2%',
+                                    'marginBottom': '2%'}),
+
+                            html.Div([
+                                dcc.Slider(
+                                    id='n_cluster',
+                                    min=0,
+                                    max=30,
+                                    step=1,
+                                    value=10,
+                                    tooltip={"placement": "bottom", "always_visible": True},
+                                    marks={
+                                        0: '0',
+                                        10: '10',
+                                        20: '20',
+                                        30: '30',
+                                    },
+                                )],
+                                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                            ),
+                            html.Button(
+                                'Cluster!',
+                                id='cluster_button', style={
+                                    'marginTop': '3%',
+                                    'width': '50%',
+                                    'marginLeft': '25%'})
+                        ]),
+                    ),
+
+                ]
             ),
-            html.Button(
-                'Cluster!',
-                id='cluster_button', style={'marginTop': '3%', 'width': '50%', 'marginLeft': '25%'})
-
 
         ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '220px',
-                'marginTop': '1%',
-                'marginLeft': '5%',
+                'marginLeft': '2%',
                 'width': '25%',
                 'borderRight': '1px #A6ACAF solid'}),
 
@@ -640,8 +691,8 @@ def plotting_layout():
                         placeholder='Select a label')],
                     style={
                         'textAlign': 'center',
-                        'width': '90%',
-                        'marginLeft': '5%',
+                        'width': '80%',
+                        'marginLeft': '10%',
                         'marginTop': '1%'}),
 
             ], style={
@@ -659,8 +710,8 @@ def plotting_layout():
                         placeholder='Select an annotation')],
                     style={
                         'textAlign': 'center',
-                        'width': '90%',
-                        'marginLeft': '5%',
+                        'width': '80%',
+                        'marginLeft': '10%',
                         'marginTop': '1%'}),
             ], style={
                 'display': 'inline-block',
@@ -710,7 +761,7 @@ def plotting_layout():
                     min=0,
                     max=1,
                     step=0.05,
-                    value=0.1,
+                    value=0.3,
                     tooltip={"placement": "bottom", "always_visible": True},
                     marks={
                         0: '0',
@@ -763,6 +814,7 @@ def plotting_layout():
                 'display': 'inline-block',
                 'height': '220px',
                 'marginTop': '1%',
+                'marginLeft': '1%',
                 'width': '20%'}),
 
         html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
@@ -780,27 +832,52 @@ def plotting_layout():
         ],
             style={
                 'vertical-align': 'top',
+                'display': 'inline-block',
                 'marginLeft': '2.5%',
                 'height': '700px',
-                'width': '95%'}),
+                'width': '80%'}),
 
-        html.P('0 data points selected',
-            id='selection_count',
-            style={'textAlign': 'center',
-                'fontSize': 18,
-                'marginTop': '0.5%',
-                'marginBottom': '0.5%'}),
-        html.Button('Save selection', id='select_button',
+        html.Div([
+            html.P('0 data points selected',
+                id='selection_count',
+                style={'textAlign': 'center',
+                    'fontSize': 18,
+                    'marginTop': '0.5%',
+                    'marginBottom': '5%'}),
+            dash_table.DataTable(
+                id='selected_data',
+                columns=[{'name': 'Marker label', 'id': 'marker'}],
+                page_size=10000,
+                style_header={
+                    'fontWeight': 'bold'
+                },
+                style_cell={
+                    'textAlign': 'center'
+                },
+                style_table={
+                    'overflowY': 'auto',
+                    'overflowX': 'auto',
+                    'height': '550px',
+                    'width': '95%',
+                    'border' : '0.5px #BDC3C7 solid'
+                },
+                fixed_rows={'headers': True, 'data': 0}),
+
+        ],
             style={
-                'marginTop': '1%',
-                'marginLeft': '10%',
-                'width': '37.5%',
-                'white-space': 'normal'}),
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'marginLeft': '1%',
+                'height': '700px',
+                'width': '16%'}),
+
+
+
         html.Button('Download selection', id='download_subspace_button',
             style={
                 'marginTop': '1%',
-                'marginLeft': '5%',
-                'width': '37.5%',
+                'marginLeft': '30%',
+                'width': '40%',
                 'white-space': 'normal'}),
         html.Hr(style={'marginTop': '2%', 'marginBottom': '1%'}),
 
