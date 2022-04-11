@@ -109,172 +109,183 @@ def calculation_layout():
         ]),
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
-        html.P('Enrichment / Significance calculation',
-            style={'textAlign': 'center',
-                'fontSize': 20, 'marginBottom': '1.5%'}),
+        html.Button('Select controls ▼',
+            id='control_section', style={
+                'border': '0px',
+                'width': '80%',
+                'marginLeft': '10%',
+                'marginBottom': '2%',
+                'background-color': '#e8e8e8',
+                'fontSize': 18}),
+
+
         html.Div([
+
             html.Div([
-                html.P('Select a control selection mode',
-                    style={'textAlign': 'center',
-                        'fontSize': 18,
-                        'marginBottom': '0%'}),
-                html.P('By default, manual control selection includes all samples \
-                    except the sample itself.',
-                    style={'textAlign': 'center',
-                        'fontSize': 14,
-                        'marginTop': '0%',
-                        'lineHeight': '15px'})
+                html.Div([
+                    html.P('Select a control selection mode',
+                        style={'textAlign': 'center',
+                            'fontSize': 18,
+                            'marginBottom': '0%'}),
+                    html.P('By default, manual control selection includes all samples \
+                        except the sample itself.',
+                        style={'textAlign': 'center',
+                            'fontSize': 14,
+                            'marginTop': '0%',
+                            'lineHeight': '15px'})
+                ],
+                    style={
+                        'vertical-align': 'top',
+                        'marginLeft': '10%',
+                        'width': '80%'}),
+
+                dcc.RadioItems(id='calculation_options',
+                    options=[
+                        {'label': 'Manually select control samples',
+                        'value': 'manual'},
+                        {'label': 'Automatically calulate the null model',
+                        'value': 'automatic'}],
+
+                    style={
+                        'textAlign': 'left',
+                        'width': '90%',
+                        'marginLeft': '5%'},
+                    value='manual'
+                ),
+
+
+                html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
+                html.P('Download current control matrix', style={'textAlign': 'center',
+                    'fontSize': 18}),
+                html.Button('Download', id='download_matrix_button',
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'white-space': 'normal'}
+                ),
+                dcc.Download(id="download_control_matrix"),
+
+                html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
+                html.P('Import a custom control matrix', style={'textAlign': 'center',
+                    'fontSize': 18}),
+                dcc.Upload(
+                    id='null_matrix_upload',
+                    children=html.Div([
+                        'D&D or ',
+                        html.A('Select a control sample matrix')
+                    ]),
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'height': '60px',
+                        'lineHeight': '60px',
+                        'borderWidth': '1px',
+                        'borderStyle': 'dashed',
+                        'borderRadius': '5px',
+                        'textAlign': 'center',
+                        'background-color': '#E5E7E9'},
+                    # Only single file
+                    multiple=False
+                ),
+                html.Button('Apply uploaded matrix', id='null_matrix_button',
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'marginTop': '4%',
+                        'white-space': 'normal'}
+                ),
+
             ],
                 style={
                     'vertical-align': 'top',
-                    'marginLeft': '10%',
-                    'width': '80%'}),
-
-            dcc.RadioItems(id='calculation_options',
-                options=[
-                    {'label': 'Manually select control samples',
-                    'value': 'manual'},
-                    {'label': 'Automatically calulate the null model',
-                    'value': 'automatic'}],
-
-                style={
-                    'textAlign': 'left',
-                    'width': '90%',
-                    'marginLeft': '5%'},
-                value='manual'
-            ),
-
-
-            html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
-            html.P('Download current control matrix', style={'textAlign': 'center',
-                'fontSize': 18}),
-            html.Button('Download', id='download_matrix_button',
-                style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'white-space': 'normal'}
-            ),
-            dcc.Download(id="download_control_matrix"),
-
-            html.Hr(style={'marginTop': '4%', 'marginBottom': '4%'}),
-            html.P('Import a custom control matrix', style={'textAlign': 'center',
-                'fontSize': 18}),
-            dcc.Upload(
-                id='null_matrix_upload',
-                children=html.Div([
-                    'D&D or ',
-                    html.A('Select a control sample matrix')
-                ]),
-                style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'height': '60px',
-                    'lineHeight': '60px',
-                    'borderWidth': '1px',
-                    'borderStyle': 'dashed',
-                    'borderRadius': '5px',
-                    'textAlign': 'center',
-                    'background-color': '#E5E7E9'},
-                # Only single file
-                multiple=False
-            ),
-            html.Button('Apply uploaded matrix', id='null_matrix_button',
-                style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'marginTop': '4%',
-                    'white-space': 'normal'}
-            ),
-
-        ],
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '420px',
-                'marginTop': '1%',
-                'width': '32%',
-                'borderRight': '1px #A6ACAF solid'}),
-
-
-        html.Div([
-            html.P('Review controls for a selected sample', style={'textAlign': 'center',
-                'fontSize': 18, 'marginTop': '4%'}),
-
-            dcc.Dropdown(id='view_sample_controls',
-                placeholder='Select a sample',
-                style={
-                    'textAlign': 'center',
-                    'width': '90%',
-                    'marginLeft': '5%',
-                    'marginTop': '2%',
-                    'marginBottom': '3%'}
-            ),
-            dash_table.DataTable(
-                id='sample_controls',
-                columns=[{'name': 'control sample names', 'id': 'sample_control'}],
-                style_header={
-                    'fontWeight': 'bold'
-                },
-                style_cell={
-                    'textAlign': 'center'
-                },
-                style_table={
-                    'marginLeft': '10%',
-                    'overflowY': 'auto',
-                    'overflowX': 'auto',
-                    'height': '300px',
-                    'width': '80%',
-                    'border' : '0.5px #BDC3C7 solid'},
-
-                fixed_rows={'headers': True, 'data': 0})],
-
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '420px',
-                'width': '32%',
-                'borderRight': '1px #A6ACAF solid'}),
-
-        html.Div([
-            html.P('Samples to edit', style={'textAlign': 'center',
-                'fontSize': 16, 'lineHeight': '10px'}),
-            dcc.Checklist(
-                id='edit_samples',
-                style={
-                    'overflowY': 'auto',
-                    'overflowX': 'auto',
-                    'height': '140px',
-                    'marginLeft': '10%',
-                    'width': '80%',
-                    'border': '0.5px #BDC3C7 solid'}),
-
-            html.P('Select controls for the chosen samples', style={'textAlign': 'center',
-                'fontSize': 16, 'lineHeight': '15px', 'marginTop': '2%'}),
-            dcc.Checklist(
-                id='edit_controls',
-                style={
-                    'overflowY': 'auto',
-                    'overflowX': 'auto',
-                    'height': '170px',
-                    'marginLeft': '10%',
+                    'display': 'inline-block',
+                    'height': '420px',
                     'marginTop': '1%',
-                    'width': '80%',
-                    'border': '0.5px #BDC3C7 solid'}),
+                    'width': '32%',
+                    'borderRight': '1px #A6ACAF solid'}),
 
-            html.Button('Apply control selection', id='control_apply_button',
+
+            html.Div([
+                html.P('Review controls for a selected sample', style={'textAlign': 'center',
+                    'fontSize': 18, 'marginTop': '4%'}),
+
+                dcc.Dropdown(id='view_sample_controls',
+                    placeholder='Select a sample',
+                    style={
+                        'textAlign': 'center',
+                        'width': '90%',
+                        'marginLeft': '5%',
+                        'marginTop': '2%',
+                        'marginBottom': '3%'}
+                ),
+                dash_table.DataTable(
+                    id='sample_controls',
+                    columns=[{'name': 'control sample names', 'id': 'sample_control'}],
+                    style_header={
+                        'fontWeight': 'bold'
+                    },
+                    style_cell={
+                        'textAlign': 'center'
+                    },
+                    style_table={
+                        'marginLeft': '10%',
+                        'overflowY': 'auto',
+                        'overflowX': 'auto',
+                        'height': '300px',
+                        'width': '80%',
+                        'border' : '0.5px #BDC3C7 solid'},
+
+                    fixed_rows={'headers': True, 'data': 0})],
+
                 style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'marginTop': '4%',
-                    'white-space': 'normal'}
-            )
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'height': '420px',
+                    'width': '32%',
+                    'borderRight': '1px #A6ACAF solid'}),
 
-        ],
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '420px',
-                'width': '33%'}),
+            html.Div([
+                html.P('Samples to edit', style={'textAlign': 'center',
+                    'fontSize': 16, 'lineHeight': '10px'}),
+                dcc.Checklist(
+                    id='edit_samples',
+                    style={
+                        'overflowY': 'auto',
+                        'overflowX': 'auto',
+                        'height': '140px',
+                        'marginLeft': '10%',
+                        'width': '80%',
+                        'border': '0.5px #BDC3C7 solid'}),
+
+                html.P('Select controls for the chosen samples', style={'textAlign': 'center',
+                    'fontSize': 16, 'lineHeight': '15px', 'marginTop': '2%'}),
+                dcc.Checklist(
+                    id='edit_controls',
+                    style={
+                        'overflowY': 'auto',
+                        'overflowX': 'auto',
+                        'height': '170px',
+                        'marginLeft': '10%',
+                        'marginTop': '1%',
+                        'width': '80%',
+                        'border': '0.5px #BDC3C7 solid'}),
+
+                html.Button('Apply control selection', id='control_apply_button',
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'marginTop': '4%',
+                        'white-space': 'normal'}
+                )
+
+            ],
+                style={
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'height': '420px',
+                    'width': '33%'}),
+        ], id='control_div', style={'display': 'none', 'marginTop': '1%'}),
+
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 

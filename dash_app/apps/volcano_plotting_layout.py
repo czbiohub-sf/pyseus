@@ -136,260 +136,299 @@ def plotting_layout():
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 
-        html.P('Call significant hits',
-            style={'textAlign': 'center',
-                'fontSize': 20,
-                'marginTop': '1%'}),
+        html.Button('Call significant hits ▼',
+            id='call_section', style={
+                'border': '0px',
+                'width': '80%',
+                'marginLeft': '10%',
+                'background-color': '#e8e8e8',
+                'fontSize': 18}),
 
 
         html.Div([
-            html.P('Thresholding options', style={'textAlign': 'center',
-                'fontSize': 18, 'lineHeight': '15px', 'marginTop': '6%'}),
+            html.Div([
+                html.P('Thresholding options', style={'textAlign': 'center',
+                    'fontSize': 18, 'lineHeight': '15px', 'marginTop': '6%'}),
 
-            dcc.RadioItems(id='thresh_option',
-                options=[
-                    {'label': 'Hawaiian FDR (faster)',
-                    'value': 'hawaii'},
-                    {'label': 'Individual FDR',
-                    'value': 'indiv'}
+                dcc.RadioItems(id='thresh_option',
+                    options=[
+                        {'label': 'Hawaiian FDR (faster)',
+                        'value': 'hawaii'},
+                        {'label': 'Individual FDR',
+                        'value': 'indiv'}
+                    ],
+
+                    style={
+                        'textAlign': 'center',
+                        'width': '90%',
+                        'marginLeft': '5%',
+                        'marginTop': '3%'
+                    },
+                    value='indiv'
+                ),
+                html.P('Set FDR (%) threshold', style={'textAlign': 'center',
+                    'fontSize': 18, 'lineHeight': '15px', 'marginTop': '8%'}),
+                html.Div([
+                    dcc.Slider(
+                        id='fdr',
+                        min=0,
+                        max=20,
+                        step=0.5,
+                        value=5,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        marks={
+                            0: '0',
+                            5: '5',
+                            10: '10',
+                            15: '15',
+                            20: '20',
+                        },
+                    )
                 ],
+                    style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                ),
+
+
+            ],
+                style={
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'height': '200px',
+                    'borderRight': '1px #A6ACAF solid',
+                    'width': '24%'}
+            ),
+
+            html.Div([
+                html.P('Set seeding threshold offset',
+                    style={'textAlign': 'center',
+                        'fontSize': 16,
+                        'marginTop': '2%',
+                        'marginBottom': '2%'}),
+
+                html.Div([
+                    dcc.Slider(
+                        id='offset',
+                        min=0,
+                        max=10,
+                        step=0.5,
+                        value=2,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        marks={
+                            0: '0',
+                            5: '5',
+                            10: '10',
+                        },
+                    )
+                ],
+                    style={'width': '95%', 'marginLeft': '2%', 'marginTop': '3%'}
+                ),
+
+                html.P('Set seeding threshold curvature',
+                    style={'textAlign': 'center',
+                        'fontSize': 16,
+                        'marginTop': '2%',
+                        'marginBottom': '2%'}),
+
+                html.Div([
+                    dcc.Slider(
+                        id='curvature',
+                        min=0,
+                        max=10,
+                        step=0.2,
+                        value=3,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        marks={
+                            0: '0',
+                            5: '5',
+                            10: '10',
+                        },
+                    )
+                ],
+                    style={'width': '95%', 'marginLeft': '3%', 'marginTop': '3%'}
+                ),
+
+            ],
 
                 style={
-                    'textAlign': 'center',
-                    'width': '90%',
-                    'marginLeft': '5%',
-                    'marginTop': '3%'
-                },
-                value='indiv'
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'height': '200px',
+                    'width': '27%'}
             ),
-            html.P('Set FDR (%) threshold', style={'textAlign': 'center',
-                'fontSize': 18, 'lineHeight': '15px', 'marginTop': '8%'}),
+
             html.Div([
-                dcc.Slider(
-                    id='fdr',
-                    min=0,
-                    max=20,
-                    step=0.5,
-                    value=5,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        5: '5',
-                        10: '10',
-                        15: '15',
-                        20: '20',
-                    },
-                )
-            ],
-                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
-            ),
+                html.Button('Preview seeding FDR', id='preview',
+                    style={
+                        'fontSize': '13',
+                        'marginLeft': '1%',
+                        'width': '95%',
+                        'marginTop': '8%',
+                        'white-space': 'normal',
+                        'background-color': 'white'}),
 
-
-        ],
-            style={
+                html.Hr(style={'marginTop': '8%', 'marginBottom': '2%'}),
+                html.P("estimated FDR:",
+                    style={'textAlign': 'center',
+                        'fontSize': 16,
+                        'marginTop': '4%'}),
+                html.P("  %", id='estimated_FDR',
+                    style={'textAlign': 'center',
+                        'fontSize': 16,
+                        'marginTop': '2%'}),
+            ], style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '200px',
-                'borderRight': '1px #A6ACAF solid',
-                'width': '24%'}
-        ),
+                'width': '23%',
+                'borderRight': '1px #A6ACAF solid'}
+            ),
 
-        html.Div([
-            html.P('Set seeding threshold offset',
-                style={'textAlign': 'center',
-                    'fontSize': 16,
-                    'marginTop': '2%',
-                    'marginBottom': '2%'}),
+
+
 
             html.Div([
-                dcc.Slider(
-                    id='offset',
-                    min=0,
-                    max=10,
-                    step=0.5,
-                    value=2,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        5: '5',
-                        10: '10',
-                    },
-                )
+                html.Button('Call significant hits!', id='hits_button',
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'marginTop': '4%',
+                        'white-space': 'normal',
+                        'background-color': 'white'}
+                ),
+                html.Button('Download hits table!', id='download_hits_button',
+                    style={
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'marginTop': '4%',
+                        'white-space': 'normal'}
+                ),
+                html.P('Hits table not ready', id='hits_table_status',
+                    style={
+                        'marginTop': '4%',
+                        'marginLeft': '7.5%',
+                        'width': '85%',
+                        'height': '40px',
+                        'lineHeight': '40px',
+                        'borderWidth': '1px',
+                        'borderStyle': 'solid',
+                        'borderRadius': '5px',
+                        'textAlign': 'center',
+                        'background-color': '#E5E7E9'}),
+
+                dcc.Download(id="download_hits_table"),
             ],
-                style={'width': '95%', 'marginLeft': '2%', 'marginTop': '3%'}
+                style={
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'height': '200px',
+                    'width': '25%'}
             ),
 
-            html.P('Set seeding threshold curvature',
-                style={'textAlign': 'center',
-                    'fontSize': 16,
-                    'marginTop': '2%',
-                    'marginBottom': '2%'}),
-
-            html.Div([
-                dcc.Slider(
-                    id='curvature',
-                    min=0,
-                    max=10,
-                    step=0.2,
-                    value=3,
-                    tooltip={"placement": "bottom", "always_visible": True},
-                    marks={
-                        0: '0',
-                        5: '5',
-                        10: '10',
-                    },
-                )
-            ],
-                style={'width': '95%', 'marginLeft': '3%', 'marginTop': '3%'}
-            ),
-
-        ],
-
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '200px',
-                'width': '27%'}
-        ),
-
-        html.Div([
-            html.Button('Preview seeding FDR', id='preview',
-                style={
-                    'fontSize': '13',
-                    'marginLeft': '1%',
-                    'width': '95%',
-                    'marginTop': '8%',
-                    'white-space': 'normal',
-                    'background-color': 'white'}),
-
-            html.Hr(style={'marginTop': '8%', 'marginBottom': '2%'}),
-            html.P("estimated FDR:",
-                style={'textAlign': 'center',
-                    'fontSize': 16,
-                    'marginTop': '4%'}),
-            html.P("  %", id='estimated_FDR',
-                style={'textAlign': 'center',
-                    'fontSize': 16,
-                    'marginTop': '2%'}),
-        ], style={
-            'vertical-align': 'top',
-            'display': 'inline-block',
-            'height': '200px',
-            'width': '23%',
-            'borderRight': '1px #A6ACAF solid'}
-        ),
-
-
-
-
-        html.Div([
-            html.Button('Call significant hits!', id='hits_button',
-                style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'marginTop': '4%',
-                    'white-space': 'normal',
-                    'background-color': 'white'}
-            ),
-            html.Button('Download hits table!', id='download_hits_button',
-                style={
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'marginTop': '4%',
-                    'white-space': 'normal'}
-            ),
-            html.P('Hits table not ready', id='hits_table_status',
-                style={
-                    'marginTop': '4%',
-                    'marginLeft': '7.5%',
-                    'width': '85%',
-                    'height': '40px',
-                    'lineHeight': '40px',
-                    'borderWidth': '1px',
-                    'borderStyle': 'solid',
-                    'borderRadius': '5px',
-                    'textAlign': 'center',
-                    'background-color': '#E5E7E9'}),
-
-            dcc.Download(id="download_hits_table"),
-        ],
-            style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'height': '200px',
-                'width': '25%'}
-        ),
+        ], id='call_div', style={'display': 'none', 'marginTop': '1%'}),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
+        html.P('Volcano plot',
+            style={'textAlign': 'left',
+                'marginLeft': '32%',
+                'fontSize': 24}),
+        html.Div([
+            dcc.Dropdown(id='volcano_dropdown_1',
+                placeholder='Select a sample',
+                style={
+                    'textAlign': 'center'
+                }
+            )
+        ], style={'display': 'inline-block', 'vertical-align': 'top',
+            'width': '25%', 'marginLeft': '10%', 'marginBottom': '1.5%'}),
+        html.Div([
+            html.Button('Plot!', id='volcano_button_1',
+                style={
+                    'marginLeft': '5%',
+                    'vertical-align': 'top',
+                    'width': '40%',
+                    'white-space': 'normal'
+                }
+            )
+        ], style={'display': 'inline-block',
+            'vertical-align': 'top',
+            'width': '50%',
+            'marginBottom': '1.5%'}),
 
 
         html.Div([
-            html.P('Volcano plot',
-                style={'textAlign': 'center',
-                    'fontSize': 24}),
+
+            dcc.Graph(id='matrix_fig_1', style={'height': '90%'}),
 
 
-            dcc.Graph(id='matrix_fig_1', style={'height': '85%'}),
-
-            html.P('0 data points selected',
-                id='vol_selection_count',
-                style={'textAlign': 'center',
-                    'fontSize': 18,
+            html.Button('Download selection', id='vol_download_subspace_button',
+                style={
                     'marginTop': '1%',
-                    'marginBottom': '0.5%'}),
-            html.Div([
-                html.Button('Save selection', id='vol_select_button',
-                    style={
-                        'marginTop': '1%',
-                        'marginLeft': '15%',
-                        'width': '80%',
-                        'white-space': 'normal'}),
-            ], style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'width': '50%'}),
+                    'marginLeft': '50%',
+                    'width': '50%',
+                    'white-space': 'normal'}),
 
-            html.Div([
-                html.Button('Download selection', id='vol_download_subspace_button',
-                    style={
-                        'marginTop': '1%',
-                        'marginLeft': '5%',
-                        'width': '80%',
-                        'white-space': 'normal'}),
-            ], style={
-                'vertical-align': 'top',
-                'display': 'inline-block',
-                'width': '50%'}),
+
 
         ],
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '720px',
-                'width': '54%',
-                'borderRight': '1px #A6ACAF solid'}),
+                'width': '53%'}),
+
+        html.Div([
+
+            dcc.Input(
+                id='vol_search_plot',
+                type='text',
+                placeholder='Search label',
+                style={'width': '100%', 'marginTop': '3%'}
+            ),
+            html.Button('Search!', id='vol_search_button',
+                style={
+                    'marginTop': '4%',
+                    'width': '100%',
+                    'white-space': 'normal'}),
+
+            html.Hr(style={'marginTop': '5%', 'marginBottom': '5%',
+                'lineWidth': 3}),
+
+            dash_table.DataTable(
+                id='vol_selected_data',
+                columns=[{'name': 'Marker label', 'id': 'marker'}],
+                page_size=10000,
+                style_header={
+                    'fontWeight': 'bold'
+                },
+                style_cell={
+                    'textAlign': 'center'
+                },
+                style_table={
+                    'overflowY': 'auto',
+                    'overflowX': 'auto',
+                    'height': '400px',
+                    'width': '100%',
+                    'border': '0.5px #BDC3C7 solid',
+                },
+                fixed_rows={'headers': True, 'data': 0}),
+            html.P('0 points selected',
+                id='vol_selection_count',
+                style={'textAlign': 'center',
+                    'fontSize': 16,
+                    'marginTop': '15%'}),
+
+
+
+        ], style={
+            'vertical-align': 'top',
+            'display': 'inline-block',
+            'height': '720px',
+            'width': '12%'}),
 
         html.Div([
             html.P('Plot options',
-                style={'textAlign': 'center', 'fontSize': 24, 'marginTop': '6%'}),
+                style={'textAlign': 'center', 'fontSize': 20, 'marginTop': '6%'}),
 
-            html.Div([
-                dcc.Dropdown(id='volcano_dropdown_1',
-                    placeholder='Select a sample',
-                    style={
-                        'textAlign': 'center'
-                    }
-                )
-            ], style={'width': '80%', 'marginLeft': '10%', 'marginTop': '1.5%'}),
-
-            html.Button('Plot volcano!', id='volcano_button_1',
-                style={
-                    'marginLeft': '10%',
-                    'width': '80%',
-                    'marginTop': '2.5%',
-                    'white-space': 'normal'
-                }
-            ),
             html.Div([
                 dcc.Checklist(
                     id='plot_options',
@@ -401,7 +440,7 @@ def plotting_layout():
                     value=['fdr']),
             ], style={
                 'marginLeft': '10%',
-                'fontSize': 17,
+                'fontSize': 15,
                 'marginTop': '3%'}),
 
             html.P('Select annotations',
@@ -433,7 +472,7 @@ def plotting_layout():
                 id='vol_annot_table_upload',
                 children=html.Div([
                     'Drag and Drop or ',
-                    html.A('Select an annotation table')
+                    html.A('Select an annot. table')
                 ]),
                 style={
                     'marginLeft': '10%',
@@ -475,7 +514,7 @@ def plotting_layout():
                     'vertical-align': 'top',
                     'display': 'inline-block',
                     'marginLeft': '3%',
-                    'width': '32%'}),
+                    'width': '47%'}),
 
 
             html.Div([
@@ -497,7 +536,7 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'width': '32%'}),
+                    'width': '48%'}),
 
             html.Div([
                 html.P('Select external annots.',
@@ -518,9 +557,9 @@ def plotting_layout():
             ],
                 style={
                     'vertical-align': 'top',
-                    'display': 'inline-block',
-                    'marginTop': '0.5%',
-                    'width': '32%'}),
+                    'marginTop': '2%',
+                    'marginLeft': '25%',
+                    'width': '50%'}),
 
             dcc.Input(
                 id='vol_annot_label',
@@ -534,7 +573,7 @@ def plotting_layout():
                 style={
                     'width': '35%',
                     'marginLeft': '5%',
-                    'marginTop': '2%',
+                    'marginTop': '3%',
                     'display': 'inline-block'
                 }),
 
@@ -543,177 +582,183 @@ def plotting_layout():
                 'vertical-align': 'top',
                 'display': 'inline-block',
                 'height': '720px',
-                'width': '45%'}),
+                'marginLeft': '1%',
+                'borderLeft': '1px #BDC3C7 solid',
+                'width': '32%'}),
 
-        html.Hr(style={'marginTop': '4%', 'marginBottom': '1%'}),
+        html.Hr(style={'marginBottom': '2%'}),
 
-        html.P('Selected data: GO analysis',
-            style={'textAlign': 'center',
-                'fontSize': 24,
-                'marginTop': '1.5%',
-                'marginBottom': '1.5%'}),
-
+        html.Button('Selection GO analysis ▼',
+            id='vol_go_section', style={
+                'border': '0px',
+                'width': '80%',
+                'marginLeft': '10%',
+                'background-color': '#e8e8e8',
+                'fontSize': 18}),
         html.Div([
-            html.P('Select a gene names column',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}),
             html.Div([
-                dcc.Dropdown(id='vol_gene_selector',
-                    placeholder='Select gene names',
-                    style={
-                        'textAlign': 'center',
-                        'width': '100%'}),
+                html.P('Select a gene names column',
+                    style={'textAlign': 'center',
+                        'fontSize': 15,
+                        'marginBottom': '0%'}),
+                html.Div([
+                    dcc.Dropdown(id='vol_gene_selector',
+                        placeholder='Select gene names',
+                        style={
+                            'textAlign': 'center',
+                            'width': '100%'}),
+                ], style={
+                    'marginLeft': '10%',
+                    'width': '80%',
+                    'marginTop': '1.5%'})
+
             ], style={
-                'marginLeft': '10%',
-                'width': '80%',
-                'marginTop': '1.5%'})
+                'display': 'inline-block',
+                'borderRight': '1px #A6ACAF solid',
+                'marginLeft': '15%',
+                'width': '20%',
+                'textAlign': 'center',
+                'vertical-align': 'top'}),
 
-        ], style={
-            'display': 'inline-block',
-            'borderRight': '1px #A6ACAF solid',
-            'marginLeft': '15%',
-            'width': '20%',
-            'textAlign': 'center',
-            'vertical-align': 'top'}),
-
-        html.Div([
-            html.P('GO category',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}),
             html.Div([
-                dcc.Dropdown(id='vol_go_cat',
-                    options=[
-                        {'label': 'Cellular Component', 'value': 'cc'},
-                        {'label': 'Biological Process', 'value': 'bp'},
-                        {'label': 'Molecular Function', 'value': 'mf'}],
+                html.P('GO category',
+                    style={'textAlign': 'center',
+                        'fontSize': 15,
+                        'marginBottom': '0%'}),
+                html.Div([
+                    dcc.Dropdown(id='vol_go_cat',
+                        options=[
+                            {'label': 'Cellular Component', 'value': 'cc'},
+                            {'label': 'Biological Process', 'value': 'bp'},
+                            {'label': 'Molecular Function', 'value': 'mf'}],
 
-                    value='cc',
-                    style={
-                        'textAlign': 'center',
-                        'width': '100%'}),
+                        value='cc',
+                        style={
+                            'textAlign': 'center',
+                            'width': '100%'}),
+                ], style={
+                    'marginLeft': '10%',
+                    'width': '80%',
+                    'marginTop': '1.5%'})
+
             ], style={
-                'marginLeft': '10%',
-                'width': '80%',
-                'marginTop': '1.5%'})
+                'display': 'inline-block',
+                'borderRight': '1px #A6ACAF solid',
+                'width': '20%',
+                'textAlign': 'center',
+                'vertical-align': 'top'}),
 
-        ], style={
-            'display': 'inline-block',
-            'borderRight': '1px #A6ACAF solid',
-            'width': '20%',
-            'textAlign': 'center',
-            'vertical-align': 'top'}),
+            html.Div([
+                html.P('GO p-val cutoff',
+                    style={'textAlign': 'center',
+                        'fontSize': 15,
+                        'marginBottom': '0%'}),
 
-        html.Div([
-            html.P('GO p-val cutoff',
+                dcc.Input(
+                    id='vol_pval_cutoff',
+                    type='number',
+                    value=0.1,
+                    style={'width': '60%', 'marginTop': '1.5%', 'textAlign': 'center'}
+                ),
+
+            ], style={
+                'display': 'inline-block',
+                'borderRight': '1px #A6ACAF solid',
+                'width': '15%',
+                'textAlign': 'center',
+                'vertical-align': 'top'}),
+
+            html.Div([
+                html.P('GO enrichment cutoff',
+                    style={'textAlign': 'center',
+                        'fontSize': 15,
+                        'marginBottom': '0%'}),
+
+                dcc.Input(
+                    id='vol_enrich_cutoff',
+                    type='number',
+                    value=2,
+                    style={'width': '60%', 'marginTop': '1.5%', 'textAlign': 'center'}
+                ),
+
+            ], style={
+                'display': 'inline-block',
+                'width': '15%',
+                'textAlign': 'center',
+                'vertical-align': 'top'}),
+
+
+            html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
+            html.Div([
+                html.Button('GO analysis', id='vol_go_analysis',
+                    style={
+                        'width': '35%',
+                        'marginLeft': '12.5%',
+                        'marginRight': '5%',
+                        'marginBottom': '2%'
+                    }
+                ),
+                html.Button('Download GO table', id='vol_download_go_button',
+                    style={
+                        'width': '35%',
+                        'white-space': 'normal'
+                    }
+                ),
+            ],
+                style={
+                    'marginTop': '2%',
+                    'marginLeft': '10%',
+                    'width': '80%',
+                    'verticalAlign': 'top'}),
+            html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
+
+            html.P('Top 10 enriched GO terms',
                 style={'textAlign': 'center',
-                    'fontSize': 15,
+                    'fontSize': 20,
                     'marginBottom': '0%'}),
 
-            dcc.Input(
-                id='vol_pval_cutoff',
-                type='number',
-                value=0.1,
-                style={'width': '60%', 'marginTop': '1.5%', 'textAlign': 'center'}
-            ),
+            dash_table.DataTable(
+                id='vol_go_top_table',
+                columns=[
+                    {'name': 'GO term', 'id': 'go_term'},
+                    {'name': '# in selection', 'id': 'num'},
+                    {'name': '# expected', 'id': 'expected'},
+                    {'name': 'fold enrichment', 'id': 'fold'},
+                    {'name': 'p-Val', 'id': 'pval', 'type': 'numeric',
+                        'format': Format(precision=3, scheme=Scheme.exponent)},
+                ],
+                style_cell_conditional=[
+                    {'if': {'column_id': 'num'},
+                    'width': '15%'},
+                    {'if': {'column_id': 'expected'},
+                    'width': '15%'},
+                    {'if': {'column_id': 'fold'},
+                    'width': '15%'},
+                    {'if': {'column_id': 'pval'},
+                    'width': '15%'},
+                    {'if': {'column_id': 'go_term'},
+                    'width': '40%'},
+                ],
+                data=[{
+                    'min': [0],
+                    'max': [0],
+                    'avg': [0],
+                    'stdev': [0]
+                }],
+                style_header={
+                    'fontWeight': 'bold'
+                },
+                style_cell={
+                    'textAlign': 'center'
+                },
+                style_table={
+                    'marginLeft': '7.5%',
+                    'width': '85%',
+                    'marginTop': '1%'
+                },
+                fixed_rows={'headers': True, 'data': 0}),
 
-        ], style={
-            'display': 'inline-block',
-            'borderRight': '1px #A6ACAF solid',
-            'width': '15%',
-            'textAlign': 'center',
-            'vertical-align': 'top'}),
-
-        html.Div([
-            html.P('GO enrichment cutoff',
-                style={'textAlign': 'center',
-                    'fontSize': 15,
-                    'marginBottom': '0%'}),
-
-            dcc.Input(
-                id='vol_enrich_cutoff',
-                type='number',
-                value=2,
-                style={'width': '60%', 'marginTop': '1.5%', 'textAlign': 'center'}
-            ),
-
-        ], style={
-            'display': 'inline-block',
-            'width': '15%',
-            'textAlign': 'center',
-            'vertical-align': 'top'}),
-
-
-        html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
-        html.Div([
-            html.Button('GO analysis', id='vol_go_analysis',
-                style={
-                    'width': '35%',
-                    'marginLeft': '12.5%',
-                    'marginRight': '5%',
-                    'marginBottom': '2%'
-                }
-            ),
-            html.Button('Download GO table', id='vol_download_go_button',
-                style={
-                    'width': '35%',
-                    'white-space': 'normal'
-                }
-            ),
-        ],
-            style={
-                'marginTop': '2%',
-                'marginLeft': '10%',
-                'width': '80%',
-                'verticalAlign': 'top'}),
-        html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
-
-        html.P('Top 10 enriched GO terms',
-            style={'textAlign': 'center',
-                'fontSize': 20,
-                'marginBottom': '0%'}),
-
-        dash_table.DataTable(
-            id='vol_go_top_table',
-            columns=[
-                {'name': 'GO term', 'id': 'go_term'},
-                {'name': '# in selection', 'id': 'num'},
-                {'name': '# expected', 'id': 'expected'},
-                {'name': 'fold enrichment', 'id': 'fold'},
-                {'name': 'p-Val', 'id': 'pval', 'type': 'numeric',
-                    'format': Format(precision=3, scheme=Scheme.exponent)},
-            ],
-            style_cell_conditional=[
-                {'if': {'column_id': 'num'},
-                'width': '15%'},
-                {'if': {'column_id': 'expected'},
-                'width': '15%'},
-                {'if': {'column_id': 'fold'},
-                'width': '15%'},
-                {'if': {'column_id': 'pval'},
-                'width': '15%'},
-                {'if': {'column_id': 'go_term'},
-                'width': '40%'},
-            ],
-            data=[{
-                'min': [0],
-                'max': [0],
-                'avg': [0],
-                'stdev': [0]
-            }],
-            style_header={
-                'fontWeight': 'bold'
-            },
-            style_cell={
-                'textAlign': 'center'
-            },
-            style_table={
-                'marginLeft': '7.5%',
-                'width': '85%',
-                'marginTop': '1%'
-            },
-            fixed_rows={'headers': True, 'data': 0}),
+        ], id='vol_go_div', style={'display': 'none', 'marginTop': '2%'}),
 
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),

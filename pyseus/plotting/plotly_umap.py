@@ -45,10 +45,11 @@ def scale_table(matrix, method):
 def interaction_umap(
         matrix, node_name, cluster, x='umap_1', y='umap_2', opacity=0.8,
         width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
-        unlabelled_opacity=0.1, hover_data=None):
+        unlabelled_opacity=0.1, hover_data=None, unlabelled_hover=True, search=False):
 
     matrix = matrix.copy()
     matrix.reset_index(inplace=True, drop=False)
+
 
     if node_name == 'None':
         node_name = None
@@ -83,24 +84,6 @@ def interaction_umap(
 
         labelled.sort_values(by=cluster, inplace=True)
 
-        fig1 = px.scatter(
-            labelled,
-            x=x,
-            y=y,
-            labels={
-                x: label_x,
-                y: label_y
-            },
-            hover_name=node_name,
-            color=cluster,
-            color_continuous_scale=px.colors.cyclical.mygbm[: -1],
-            opacity=opacity,
-            hover_data=hover_data,
-            custom_data=['index'],
-            template='simple_white')
-        fig1.update_traces(marker=dict(size=5.5))
-        fig1.update(layout_coloraxis_showscale=False)
-
 
         fig2 = px.scatter(
             unlabelled,
@@ -117,8 +100,43 @@ def interaction_umap(
             custom_data=['index'],
             color_discrete_sequence=[unlabelled_color],
             template='simple_white')
+        if not unlabelled_hover:
+            fig2.update_traces(hoverinfo='skip', hovertemplate=None)
 
-        fig = go.Figure(data=fig2.data + fig1.data)
+        if search:
+            fig = fig2
+            fig.add_trace(
+                go.Scattergl(x=labelled[x], y=labelled[y], mode='markers', name='search',
+                    hoverinfo='text', hovertext=labelled[node_name],
+                    customdata=labelled['index'].apply(lambda x: [x]),
+                    opacity=0.8, marker=dict(opacity=0.9, line_width=1, color='#EF553B'))
+            )
+
+
+        else:
+
+            fig1 = px.scatter(
+                labelled,
+                x=x,
+                y=y,
+                labels={
+                    x: label_x,
+                    y: label_y
+                },
+                hover_name=node_name,
+                color=cluster,
+                color_continuous_scale=px.colors.cyclical.mygbm[: -1],
+                opacity=opacity,
+                hover_data=hover_data,
+                custom_data=['index'],
+                template='simple_white')
+            fig1.update_traces(marker=dict(size=5.5))
+            fig1.update(layout_coloraxis_showscale=False)
+
+
+
+
+            fig = go.Figure(data=fig2.data + fig1.data)
 
 
         # if highlight:

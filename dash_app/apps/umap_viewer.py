@@ -41,7 +41,7 @@ from pyseus.plotting import plotly_umap as pu
 transposed_annots = ('sample')
 
 from dapp import app
-from dapp import saved_processed_table, cycle_style_colors, query_panther
+from dapp import saved_processed_table, cycle_style_colors, query_panther, collapsible_style
 
 
 # App Layout
@@ -67,6 +67,66 @@ layout = html.Div([
         ],
         style={'marginBottom': '2%'}),
 ])
+
+
+@app.callback(
+    Output('label_div', 'style'),
+    Output('label_section', 'children'),
+    Input('label_section', 'n_clicks'),
+    State('label_section', 'children'),
+    State('label_div', 'style'),
+    prevent_initial_call=True
+)
+def process_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('go_div', 'style'),
+    Output('go_section', 'children'),
+    Input('go_section', 'n_clicks'),
+    State('go_section', 'children'),
+    State('go_div', 'style'),
+    prevent_initial_call=True
+)
+def go_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('feature_div', 'style'),
+    Output('feature_section', 'children'),
+    Input('feature_section', 'n_clicks'),
+    State('feature_section', 'children'),
+    State('feature_div', 'style'),
+    prevent_initial_call=True
+)
+def feature_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('umops_div', 'style'),
+    Output('umops_section', 'children'),
+    Input('umops_section', 'n_clicks'),
+    State('umops_section', 'children'),
+    State('umops_div', 'style'),
+    prevent_initial_call=True
+)
+def umops_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
 
 
 @app.callback(
@@ -438,8 +498,6 @@ def make_clusters(n_clicks, num_clust, um_features_json, button_style, session_i
     State('umap_table_upload', 'contents'),
     State('umap_load_button', 'style'),
 
-
-
     State('transpose_button', 'n_clicks'),
     State('um_annots', 'children'),
     State('um_features_checklist', 'value'),
@@ -616,7 +674,11 @@ def populate_options(input_1, input_2, input_3, input_4, features_json, session_
 @app.callback(
     Output('umap_fig', 'figure'),
     Output('plot_button', 'style'),
+    Output('search_button', 'style'),
     Input('plot_button', 'n_clicks'),
+    Input('search_button', 'n_clicks'),
+    State('search_plot', 'value'),
+    State('search_button', 'style'),
     State('um_label_select', 'value'),
     State('annot_select', 'value'),
     State('marker_color', 'value'),
@@ -628,11 +690,11 @@ def populate_options(input_1, input_2, input_3, input_4, features_json, session_
 
     prevent_initial_call=True
 )
-def plot_umap(n_clicks, label, annot, marker_color, opacity, x_val, y_val,
-        button_style, session_id):
+def plot_umap(n_clicks, search_clicks, search_term, search_style, label, annot,
+        marker_color, opacity, x_val, y_val, button_style, session_id):
 
     umap_slot = session_id + 'completed'
-    if n_clicks is None:
+    if n_clicks is None and search_clicks is None:
         raise PreventUpdate
 
     try:
@@ -642,19 +704,37 @@ def plot_umap(n_clicks, label, annot, marker_color, opacity, x_val, y_val,
     except AttributeError:
         raise PreventUpdate
 
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # umap generation
-    fig = pu.interaction_umap(umap_table, node_name=label, cluster=annot,
-        unlabelled_color=marker_color, unlabelled_opacity=opacity, x=x_val, y=y_val)
+    if button_id == 'search_button':
+        search_lower = search_term.lower()
+        umap_table[search_term] = umap_table[label].map(lambda x: search_term if search_lower
+            in str(x).lower() else None)
+
+        # umap generation
+        fig = pu.interaction_umap(umap_table, node_name=label, cluster=search_term,
+            unlabelled_color=marker_color, unlabelled_opacity=opacity * 0.5, x=x_val, y=y_val,
+            unlabelled_hover=False, search=True)
+        search_style = cycle_style_colors(search_style)
+
+
+    else:
+        # umap generation
+        fig = pu.interaction_umap(umap_table, node_name=label, cluster=annot,
+            unlabelled_color=marker_color, unlabelled_opacity=opacity, x=x_val, y=y_val)
+
+        button_style = cycle_style_colors(button_style)
 
     if 'umap' not in x_val:
         fig.add_vline(x=0, line_width=1)
         fig.add_hline(y=0, line_width=1)
 
 
-    button_style = cycle_style_colors(button_style)
 
-    return fig, button_style
+
+    return fig, button_style, search_style
 
 
 @app.callback(
@@ -775,8 +855,6 @@ def check_umap_status(hits_style, load_style, style, session_id):
 
     style = cycle_style_colors(style)
     return 'UMAP table ready!', style
-
-
 
 
 @app.callback(
