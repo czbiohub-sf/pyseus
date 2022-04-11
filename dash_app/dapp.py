@@ -73,6 +73,34 @@ def cycle_style_colors(style, color_1='#DCE7EC', color_2='#dcdfec'):
     return style
 
 
+def collapsible_style(children, div_styles):
+    """
+    cycle between expand and collapse
+    """
+
+    new_styles = []
+
+    if '▼' in children:
+        # convert expand to collapse
+        children = children.replace('▼', '▲')
+
+        for style in div_styles:
+            style['display'] = 'block'
+            new_styles.append(style)
+
+        return children, new_styles
+    else:
+        children = children.replace('▲', '▼')
+
+        for style in div_styles:
+            style['display'] = 'none'
+            new_styles.append(style)
+        return children, new_styles
+
+
+
+
+
 def query_panther(target_names, all_target_names, pval_thresh=0.1, enrichment_thresh=2, biological=True):
     url = 'http://pantherdb.org/services/oai/pantherdb/enrich/overrep'
     # dataset ids from http://pantherdb.org/services/oai/pantherdb/supportedannotdatasets

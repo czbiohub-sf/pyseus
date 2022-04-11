@@ -28,7 +28,7 @@ sys.path.append(head)
 from pyseus import basic_processing as bp
 
 from dapp import app
-from dapp import saved_processed_table, cycle_style_colors
+from dapp import saved_processed_table, cycle_style_colors, collapsible_style
 
 
 # App Layout
@@ -54,6 +54,72 @@ layout = html.Div([
         ]
     ),
 ])
+
+
+@app.callback(
+    Output('column_selects', 'style'),
+    Output('save_col_div', 'style'),
+    Output('column_section', 'children'),
+    Input('column_section', 'n_clicks'),
+    State('column_section', 'children'),
+    State('column_selects', 'style'),
+    State('save_col_div', 'style'),
+    prevent_initial_call=True
+)
+def col_select_collapse(n_clicks, button_txt, section_1, section_2):
+    """
+    Collapsible section
+    """
+    sections = [section_1, section_2]
+
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], sections[1], button_txt
+
+
+@app.callback(
+    Output('rename_div', 'style'),
+    Output('rename_section', 'children'),
+    Input('rename_section', 'n_clicks'),
+    State('rename_section', 'children'),
+    State('rename_div', 'style'),
+    prevent_initial_call=True
+)
+def rename_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('process_div', 'style'),
+    Output('process_section', 'children'),
+    Input('process_section', 'n_clicks'),
+    State('process_section', 'children'),
+    State('process_div', 'style'),
+    prevent_initial_call=True
+)
+def process_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('save_process_div', 'style'),
+    Output('save_process_section', 'children'),
+    Input('save_process_section', 'n_clicks'),
+    State('save_process_section', 'children'),
+    State('save_process_div', 'style'),
+    prevent_initial_call=True
+)
+def save_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
 
 
 @app.callback(

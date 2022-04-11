@@ -76,7 +76,8 @@ def simple_volcano(v_df, bait, fcd, width=None, height=None):
 
 
 def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
-        height=None, experiment=False, fcd=True, color=None):
+        height=None, experiment=False, fcd=True, color=None, unlabelled_hover=True,
+        fcd_curve=True, search=False):
     # initiate dfs
     sel_df = v_df.copy()
 
@@ -103,7 +104,7 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
     ymax = bait_vals['pvals'].max() + bait_vals['pvals'].max() * 0.1
 
     if marker_mode:
-        text = marker
+        text = hits[marker].to_list()
     else:
         text = None
 
@@ -117,28 +118,49 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
         y1 = fcd1[0] / (abs(x1) - fcd1[1])
 
 
-        # add significant hits
-        fig1 = px.scatter(hits, x='enrichment', y='pvals',
-            hover_name=marker, text=text, custom_data=['index'],
-            opacity=0.6, color=color)
-        fig1.update_traces(marker_size=10, marker_line_width=1,
-            textposition='bottom right')
-        if not color:
-            fig1.update_traces(marker_color='#EF553B')
+
 
         # add non-significant hits
         fig2 = px.scatter(no_hits, x='enrichment', y='pvals',
             hover_name=marker, custom_data=['index'],
-            opacity=0.6, color=color)
-        fig2.update_traces(marker_size=8)
+            opacity=0.4, color=color)
+        fig2.update_traces(marker_size=8, marker_symbol='circle-open')
         if not color:
             fig2.update_traces(marker_color='#70aee0')
+        if not unlabelled_hover:
+            fig2.update_traces(hoverinfo='skip', hovertemplate=None)
 
-        fig = go.Figure(data=fig2.data + fig1.data)
+        if search:
+            fig = fig2
+            fig.update_traces(name='Unlabelled')
+            if marker_mode:
+                search_marker = 'markers+text'
+            else:
+                search_marker = 'markers'
+            fig.add_trace(
+                go.Scattergl(x=hits['enrichment'], y=hits['pvals'], mode=search_marker,
+                    name='search', hoverinfo='text', hovertext=hits[marker], text=text,
+                    customdata=hits['index'].apply(lambda x: [x]), textposition='bottom right',
+                    opacity=0.6, marker=dict(size=10, opacity=0.9, line_width=1, color='#EF553B'))
+            )
+
+        else:
+
+            # add significant hits
+            fig1 = px.scatter(hits, x='enrichment', y='pvals',
+                hover_name=marker, text=text, custom_data=['index'],
+                opacity=0.6, color=color)
+            fig1.update_traces(marker_size=10, marker_line_width=1,
+                textposition='bottom right')
+            if not color:
+                fig1.update_traces(marker_color='#EF553B')
 
 
-        fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='fcd_line',
-            line=dict(color='DarkSlateGrey', dash='dash')))
+            fig = go.Figure(data=fig2.data + fig1.data)
+
+        if fcd_curve:
+            fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='fcd_line',
+                line=dict(color='DarkSlateGrey', dash='dash')))
 
     else:
 
@@ -156,7 +178,7 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
     fig.update_yaxes(title_text='p-value (-log10)',
         range=[-1, ymax])
     for trace in fig['data']:
-        if trace['name'] == 'fcd_line':
+        if trace['name'] == 'fcd_line' or trace['name'] == 'search':
             trace['showlegend'] = False
     fig.update_layout(
         template='ggplot2',

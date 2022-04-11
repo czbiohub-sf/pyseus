@@ -42,7 +42,7 @@ from pyseus.plotting import plotly_volcano as pv
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 from dapp import app
-from dapp import saved_processed_table, cycle_style_colors, query_panther
+from dapp import saved_processed_table, cycle_style_colors, query_panther, collapsible_style
 
 # App Layout
 layout = html.Div([
@@ -66,6 +66,51 @@ layout = html.Div([
             ),
         ]),
 ])
+
+
+@app.callback(
+    Output('control_div', 'style'),
+    Output('control_section', 'children'),
+    Input('control_section', 'n_clicks'),
+    State('control_section', 'children'),
+    State('control_div', 'style'),
+    prevent_initial_call=True
+)
+def process_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('call_div', 'style'),
+    Output('call_section', 'children'),
+    Input('call_section', 'n_clicks'),
+    State('call_section', 'children'),
+    State('call_div', 'style'),
+    prevent_initial_call=True
+)
+def call_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
+    Output('vol_go_div', 'style'),
+    Output('vol_go_section', 'children'),
+    Input('vol_go_section', 'n_clicks'),
+    State('vol_go_section', 'children'),
+    State('vol_go_div', 'style'),
+    prevent_initial_call=True
+)
+def vol_go_collapse(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
 
 
 @app.callback(
@@ -883,10 +928,16 @@ def fill_ext_options(style, session_id):
     Output('estimated_FDR', 'children'),
     Output('preview', 'style'),
     Output('volcano_button_1', 'style'),
+    Output('vol_search_button', 'style'),
+
 
     Input('preview', 'n_clicks'),
 
     Input('volcano_button_1', 'n_clicks'),
+    Input('vol_search_button', 'n_clicks'),
+    State('vol_search_plot', 'value'),
+    State('vol_search_button', 'style'),
+
     State('plot_options', 'value'),
     State('volcano_dropdown_1', 'value'),
     State('vol_marker_label', 'value'),
@@ -903,8 +954,9 @@ def fill_ext_options(style, session_id):
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano(volc_click, click_1, checklist, sample, marker, annots,
-        offset, curvature, estimate, preview_style, volc_style, session_id):
+def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
+        checklist, sample, marker, annots, offset, curvature, estimate,
+        preview_style, volc_style, session_id):
 
     hits_slot = session_id + 'hits'
     enriched_slot = session_id + 'enriched'
@@ -924,8 +976,28 @@ def plot_volcano(volc_click, click_1, checklist, sample, marker, annots,
     ctx = dash.callback_context
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    if button_id == 'vol_search_button':
+        search_lower = search_term.lower()
+        hits_table['interaction'] = hits_table[marker].map(lambda x: True if search_lower
+            in str(x).lower() else False)
+
+
+        label = False
+
+        if 'label' in checklist:
+            label = True
+
+        fig = pv.volcano_plot(hits_table, sample, marker_mode=label, fcd=True, marker=marker,
+            plate='N/A', experiment=False, color=None, unlabelled_hover=False, fcd_curve=False,
+            search=True)
+
+        search_style = cycle_style_colors(search_style)
+
+        return fig, estimate, preview_style, volc_style, search_style
+
+
     # creating a preview for seed FDR
-    if button_id == 'preview':
+    elif button_id == 'preview':
 
         # estimate FDR percentage
         neg_select = hits_table[hits_table['enrichment'] < 0]
@@ -961,7 +1033,7 @@ def plot_volcano(volc_click, click_1, checklist, sample, marker, annots,
 
         preview_style = cycle_style_colors(preview_style)
 
-        return fig, estimate, preview_style, volc_style
+        return fig, estimate, preview_style, volc_style, search_style
 
 
     # standard-context volcano plotting
@@ -976,61 +1048,61 @@ def plot_volcano(volc_click, click_1, checklist, sample, marker, annots,
             raise PreventUpdate
     if 'label' in checklist:
         label = True
-        if enriched:
-            raise PreventUpdate
+
     if 'ext' in checklist:
         annot = annots
 
     fig = pv.volcano_plot(hits_table, sample, marker_mode=label, fcd=fcd, marker=marker,
         plate='N/A', experiment=False, color=annot)
 
-    return fig, estimate, preview_style, volc_style
+    return fig, estimate, preview_style, volc_style, search_style
 
 
 @app.callback(
     Output('vol_selection_count', 'children'),
+    Output('vol_selected_data', 'data'),
     Input('matrix_fig_1', 'selectedData'),
+    State('vol_marker_label', 'value'),
+    State('session_id', 'data'),
     prevent_initial_call=True
 )
-def print_selection_count(selectedData):
+def vol_print_selection_count(selectedData, label, session_id):
     if selectedData is None:
         PreventUpdate
 
     num_points = len(selectedData['points'])
     new_str = str(num_points) + ' data points selected'
 
-    return new_str
-
-
-@app.callback(
-    Output('vol_select_button', 'style'),
-    Input('vol_select_button', 'n_clicks'),
-    State('matrix_fig_1', 'selectedData'),
-    State('vol_select_button', 'style'),
-    State('session_id', 'data'),
-    prevent_initial_call=True
-)
-def save_selected_data(n_clicks, selectedData, style, session_id):
-
-    # designate cache ids
     selected_slot = session_id + 'vol_selected'
-    complete_slot = session_id + 'hits'
+    hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
 
-    umap_table = saved_processed_table(complete_slot)
+
+    try:
+        # import cached grouped table
+        hits_table = saved_processed_table(hits_slot)
+    except AttributeError:
+        try:
+            hits_table = saved_processed_table(enriched_slot)
+        except AttributeError:
+            raise PreventUpdate
+
 
     points = selectedData['points']
     indices = []
     for point in points:
         indices.append(point['customdata'][0])
 
-    selected_table = umap_table[umap_table.index.isin(indices)]
+    selected_table = hits_table[hits_table.index.isin(indices)]
+    selected_table.reset_index(drop=True, inplace=True)
+
+    labels = selected_table.rename(columns={label: 'marker'})[['marker']].sort_values(
+        by='marker')
+
+
     _ = saved_processed_table(selected_slot, selected_table, overwrite=True)
 
-
-    style = cycle_style_colors(style)
-
-
-    return style
+    return new_str, labels.to_dict('records')
 
 
 @app.callback(
