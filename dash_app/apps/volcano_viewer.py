@@ -437,7 +437,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
 
     # When user uploads the hits table, it is processed by process_hits
-    # callback, so do nothing here except change button style
+    # callback, so do nothing here except cache the table and change button style
 
     if (button_id == 'load_button') and (load_opt == 'pre_hits'):
         if upload_contents is not None:
@@ -451,7 +451,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
             upload_table['fdr'] = upload_table['fdr'].apply(eval)
 
             _ = saved_processed_table(hits_slot, upload_table, overwrite=True)
-
+            _ = saved_processed_table(enriched_slot, None, overwrite=True, no_save=True)
             load_style = cycle_style_colors(load_style)
 
             return button_style, load_style
@@ -469,6 +469,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         except AttributeError:
             raise PreventUpdate
 
+        _ = saved_processed_table(hits_slot, None, overwrite=True, no_save=True)
         load_style = cycle_style_colors(load_style)
 
         return button_style, load_style
@@ -484,6 +485,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         upload_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')),
             low_memory=False)
         _ = saved_processed_table(enriched_slot, upload_table, overwrite=True)
+        _ = saved_processed_table(hits_slot, None, overwrite=True, no_save=True)
 
         load_style = cycle_style_colors(load_style)
 

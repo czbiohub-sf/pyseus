@@ -111,18 +111,38 @@ def plotting_layout():
                     'width': '35%'}),
 
                 html.Hr(style={'marginTop': '2%', 'marginBottom': '3%'}),
+                html.Div([
+                    html.P('Hits table not ready', id='hits_table_status',
+                        style={
+                            'marginTop': '4%',
+                            'marginLeft': '7.5%',
+                            'width': '85%',
+                            'height': '40px',
+                            'lineHeight': '40px',
+                            'borderWidth': '1px',
+                            'borderStyle': 'solid',
+                            'borderRadius': '5px',
+                            'textAlign': 'center',
+                            'background-color': '#E5E7E9'}),
+                ], style={'display': 'inline-block',
+                    'width': '50%', 'vertical-align': 'top'}),
+                html.Div([
+                    html.P('Select a marker label', style={'textAlign': 'center',
+                        'fontSize': 16, 'lineHeight': '15px'}),
 
-                html.P('Select a marker label', style={'textAlign': 'center',
-                    'fontSize': 16, 'lineHeight': '15px'}),
+                    dcc.Dropdown(id='vol_marker_label',
+                        placeholder='Select a label',
+                        style={
+                            'textAlign': 'center',
+                            'marginTop': '2%',
+                            'width': '90%',
+                            'marginLeft': '5%'}
+                    ),
+                ], style={'display': 'inline-block',
+                    'width': '50%', 'vertical-align': 'top'}),
 
-                dcc.Dropdown(id='vol_marker_label',
-                    placeholder='Select a label',
-                    style={
-                        'textAlign': 'center',
-                        'marginTop': '2%',
-                        'width': '70%',
-                        'marginLeft': '15%'}
-                ),
+
+
 
 
 
@@ -291,7 +311,7 @@ def plotting_layout():
                     style={
                         'marginLeft': '7.5%',
                         'width': '85%',
-                        'marginTop': '4%',
+                        'marginTop': '15%',
                         'white-space': 'normal',
                         'background-color': 'white'}
                 ),
@@ -302,18 +322,7 @@ def plotting_layout():
                         'marginTop': '4%',
                         'white-space': 'normal'}
                 ),
-                html.P('Hits table not ready', id='hits_table_status',
-                    style={
-                        'marginTop': '4%',
-                        'marginLeft': '7.5%',
-                        'width': '85%',
-                        'height': '40px',
-                        'lineHeight': '40px',
-                        'borderWidth': '1px',
-                        'borderStyle': 'solid',
-                        'borderRadius': '5px',
-                        'textAlign': 'center',
-                        'background-color': '#E5E7E9'}),
+
 
                 dcc.Download(id="download_hits_table"),
             ],

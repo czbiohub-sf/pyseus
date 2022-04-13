@@ -30,7 +30,7 @@ cache = Cache(app.server, config={
 })
 
 
-def saved_processed_table(session_id, processed_table=None, overwrite=False):
+def saved_processed_table(session_id, processed_table=None, overwrite=False, no_save=False):
     """
     save data tables to server-side cache using unique IDs found in different app pages
 
@@ -50,9 +50,12 @@ def saved_processed_table(session_id, processed_table=None, overwrite=False):
         except AttributeError:
             pass
 
-    processed_table = save_processed_table(session_id, processed_table)
+    if no_save:
+        return
+    else:
+        processed_table = save_processed_table(session_id, processed_table)
 
-    return pd.read_json(processed_table)
+        return pd.read_json(processed_table)
 
 
 def cycle_style_colors(style, color_1='#DCE7EC', color_2='#dcdfec'):
