@@ -882,7 +882,9 @@ def merge_tables(n_clicks, content, filename,
     session_slot = session_id + 'hits'
 
     # load cached table
+    rename_label = 'ext_' + annot_label
     um_processed_table = saved_processed_table(session_slot)
+    um_processed_table.drop(rename_label, axis=1, inplace=True)
 
     # rename keys for proper merge
     annot_table.rename(columns={annot_key: feature_key}, inplace=True)
@@ -894,7 +896,6 @@ def merge_tables(n_clicks, content, filename,
         drop_subset.remove('fdr')
     merge_table.drop_duplicates(subset=drop_subset, inplace=True)
 
-    rename_label = 'ext_' + annot_label
     merge_table.rename(columns={annot_col: rename_label}, inplace=True)
 
     _ = saved_processed_table(session_slot, merge_table, overwrite=True)
@@ -905,10 +906,11 @@ def merge_tables(n_clicks, content, filename,
 @app.callback(
     Output('vol_annot_select', 'options'),
     Input('vol_merge_button', 'style'),
+    Input('hits_table_status', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def fill_ext_options(style, session_id):
+def fill_ext_options(style, ready_style, session_id):
 
     hits_slot = session_id + 'hits'
     try:
