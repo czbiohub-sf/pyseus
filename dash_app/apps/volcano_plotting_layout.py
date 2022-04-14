@@ -12,11 +12,18 @@ from dash import dash_table
 from dash.dash_table.Format import Format, Scheme, Trim
 
 
+
 import pandas as pd
 import plotly.express as px
 
 import sys
 sys.path.append('../../')
+import plotly.graph_objects as go
+
+fig = go.Figure()
+fig.update_layout(template='simple_white')
+fig.update_xaxes(showticklabels=False, ticks="")
+fig.update_yaxes(showticklabels=False, ticks="")
 
 
 def plotting_layout():
@@ -366,7 +373,7 @@ def plotting_layout():
 
         html.Div([
 
-            dcc.Graph(id='matrix_fig_1', style={'height': '90%'}),
+            dcc.Graph(id='matrix_fig_1', figure=fig, style={'height': '90%'}),
 
 
             html.Button('Download selection', id='vol_download_subspace_button',
@@ -595,7 +602,58 @@ def plotting_layout():
                 'borderLeft': '1px #BDC3C7 solid',
                 'width': '32%'}),
 
-        html.Hr(style={'marginBottom': '2%'}),
+        html.Hr(style={'marginBottom': '2%', 'marginTop': '2%'}),
+
+        html.Button('Annotation enrichment analysis ▼',
+            id='vol_annot_section', style={
+                'border': '0px',
+                'width': '80%',
+                'marginLeft': '10%',
+                'background-color': '#e8e8e8',
+                'fontSize': 18}),
+
+        html.Div([
+            html.Div([
+                dcc.RadioItems(id='annot_analysis_opt',
+                    options=[
+                        {'label': 'Strip chart',
+                        'value': 'strip'},
+                        {'label': 'Box plot',
+                        'value': 'box'}
+                    ],
+                    labelStyle={
+                        'display': 'inline-block',
+                        'marginRight': '3%'
+                    },
+
+                    style={
+                        'textAlign': 'center',
+                        'width': '45%',
+                        'display': 'inline-block',
+                        'marginLeft': '55%',
+                        'marginTop': '1%'},
+
+                    value='strip'
+                )], style={'display': 'inline-block',
+                        'vertical-align': 'top',
+                        'width': '50%'}),
+            html.Div([
+                html.Button("Analyze!", id='strip_button',
+                    style={
+                        'width': '40%',
+                        'marginLeft': '3%'})],
+                style={
+                'display': 'inline-block',
+                'vertical-align': 'top',
+                'width': '50%'}),
+            dcc.Graph(id='annot_fig', figure=fig),
+
+
+
+        ], id='annotation_div', style={'display': 'none', 'marginTop': '2%'}),
+
+
+        html.Hr(style={'marginBottom': '2%', 'marginTop': '2%'}),
 
         html.Button('Selection GO analysis ▼',
             id='vol_go_section', style={

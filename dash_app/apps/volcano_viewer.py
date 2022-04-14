@@ -84,6 +84,21 @@ def process_collapse(n_clicks, button_txt, section_1):
 
 
 @app.callback(
+    Output('annotation_div', 'style'),
+    Output('vol_annot_section', 'children'),
+    Input('vol_annot_section', 'n_clicks'),
+    State('vol_annot_section', 'children'),
+    State('annotation_div', 'style'),
+    prevent_initial_call=True
+)
+def process_annot(n_clicks, button_txt, section_1):
+    sections = [section_1]
+    button_txt, sections = collapsible_style(button_txt, sections)
+
+    return sections[0], button_txt
+
+
+@app.callback(
     Output('call_div', 'style'),
     Output('call_section', 'children'),
     Input('call_section', 'n_clicks'),
@@ -1135,6 +1150,55 @@ def download_subspace(n_clicks, button_style, session_id):
     button_style = cycle_style_colors(button_style)
 
     return dcc.send_data_frame(umap_table.to_csv, 'volcano_subspace.csv'), button_style
+
+
+@app.callback(
+    Output('annot_fig', 'figure'),
+    Output('strip_button', 'style'),
+    Input('strip_button', 'n_clicks'),
+    State('volcano_dropdown_1', 'value'),
+    State('annot_analysis_opt', 'value'),
+    State('vol_annot_select', 'value'),
+    State('strip_button', 'style'),
+    State('session_id', 'data'),
+
+    prevent_initial_call=True
+)
+def annot_plot(n_clicks, sample, option, annot_col, button_style, session_id):
+
+    hits_slot = session_id + 'hits'
+    if n_clicks is None:
+        raise PreventUpdate
+    try:
+        # verify that the enrichment table is available
+        hits_table = saved_processed_table(hits_slot)
+    except AttributeError:
+        raise PreventUpdate
+
+    hits_sample = hits_table[hits_table['target'] == sample].copy()
+    hits_sample['annotation'] = hits_sample[annot_col].fillna('Unlabelled')
+
+    # take out extreme outliers
+    hits_sample = hits_sample[
+        (hits_sample['enrichment'] > hits_sample['enrichment'].quantile(.005))
+        & (hits_sample['enrichment'] < hits_sample['enrichment'].quantile(.995))]
+
+    if option == 'strip':
+        fig = px.strip(hits_sample, x='enrichment', y='annotation',
+            color='annotation')
+    else:
+        fig = px.box(hits_sample, x='enrichment', y='annotation',
+            color='annotation', notched=True)
+
+    fig.update_layout(template='simple_white', showlegend=False)
+
+    button_style = cycle_style_colors(button_style)
+
+    return fig, button_style
+
+
+
+
 
 
 @app.callback(
