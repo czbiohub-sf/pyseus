@@ -17,6 +17,13 @@ import plotly.express as px
 
 import sys
 sys.path.append('../../')
+import plotly.graph_objects as go
+
+fig = go.Figure()
+fig.update_layout(template='simple_white')
+fig.update_xaxes(showticklabels=False, ticks="")
+fig.update_yaxes(showticklabels=False, ticks="")
+
 
 
 def customize_layout():
@@ -851,7 +858,7 @@ def plotting_layout():
 
 
         html.Div([
-            dcc.Graph(id='umap_fig',
+            dcc.Graph(id='umap_fig', figure=fig,
                 style={'height': '100%'})
         ],
             style={
