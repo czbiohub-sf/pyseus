@@ -636,16 +636,51 @@ def plotting_layout():
                     value='strip'
                 )], style={'display': 'inline-block',
                         'vertical-align': 'top',
-                        'width': '50%'}),
+                        'width': '60%'}),
             html.Div([
                 html.Button("Analyze!", id='strip_button',
                     style={
-                        'width': '40%',
+                        'width': '60%',
                         'marginLeft': '3%'})],
                 style={
                 'display': 'inline-block',
                 'vertical-align': 'top',
-                'width': '50%'}),
+                'width': '40%'}),
+
+
+            html.Div([
+                html.Div([
+                    dcc.RangeSlider(
+                        id='enrichment_range',
+                        min=-20,
+                        max=20,
+                        step=0.5,
+                        value=[-10, 10],
+                        tooltip={"placement": "bottom", "always_visible": True},
+                    )],
+                    style={'width': '80%', 'marginLeft': '10%', 'marginTop': '3%'}
+                ),
+
+            ], style={
+                'display': 'inline-block',
+                'verticalAlign': 'top',
+                'width': '50%',
+                'marginLeft': '10%',
+                'marginTop': '2%'
+            }
+            ),
+            html.Div([
+                html.Button('Adjust range', id='range_button',
+                    style={'textAlign': 'center',
+                        'width': '60%',
+                        'marginLeft': '3%'}),
+            ], style={
+                'display': 'inline-block',
+                'verticalAlign': 'top',
+                'marginTop': '2%',
+                'width': '40%'
+            }
+            ),
             dcc.Graph(id='annot_fig', figure=fig),
 
 

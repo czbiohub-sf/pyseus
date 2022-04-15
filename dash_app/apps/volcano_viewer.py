@@ -1155,16 +1155,25 @@ def download_subspace(n_clicks, button_style, session_id):
 @app.callback(
     Output('annot_fig', 'figure'),
     Output('strip_button', 'style'),
+    Output('range_button', 'style'),
     Input('strip_button', 'n_clicks'),
+    Input('range_button', 'n_clicks'),
     State('volcano_dropdown_1', 'value'),
     State('annot_analysis_opt', 'value'),
     State('vol_annot_select', 'value'),
+    State('enrichment_range', 'value'),
     State('strip_button', 'style'),
+    State('range_button', 'style'),
     State('session_id', 'data'),
 
     prevent_initial_call=True
 )
-def annot_plot(n_clicks, sample, option, annot_col, button_style, session_id):
+def annot_plot(n_clicks, range_clicks, sample, option, annot_col, range,
+        button_style, range_style, session_id):
+
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     hits_slot = session_id + 'hits'
     if n_clicks is None:
@@ -1183,6 +1192,8 @@ def annot_plot(n_clicks, sample, option, annot_col, button_style, session_id):
         (hits_sample['enrichment'] > hits_sample['enrichment'].quantile(.005))
         & (hits_sample['enrichment'] < hits_sample['enrichment'].quantile(.995))]
 
+
+
     if option == 'strip':
         fig = px.strip(hits_sample, x='enrichment', y='annotation',
             color='annotation')
@@ -1192,9 +1203,14 @@ def annot_plot(n_clicks, sample, option, annot_col, button_style, session_id):
 
     fig.update_layout(template='simple_white', showlegend=False)
 
-    button_style = cycle_style_colors(button_style)
+    fig.update_yaxes(categoryorder='category ascending')
+    if button_id == 'range_button':
+        fig.update_xaxes(range=range)
+        range_style = cycle_style_colors(range_style)
+    else:
+        button_style = cycle_style_colors(button_style)
 
-    return fig, button_style
+    return fig, button_style, range_style
 
 
 
