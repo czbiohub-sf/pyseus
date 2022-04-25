@@ -25,41 +25,45 @@ server = app.server
 no_table = 'No table uploaded'
 no_p_table = 'No table processed'
 
+first_link = {'fontSize': 20,
+    'marginLeft': '14%',
+    'text-decoration': 'none',
+    'color': '#2F83C4',
+    'fontWeight': 'bold'}
+link_style = {'fontSize': 20,
+    'marginLeft': '10%',
+    'text-decoration': 'none',
+    'color': '#2F83C4',
+    'fontWeight': 'bold'}
+section_style = {'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}
+first_style = {'marginLeft': '2.5%', 'width': '19%', 'textAlign': 'center',
+    'display': 'inline-block'}
 
 # Set up of navigation bar
 navbar = html.Div([
-    html.Div(style={'background-color': '#DCE7EC', 'height': '20px', 'borderTop': '1px gray solid'}),
+    html.Div(style={'background-color': '#DCE7EC', 'height': '20px',
+        'borderTop': '1px gray solid'}),
+
     html.Div([
         html.Div([
-            dcc.Link("Home", href="/home", style={'fontSize': 20, 'marginLeft': '14%',
-                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-        ], style={'marginLeft': '2.5%', 'width': '19%', 'textAlign': 'center',
-            'display': 'inline-block'}),
-
+            dcc.Link("Home", href="/home", style=first_link),
+        ], style=first_style),
         html.Div([
-            dcc.Link("Pre-processing", href="/pre_processing",
-                style={'fontSize': 20, 'marginLeft': '10%',
-                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
-
+            dcc.Link("Pre-processing", href="/pre_processing", style=link_style),
+        ], style=section_style),
         html.Div([
-            dcc.Link("Clustergram", href="/clustergram", style={'fontSize': 20, 'marginLeft': '10%',
-                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
-
+            dcc.Link("Clustergram", href="/clustergram", style=link_style),
+        ], style=section_style),
         html.Div([
-            dcc.Link("Volcano Plot", href="/volcano", style={'fontSize': 20, 'marginLeft': '10%',
-                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-
-        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'}),
-
+            dcc.Link("Volcano Plot", href="/volcano", style=link_style),
+        ], style=section_style),
         html.Div([
-            dcc.Link("UMAP", href="/umap", style={'fontSize': 20, 'marginLeft': '10%',
-                'text-decoration': 'none', 'color': '#2F83C4', 'fontWeight': 'bold'}),
-        ], style={'width': '19%', 'textAlign': 'center', 'display': 'inline-block'})
+            dcc.Link("UMAP", href="/umap", style=link_style),
+        ], style=section_style),
 
-    ],
-        style={'background-color': '#DCE7EC', 'height': '50px', 'borderBottom': '1px gray solid'})
+    ], style={'background-color': '#DCE7EC',
+        'height': '50px',
+        'borderBottom': '1px gray solid'})
 ])
 
 index_layout = html.Div([
@@ -109,7 +113,7 @@ app.validation_layout = html.Div([
 
 
 @app.callback(Output('page-content', 'children'),
-              [Input('url', 'pathname')])
+        Input('url', 'pathname'))
 def display_page(pathname):
     if pathname == '/pre_processing':
         return preprocessing.layout

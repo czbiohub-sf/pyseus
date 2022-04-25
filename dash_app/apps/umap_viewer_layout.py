@@ -29,7 +29,6 @@ fig.update_yaxes(showticklabels=False, ticks="")
 def customize_layout():
     return html.Div([
 
-
         html.Div([
 
             html.P('Upload a processed feature table or use a pre-loaded one',
@@ -391,7 +390,6 @@ def customize_layout():
                         'white-space': 'normal'
                     }
                 ),
-                dcc.Download(id="download_umap"),
             ],
                 style={
                     'marginTop': '2%',
@@ -399,6 +397,7 @@ def customize_layout():
                     'width': '80%',
                     'verticalAlign': 'top'}),
 
+            dcc.Download(id="download_umap"),
             dcc.Link("UMAP parameters docs",
                 href="https://umap-learn.readthedocs.io/en/latest/parameters.html",
                 style={'textAlign': 'center',
@@ -858,8 +857,7 @@ def plotting_layout():
 
 
         html.Div([
-            dcc.Graph(id='umap_fig', figure=fig,
-                style={'height': '100%'})
+            dcc.Graph(id='umap_fig', figure=fig, style={'height': '100%'})
         ],
             style={
                 'vertical-align': 'top',

@@ -30,31 +30,35 @@ cache = Cache(app.server, config={
 })
 
 
+
+@cache.memoize(args_to_ignore=['processed_table'])
+def save_processed_table(session_id, processed_table):
+    """
+    simple caching function saving dataframe to JSON format
+    """
+    return processed_table.to_json()
+
+
 def saved_processed_table(session_id, processed_table=None, overwrite=False, no_save=False):
     """
-    save data tables to server-side cache using unique IDs found in different app pages
+    save pandas DFs to server-side cache using unique IDs found in different app pages
 
     """
-
-
-    @cache.memoize(args_to_ignore=['processed_table'])
-    def save_processed_table(session_id, processed_table):
-
-        return processed_table.to_json()
-
     if overwrite:
         # delete cache to save a new one if overwrite option is True
+        # if session_id is not found, pass
         try:
             cache.delete_memoized(save_processed_table, session_id)
-
         except AttributeError:
             pass
 
+    # when overwrite and no_save are both True, the cache is deleted without replacement
     if no_save:
         return
+
+    # cache or retrieve the DF, and return it
     else:
         processed_table = save_processed_table(session_id, processed_table)
-
         return pd.read_json(processed_table)
 
 

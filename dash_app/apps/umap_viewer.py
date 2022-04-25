@@ -48,7 +48,9 @@ from dapp import saved_processed_table, cycle_style_colors, query_panther, colla
 layout = html.Div([
     # Header tags
     html.P('The UMAP generator',
-        style={'textAlign': 'center', 'fontSize': 28, 'marginTop': '2%',
+        style={'textAlign': 'center',
+            'fontSize': 28,
+            'marginTop': '2%',
             'marginBottom': '1%'}),
     dcc.Tabs(
         id="tabs",
@@ -169,9 +171,14 @@ def display_upload_ms_filename(filename, style):
     Output('umap_table_upload', 'children'),
     Output('umap_table_upload', 'style'),
     Input('umap_table_upload', 'filename'),
-    State('umap_table_upload', 'style')
+    State('umap_table_upload', 'style'),
+    prevent_initial_call=True
 )
 def display_upload_umap_filename(filename, style):
+    """
+    display upload filename and change the bg color
+    """
+
     if filename is None:
         raise PreventUpdate
     else:
@@ -462,7 +469,9 @@ def populate_data_opts(final_features_json):
     prevent_initial_call=True
 )
 def make_clusters(n_clicks, num_clust, um_features_json, button_style, session_id):
-
+    """
+    Calculate clustering based on K-nearest neighbors
+    """
     session_slot = session_id + 'completed'
 
     button_style = cycle_style_colors(button_style)
@@ -854,6 +863,7 @@ def check_umap_status(hits_style, load_style, style, session_id):
     _ = hits_table
 
     style = cycle_style_colors(style)
+
     return 'UMAP table ready!', style
 
 
@@ -866,31 +876,39 @@ def check_umap_status(hits_style, load_style, style, session_id):
     prevent_initial_call=True
 )
 def print_selection_count(selectedData, label, session_id):
+    """
+    when there are selected points on the figure, parse the selected rows
+    from the original table. Return marker labels and number of selected
+    points, and cache the selection
+    """
     if selectedData is None:
         PreventUpdate
 
     num_points = len(selectedData['points'])
     new_str = str(num_points) + ' data points selected'
 
-
     # designate cache ids
-    selected_slot = session_id + 'selected'
     complete_slot = session_id + 'completed'
+    selected_slot = session_id + 'selected'
 
+    # load original table from cache
     umap_table = saved_processed_table(complete_slot)
 
+    # parse indices of the selected points
     points = selectedData['points']
     indices = []
     for point in points:
         indices.append(point['customdata'][0])
 
-    selected_table = umap_table[umap_table.index.isin(indices)]
+    # filter only the selected indices from the original table
+    selected_table = umap_table[umap_table.index.isin(indices)].copy()
     selected_table.reset_index(drop=True, inplace=True)
 
-    labels = selected_table.rename(columns={label: 'marker'})[['marker']].sort_values(
-        by='marker')
+    # get the marker labels for the selected data
+    labels = selected_table.rename(columns={label: 'marker'})[
+        ['marker']].sort_values(by='marker')
 
-
+    # cache selected table
     _ = saved_processed_table(selected_slot, selected_table, overwrite=True)
 
     return new_str, labels.to_dict('records')
