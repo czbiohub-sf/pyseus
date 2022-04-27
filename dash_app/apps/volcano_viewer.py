@@ -798,11 +798,16 @@ def populate_volcano_samples(hits_button, loads_button, session_id):
     """
 
     hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
 
     try:
+        # import cached grouped table
         hits_table = saved_processed_table(hits_slot)
-    except Exception:
-        raise PreventUpdate
+    except AttributeError:
+        try:
+            hits_table = saved_processed_table(enriched_slot)
+        except AttributeError:
+            raise PreventUpdate
 
     targets = hits_table['target'].unique()
     targets.sort()
@@ -894,12 +899,26 @@ def merge_tables(n_clicks, content, filename,
 
     annot_table = annot_table[[annot_key, annot_col]]
 
-    session_slot = session_id + 'hits'
+    hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
 
     # load cached table
     rename_label = 'ext_' + annot_label
+    try:
+        # import cached grouped table
+        um_processed_table = saved_processed_table(hits_slot)
+        session_slot = hits_slot
+    except AttributeError:
+        try:
+            um_processed_table = saved_processed_table(enriched_slot)
+            session_slot = enriched_slot
+        except AttributeError:
+            raise PreventUpdate
+
+
     um_processed_table = saved_processed_table(session_slot)
-    um_processed_table.drop(rename_label, axis=1, inplace=True)
+    if rename_label in list(um_processed_table):
+        um_processed_table.drop(rename_label, axis=1, inplace=True)
 
     # rename keys for proper merge
     annot_table.rename(columns={annot_key: feature_key}, inplace=True)
@@ -912,6 +931,7 @@ def merge_tables(n_clicks, content, filename,
     merge_table.drop_duplicates(subset=drop_subset, inplace=True)
 
     merge_table.rename(columns={annot_col: rename_label}, inplace=True)
+
 
     _ = saved_processed_table(session_slot, merge_table, overwrite=True)
 
@@ -927,11 +947,18 @@ def merge_tables(n_clicks, content, filename,
 )
 def fill_ext_options(style, ready_style, session_id):
 
+
     hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
+
     try:
+        # import cached grouped table
         hits_table = saved_processed_table(hits_slot)
-    except Exception:
-        raise PreventUpdate
+    except AttributeError:
+        try:
+            hits_table = saved_processed_table(enriched_slot)
+        except AttributeError:
+            raise PreventUpdate
 
     meta_cols = [col for col in list(hits_table) if 'ext_' in col]
     options = []
@@ -990,6 +1017,8 @@ def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
             enriched = True
         except AttributeError:
             raise PreventUpdate
+
+
 
     # get the context of the callback trigger
     ctx = dash.callback_context
@@ -1175,14 +1204,20 @@ def annot_plot(n_clicks, range_clicks, sample, option, annot_col, range,
     ctx = dash.callback_context
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    hits_slot = session_id + 'hits'
+
     if n_clicks is None:
         raise PreventUpdate
+    hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
+
     try:
-        # verify that the enrichment table is available
+        # import cached grouped table
         hits_table = saved_processed_table(hits_slot)
     except AttributeError:
-        raise PreventUpdate
+        try:
+            hits_table = saved_processed_table(enriched_slot)
+        except AttributeError:
+            raise PreventUpdate
 
     hits_sample = hits_table[hits_table['target'] == sample].copy()
     hits_sample['annotation'] = hits_sample[annot_col].fillna('Unlabelled')
@@ -1232,17 +1267,25 @@ def annot_plot(n_clicks, range_clicks, sample, option, annot_col, range,
 )
 def calculate_go(n_clicks, gene_names, category, pval_cutoff, enrch_cutoff, button_style, session_id):
 
-    completed_slot = session_id + 'hits'
     selected_slot = session_id + 'vol_selected'
     go_slot = session_id + 'vol_go'
     if n_clicks is None:
         raise PreventUpdate
 
-    try:
-        # verify that the enrichment table is available
-        completed = saved_processed_table(completed_slot).copy()
-        selected = saved_processed_table(selected_slot).copy()
+    hits_slot = session_id + 'hits'
+    enriched_slot = session_id + 'enriched'
 
+    try:
+        # import cached grouped table
+        completed = saved_processed_table(hits_slot)
+    except AttributeError:
+        try:
+            completed = saved_processed_table(enriched_slot)
+        except AttributeError:
+            raise PreventUpdate
+    try:
+        # verify that the selection table is available
+        selected = saved_processed_table(selected_slot).copy()
     except AttributeError:
         raise PreventUpdate
 

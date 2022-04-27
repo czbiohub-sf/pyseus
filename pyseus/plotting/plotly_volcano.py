@@ -91,11 +91,6 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
         bait_vals[color] = bait_vals[color].fillna('Unlabelled')
 
     bait_vals.reset_index(drop=False, inplace=True)
-    hits = bait_vals[bait_vals['interaction']]
-    # print("Number of Significant Hits: " + str(hits.shape[0]))
-
-
-    no_hits = bait_vals[~bait_vals['interaction']]
 
 
     # calculations for x axis min, max parameters
@@ -103,21 +98,16 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
 
     ymax = bait_vals['pvals'].max() + bait_vals['pvals'].max() * 0.1
 
-    if marker_mode:
-        text = hits[marker].to_list()
-    else:
-        text = None
 
     if fcd:
-        # FCD plot calculation
-        fcd1 = bait_vals.iloc[0]['fdr']
+        hits = bait_vals[bait_vals['interaction']]
+        # print("Number of Significant Hits: " + str(hits.shape[0]))
+        no_hits = bait_vals[~bait_vals['interaction']]
 
-
-        x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
-            + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
-        y1 = fcd1[0] / (abs(x1) - fcd1[1])
-
-
+        if marker_mode:
+            text = hits[marker].to_list()
+        else:
+            text = None
 
 
         # add non-significant hits
@@ -145,6 +135,14 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
             )
 
         else:
+            # FCD plot calculation
+            fcd1 = bait_vals.iloc[0]['fdr']
+
+
+            x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
+                + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
+            y1 = fcd1[0] / (abs(x1) - fcd1[1])
+
 
             # add significant hits
             fig1 = px.scatter(hits, x='enrichment', y='pvals',
