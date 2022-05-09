@@ -3,21 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pyseus's documentation!
+Pyseus Documentation
 ==================================
+
+Introduction:
+^^^^^^^^^^^^
+
+This documentation details the source code and workflow of the Pyseus module,
+and guide to the accompanying Pyseus explorer for mass-spec analysis workflows.
+
 
 .. toctree::
   pyseus_doc
   pyseus_explorer
 
-  :maxdepth: 2
+  :maxdepth: 0
   :caption: Contents:
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
