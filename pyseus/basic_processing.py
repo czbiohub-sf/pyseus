@@ -19,7 +19,7 @@ class RawTables:
     """
 
     # initiate raw table by importing from data directory
-    def __init__(self, analysis='', experiment_dir='', pg_file='proteinGroups.txt', info_cols=None,
+    def __init__(self, experiment_dir='', analysis='', pg_file='proteinGroups.txt', info_cols=None,
             sample_cols=None, intensity_type='Intensity ', proteingroup=None,
             file_designated=False):
         # set up root folders for the experiment and standard for comparison
@@ -348,9 +348,12 @@ class RawTables:
         try:
             imputed = self.preimpute_table.copy()
         except AttributeError:
-            print("group_replicates() and remove_invalid_rows() need to be run"
-                "before imputation")
-            return
+            try:
+                imputed = self.grouped_table.copy()
+            except AttributeError:
+                print('Please group replicates first using group_replicates()\
+                    method.')
+                return
 
         imputed = self.preimpute_table.copy()
         imputed.drop(columns='metadata', inplace=True)
@@ -384,7 +387,7 @@ class RawTables:
 
     def generate_export_bait_matrix(self, export=False):
         """
-        Generates and creates a Boolean bait matrix that will be used for control
+        Generates and saves a Boolean bait matrix that will be used for control
         exclusion in p-val and enrichment analysis.
         """
         grouped = self.grouped_table.copy()

@@ -63,6 +63,7 @@ class Validation():
         threshold = enrichment.apply(pa.calc_thresh, args=[curvature, offset])
         hits['interaction'] = np.where((bait_pval > threshold), True, False)
 
+        self.called_table = hits
         self.interaction_table = hits[hits['interaction']]
 
     def pval_threshold(self, pval_thresh, metric='pvals'):
@@ -74,6 +75,7 @@ class Validation():
         bait_pval = hits[metric]
         hits['interaction'] = np.where((bait_pval > pval_thresh), True, False)
 
+        self.called_table = hits
         self.interaction_table = hits[hits['interaction']]
 
 
