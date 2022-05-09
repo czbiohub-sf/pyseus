@@ -28,20 +28,20 @@ from sklearn.metrics.pairwise import cosine_similarity
 class AnalysisTables:
     """
     Analysis Tables contains DataFrame objects, functions, and metadata that cover
-    essential analysis including enrichment/significance testing to call interactions 
+    essential analysis including enrichment/significance testing to call interactions
     and stoichiometry calculations
     """
 
     def __init__(
-        self,
-        root=None,
-        analysis=None,
-        imputed_table=None,
-        exclusion_matrix=None):
+            self,
+            root=None,
+            analysis=None,
+            imputed_table=None,
+            exclusion_matrix=None):
 
         # initiate class that cover essential metadata and imputed table
         # from RawTables class.
-         
+
         self.root = root
         self.analysis = analysis
         self.imputed_table = imputed_table
@@ -51,7 +51,7 @@ class AnalysisTables:
         """
         Restore exclusion matrix to default - No exclusion
         """
-        
+
         exclusion = self.exclusion_matrix.copy()
         baits = list(exclusion)
         baits.remove('Samples')
@@ -65,17 +65,17 @@ class AnalysisTables:
         """
         Load user-defined exclusion_matrix for simple analysis
         """
-        exclusion_matrix = pd.read_csv(self.root + self.analysis +
-            '/analysis_exclusion_matrix'+ alt_text + '.csv')
-        
+        exclusion_matrix = pd.read_csv(self.root + self.analysis
+            + '/analysis_exclusion_matrix' + alt_text + '.csv')
+
         self.exclusion_matrix = exclusion_matrix
-    
+
     def print_baits(self):
         """
         Show dataframe of all possible baits
         """
         return self.exclusion_matrix['Samples']
-    
+
     def print_controls(self, bait):
         """
         Print all the selected controls for an input bait
@@ -83,13 +83,13 @@ class AnalysisTables:
 
         excluded = self.exclusion_matrix.copy()
         excluded = excluded[['Samples', bait]]
-        excluded = excluded[excluded[bait] == True]
-        
+        excluded = excluded[excluded[bait]]
+
         if excluded.shape[0] > 0:
             return excluded[['Samples']]
         else:
             print("No control baits selected as control")
-    
+
     def print_excluded_controls(self, bait):
         """
         Print all the excluded controls for an input bait
@@ -97,13 +97,13 @@ class AnalysisTables:
 
         excluded = self.exclusion_matrix.copy()
         excluded = excluded[['Samples', bait]]
-        excluded = excluded[excluded[bait] == False]
-        
+        excluded = excluded[~excluded[bait]]
+
         if excluded.shape[0] > 0:
             return excluded[['Samples']]
         else:
             print("No excluded baits in control")
-    
+
     def select_wildtype_controls(self, wt_re='_WT'):
         """
         Using string operation, select only wildtypes to use as controls
@@ -115,7 +115,7 @@ class AnalysisTables:
 
         exclusion = self.exclusion_matrix.copy()
         exclusion.set_index('Samples', inplace=True)
-        exclusion = exclusion.T  
+        exclusion = exclusion.T
         baits = list(exclusion)
 
         for bait in baits:
@@ -123,7 +123,7 @@ class AnalysisTables:
                 continue
             else:
                 exclusion[bait] = False
-        
+
         exclusion = exclusion.T
         exclusion.reset_index(inplace=True)
 
@@ -140,8 +140,8 @@ class AnalysisTables:
         imputed.reset_index(drop=True, inplace=True)
         # iterate through each cluster to generate neg con group
         bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
-        bait_list = list(set(bait_list))   
-          
+        bait_list = list(set(bait_list))
+
         multi_args = zip(bait_list, repeat(imputed),
         repeat(exclusion), repeat(std_enrich), repeat(mean), repeat(True))
 
@@ -150,7 +150,7 @@ class AnalysisTables:
         outputs = p.starmap(calculate_pval, multi_args)
         p.close()
         p.join()
-        print("Finished!")  
+        print("Finished!")
 
         master_df = pd.concat(outputs, axis=1)
 
@@ -172,15 +172,15 @@ class AnalysisTables:
 
 
     def two_step_bootstrap_pval_enrichment(self, std_enrich=True, mean=False, thresh=0.001,
-        bootstrap_rep=100):
+            bootstrap_rep=100):
         """
         The two-step bootstrap pval/enrichment calculations does not use
-        an exclusion table of user defined controls. It automatically 
+        an exclusion table of user defined controls. It automatically
         drops statistically significant outliers from the prey pool on the
         first round, and uses the distribution with dropped outliers
         to calculate bootstrapped null distribution. The null distribution
         of the preys are then used in the second round for pval and enrichment
-        calculation. Uses multi-processing for faster runtime 
+        calculation. Uses multi-processing for faster runtime
         """
 
         imputed = self.imputed_table.copy()
@@ -191,14 +191,14 @@ class AnalysisTables:
         multi_args = zip(bait_list, repeat(imputed), repeat(None), repeat(std_enrich),
             repeat(mean), repeat(False), repeat(True), repeat(False), repeat(thresh), repeat(False),
             repeat(None))
-        
+
         p = Pool()
         print("First round p-val calculations..")
         neg_dfs = p.starmap(calculate_pval, multi_args)
         p.close()
         p.join()
         master_neg = pd.concat(neg_dfs, axis=1)
-        print("First round finished!")    
+        print("First round finished!")
 
         self.second_round_neg_control = master_neg.copy()
         master_neg.reset_index(inplace=True, drop=True)
@@ -206,7 +206,7 @@ class AnalysisTables:
         multi_args2 = zip(bait_list, repeat(imputed), repeat(None), repeat(std_enrich),
             repeat(mean), repeat(False), repeat(False), repeat(True), repeat(thresh), repeat(True),
             repeat(master_neg))
-        
+
         print("Second round p-val calculations...")
         p = Pool()
         outputs = p.starmap(calculate_pval, multi_args2)
@@ -229,23 +229,27 @@ class AnalysisTables:
         master_df = pd.concat([master_df, metadata], axis=1, join='inner')
 
 
-        self.two_step_pval_table = master_df.copy() 
+        self.two_step_pval_table = master_df.copy()
 
-    
+
 
     def convert_to_standard_table(self, metrics=['pvals', 'enrichment'],
-            experiment=True,simple_analysis=True, perseus=True):
+            experiment=True, simple_analysis=True, perseus=True):
         """
-        the standard table no longer uses column organization for baits. 
-        It follows a more SQL-like form where bait information is provided in 
+        the standard table no longer uses column organization for baits.
+        It follows a more SQL-like form where bait information is provided in
         separate columns.
         """
-        if simple_analysis:
-            pvals = self.simple_pval_table.copy()
-            # protein_ids = pvals.index.to_list()
-        else:
-            pvals= self.two_step_pval_table.copy()
-            # protein_ids = pvals.index.to_list()
+        try:
+            if simple_analysis:
+                pvals = self.simple_pval_table.copy()
+                # protein_ids = pvals.index.to_list()
+            else:
+                pvals = self.two_step_pval_table.copy()
+                # protein_ids = pvals.index.to_list()
+        except AttributeError:
+            print("pval table not calculated")
+            return
 
         # pvals.set_index(('gene_names', 'gene_names'), inplace=True)
         # pvals.index.name = 'gene_names'
@@ -305,7 +309,7 @@ class AnalysisTables:
             pass
         if len(option_str) > 0:
             option_str = '_' + option_str
-        file_dir = analysis_dir + "/pval_tables" + option_str + '.pkl' 
+        file_dir = analysis_dir + "/pval_tables" + option_str + '.pkl'
         if not os.path.isdir(analysis_dir):
             print(analysis_dir)
             print('Directory does not exist! Creating new directory')
@@ -317,9 +321,9 @@ class AnalysisTables:
 
 
 def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
-    simple=True, first_round=False, second_round=False, thresh=0.001, bagging=False,
-    second_round_neg_control=None):
-    """ General script for pval calculations - encompasses options for 
+        simple=True, first_round=False, second_round=False, thresh=0.001, bagging=False,
+        second_round_neg_control=None):
+    """ General script for pval calculations - encompasses options for
     simple and two-step bootstrap calculations """
 
     df = df.copy()
@@ -336,15 +340,15 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     else:
         neg_control = df.copy()
         neg_control.drop('metadata', level='Samples', inplace=True, axis=1)
-    
+
     if simple:
         # Get a list of excluded genes
         excluded = excluded[['Samples', bait]]
-        excluded = excluded[excluded[bait] == False]
+        excluded = excluded[~excluded[bait]]
 
         if excluded.shape[0] > 0:
-            exclude_list =  excluded['Samples'].to_list()
-        
+            exclude_list = excluded['Samples'].to_list()
+
         # Convert all values in same groups as np.nans
         for gene in exclude_list:
             neg_control[gene] = neg_control[gene].where(
@@ -378,7 +382,7 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     pvals.name = 'pvals'
     enrichment.name = 'enrichment'
 
-    
+
     pe_df = pd.concat([pvals, enrichment], axis=1)
 
     # Find positive hits from enrichment and pval calculations to exclude on second round
@@ -392,11 +396,11 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
 
         # Remove hits from the negative control
         replicates = list(neg_series)
- 
+
         for rep in replicates:
             for hit in hits:
                 neg_series[rep][hit] = np.nan
-        
+
         return neg_series
 
 
@@ -404,7 +408,7 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
         names=['baits', 'values'], axis=1)
 
     return output
-    
+
 
 
 def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_rep=100):
@@ -422,14 +426,14 @@ def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_re
         con_dropped = tuple(neg_con[~np.isnan(neg_con)])
         dropped_con = list(con_dropped)
 
-        # bootstrap sampling       
+        # bootstrap sampling
         bagged_means = []
         bagged_stds = []
         for _ in bootstrap_rep:
             bagged_con = np.random.choice(dropped_con, size=orig_len)
             bagged_means.append(np.mean(bagged_con))
             bagged_stds.append(np.std(bagged_con))
-        
+
         bootstrap_mean = np.mean(bagged_means)
         bootstrap_std = np.mean(bagged_stds)
 
@@ -471,5 +475,3 @@ def calc_thresh(enrich, curvature, offset):
 
     else:
         return curvature / (abs(enrich) - offset)
-
-

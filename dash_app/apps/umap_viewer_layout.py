@@ -602,7 +602,7 @@ def plotting_layout():
             'width': '47%'}),
 
 
-        html.Button('Labels & Annotations ▼',
+        html.Button('Figure options ▼',
             id='label_section', style={
                 'border': '0px',
                 'width': '80%',
@@ -624,40 +624,49 @@ def plotting_layout():
                             label='Data Selection',
                             value='data_select',
                             children=html.Div([
-                                html.P('x - axis',
-                                    style={'textAlign': 'center',
-                                        'fontSize': 16,
-                                        'marginTop': '2%',
-                                        'marginBottom': '1%'}),
                                 html.Div([
-                                    dcc.Dropdown(id='x_select',
-                                        options=[
-                                            {'label': 'UMAP 1', 'value': 'umap_1'},
-                                            {'label': 'UMAP 2', 'value': 'umap_2'},
-                                        ],
-                                        value='umap_1')],
-                                    style={
-                                        'textAlign': 'center',
-                                        'width': '80%',
-                                        'marginLeft': '10%',
-                                        'marginTop': '1%'}),
-                                html.P('y - axis',
-                                    style={'textAlign': 'center',
-                                        'fontSize': 16,
-                                        'marginTop': '2%',
-                                        'marginBottom': '1%'}),
+                                    html.P('x - axis',
+                                        style={'textAlign': 'center',
+                                            'fontSize': 16,
+                                            'marginTop': '2%',
+                                            'marginBottom': '1%'}),
+                                    html.Div([
+                                        dcc.Dropdown(id='x_select',
+                                            options=[
+                                                {'label': 'UMAP 1', 'value': 'umap_1'},
+                                                {'label': 'UMAP 2', 'value': 'umap_2'},
+                                            ],
+                                            value='umap_1')],
+                                        style={
+                                            'textAlign': 'center',
+                                            'width': '80%',
+                                            'marginLeft': '10%',
+                                            'marginTop': '1%'}),
+                                ], style={'display': 'inline-block', 'verticalAlign': 'top',
+                                    'marginTop': '1%', 'width': '50%'}),
+
                                 html.Div([
-                                    dcc.Dropdown(id='y_select',
-                                        options=[
-                                            {'label': 'UMAP 1', 'value': 'umap_1'},
-                                            {'label': 'UMAP 2', 'value': 'umap_2'},
-                                        ],
-                                        value='umap_2')],
-                                    style={
-                                        'textAlign': 'center',
-                                        'width': '80%',
-                                        'marginLeft': '10%',
-                                        'marginTop': '1%'}),
+                                    html.Div([
+                                        html.P('y - axis',
+                                            style={'textAlign': 'center',
+                                                'fontSize': 16,
+                                                'marginTop': '2%',
+                                                'marginBottom': '1%'}),
+
+                                        dcc.Dropdown(id='y_select',
+                                            options=[
+                                                {'label': 'UMAP 1', 'value': 'umap_1'},
+                                                {'label': 'UMAP 2', 'value': 'umap_2'},
+                                            ],
+                                            value='umap_2')],
+                                        style={
+                                            'textAlign': 'center',
+                                            'width': '80%',
+                                            'marginLeft': '10%',
+                                            'marginTop': '1%'}),
+                                ],
+                                    style={'display': 'inline-block', 'verticalAlign': 'top',
+                                        'marginTop': '1%', 'width': '50%'}),
 
 
                             ]),
@@ -671,7 +680,7 @@ def plotting_layout():
                                 html.P('Designate # of clusters',
                                     style={'textAlign': 'center',
                                         'fontSize': 16,
-                                        'marginTop': '2%',
+                                        'marginTop': '1%',
                                         'marginBottom': '2%'}),
 
                                 html.Div([
@@ -689,7 +698,7 @@ def plotting_layout():
                                             30: '30',
                                         },
                                     )],
-                                    style={'width': '90%', 'marginLeft': '5%', 'marginTop': '3%'}
+                                    style={'width': '90%', 'marginLeft': '5%', 'marginTop': '1%'}
                                 ),
                                 html.Button(
                                     'Cluster!',
@@ -707,50 +716,12 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '220px',
+                    'height': '160px',
                     'marginLeft': '2%',
-                    'width': '25%',
+                    'width': '34%',
                     'borderRight': '1px #A6ACAF solid'}),
 
             html.Div([
-                html.Div([
-                    html.P('Select a marker label', style={'textAlign': 'center',
-                            'fontSize': 20}),
-
-
-                    html.Div([
-                        dcc.Dropdown(id='um_label_select',
-                            placeholder='Select a label')],
-                        style={
-                            'textAlign': 'center',
-                            'width': '80%',
-                            'marginLeft': '10%',
-                            'marginTop': '1%'}),
-
-                ], style={
-                    'display': 'inline-block',
-                    'verticalAlign': 'top',
-                    'width': '50%'}),
-
-                html.Div([
-                    html.P('Select annotations',
-                        style={'textAlign': 'center',
-                            'fontSize': 20}),
-                    html.Div([
-
-                        dcc.Dropdown(id='annot_select',
-                            placeholder='Select an annotation')],
-                        style={
-                            'textAlign': 'center',
-                            'width': '80%',
-                            'marginLeft': '10%',
-                            'marginTop': '1%'}),
-                ], style={
-                    'display': 'inline-block',
-                    'verticalAlign': 'top',
-                    'width': '50%'}),
-
-                html.Hr(style={'marginTop': '2.5%', 'marginBottom': '2.5%'}),
 
                 html.P('Unlabelled marker style',
                     style={'textAlign': 'center',
@@ -815,9 +786,9 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '220px',
+                    'height': '160px',
                     'marginTop': '1%',
-                    'width': '45%',
+                    'width': '40%',
                     'borderRight': '1px #A6ACAF solid'}),
 
             html.Div([
@@ -837,14 +808,52 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '220px',
+                    'height': '160px',
                     'marginTop': '1%',
                     'marginLeft': '1%',
-                    'width': '20%'}),
+                    'width': '22%'}),
 
         ], id='label_div', style={'display': 'none', 'marginTop': '2%'}),
 
+        html.Div([
+            html.P('Select a marker label', style={'textAlign': 'center',
+                    'fontSize': 16}),
 
+
+            html.Div([
+                dcc.Dropdown(id='um_label_select',
+                    placeholder='Select a label')],
+                style={
+                    'textAlign': 'center',
+                    'width': '80%',
+                    'marginLeft': '10%',
+                    'marginTop': '0%'}),
+
+        ], style={
+            'display': 'inline-block',
+            'verticalAlign': 'top',
+            'marginTop': '2%',
+            'width': '35%',
+            'marginLeft': '15%'}),
+
+        html.Div([
+            html.P('Select annotations',
+                style={'textAlign': 'center',
+                    'fontSize': 16}),
+            html.Div([
+
+                dcc.Dropdown(id='annot_select',
+                    placeholder='Select an annotation')],
+                style={
+                    'textAlign': 'center',
+                    'width': '80%',
+                    'marginLeft': '10%',
+                    'marginTop': '0%'}),
+        ], style={
+            'display': 'inline-block',
+            'marginTop': '2%',
+            'verticalAlign': 'top',
+            'width': '35%'}),
 
 
         html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
@@ -857,6 +866,7 @@ def plotting_layout():
 
 
         html.Div([
+
             dcc.Graph(id='umap_fig', figure=fig, style={'height': '100%'})
         ],
             style={
