@@ -6,34 +6,34 @@
   - [Introduction](#introduction)
   - [Home page](#home-page)
   - [Pre-processing](#pre-processing)
-    - [<ins>Raw table upload & feature designation](#insraw-table-upload--feature-designation)
-    - [<ins>Renaming samples](#insrenaming-samples)
-    - [<ins>Processing options](#insprocessing-options)
-    - [<ins>Saving/caching processed table](#inssavingcaching-processed-table)
+    - [<u> Raw table upload & feature designation </u>](#u-raw-table-upload--feature-designation-u)
+    - [<u> Renaming samples </u>](#u-renaming-samples-u)
+    - [<u> Processing options </u>](#u-processing-options-u)
+    - [<u> Saving/caching processed table </u>](#u-savingcaching-processed-table-u)
   - [Clustergram](#clustergram)
-    - [<ins>Loading table and color scale options](#insloading-table-and-color-scale-options)
-    - [<ins>Plotting tab](#insplotting-tab)
+    - [<u> Loading table and color scale options </u>](#u-loading-table-and-color-scale-options-u)
+    - [<u> Plotting tab </u>](#u-plotting-tab-u)
   - [Enrichment calculation / Volcano plot](#enrichment-calculation--volcano-plot)
-    - [<ins>Calculate enrichment & significance](#inscalculate-enrichment--significance)
-      - [<ins>Control selection](#inscontrol-selection)
-      - [<ins>Enrichment calculation and saving table](#insenrichment-calculation-and-saving-table)
-    - [<ins>Loading data for hit-calling and volcano plot](#insloading-data-for-hit-calling-and-volcano-plot)
-    - [<ins>Hit-calling](#inshit-calling)
-    - [<ins>Volcano plot](#insvolcano-plot)
-      - [<ins>Plotting options](#insplotting-options)
-      - [<ins> Data selection within figure](#ins-data-selection-within-figure)
-    - [<ins>External annotations](#insexternal-annotations)
-    - [<ins> Annotation enrichment analysis](#ins-annotation-enrichment-analysis)
-    - [<ins>Selection GO analysis](#insselection-go-analysis)
+    - [<u> Calculate enrichment & significance </u>](#u-calculate-enrichment--significance-u)
+      - [<u> Control selection </u>](#u-control-selection-u)
+      - [<u> Enrichment calculation and saving table </u>](#u-enrichment-calculation-and-saving-table-u)
+    - [<u> Loading data for hit-calling and volcano plot </u>](#u-loading-data-for-hit-calling-and-volcano-plot-u)
+    - [<u> Hit-calling </u>](#u-hit-calling-u)
+    - [<u> Volcano plot </u>](#u-volcano-plot-u)
+      - [<u> Plotting options </u>](#u-plotting-options-u)
+      - [<u> Data selection within figure </u>](#u-data-selection-within-figure-u)
+    - [<u>External annotations </u>](#uexternal-annotations-u)
+    - [<u> Annotation enrichment analysis </u>](#u-annotation-enrichment-analysis-u)
+    - [<u> Selection GO analysis </u>](#u-selection-go-analysis-u)
   - [UMAP](#umap)
-    - [<ins>Feature selection & UMAP calculation](#insfeature-selection--umap-calculation)
-      - [<ins>Upload table & feature selection](#insupload-table--feature-selection)
-      - [<ins> UMAP options](#ins-umap-options)
-    - [<ins>Plotting UMAP](#insplotting-umap)
-      - [<ins>Upload UMAP table / Link annotations](#insupload-umap-table--link-annotations)
-      - [<ins>Figure options](#insfigure-options)
-      - [<ins>Data selection within UMAP figure](#insdata-selection-within-umap-figure)
-      - [<ins>Selection GO analysis](#insselection-go-analysis-1)
+    - [<u> Feature selection & UMAP calculation </u>](#u-feature-selection--umap-calculation-u)
+      - [<u> Upload table & feature selection </u>](#u-upload-table--feature-selection-u)
+      - [<u> UMAP options </u>](#u-umap-options-u)
+    - [<u> Plotting UMAP </u>](#u-plotting-umap-u)
+      - [<u> Upload UMAP table / Link annotations </u>](#u-upload-umap-table--link-annotations-u)
+      - [<u> Figure options </u>](#u-figure-options-u)
+      - [<u> Data selection within UMAP figure </u>](#u-data-selection-within-umap-figure-u)
+      - [<u> Selection GO analysis </u>](#u-selection-go-analysis-u-1)
 
 ## Introduction
 Pyseus Explorer is a mass-spec analysis and exploration web app built with Dash framework, using the Pyseus source code for backend calculations. It provides an easy, interactive UI to guide users through processing mass-spec data and generating figures and analyses.
@@ -50,7 +50,7 @@ The home page has a basic interface to upload previously processed tables to des
 
 ## Pre-processing
 The pre-processing page allows for data filtering, transformation, and conversion to standard format from raw feature tables.
-### <ins>Raw table upload & feature designation
+### <u> Raw table upload & feature designation </u>
 ```Raw tables``` must be a format in which samples/features must be in columns and observations in rows. Currently Pyseus supports CSVs and TSVs, which can be specified by buttons on the upload section. Columns also must be specified in a single row - however, top rows with nonessential column information can be skipped.
 <br>
 
@@ -59,7 +59,7 @@ Once a table has been uploaded and read by the application, lists of column name
 
 <br>
 
-### <ins>Renaming samples
+### <u> Renaming samples </u>
 Renaming samples to standard format is essential. The sample naming format is as follows:
 <br>
 ```experiment_sample_rep#```
@@ -77,7 +77,7 @@ When filling out the entries, make sure that the number of semi-colons in each e
 
 <br>
 
-### <ins>Processing options
+### <u> Processing options </u>
 
 ![image](./images/preprocess_opts.png)
 Select all options that you want for the processing of the raw table. Here are some caveats:
@@ -92,7 +92,7 @@ After you have filled all the processing options, click the ```Process MS Table`
 
 <br>
 
-### <ins>Saving/caching processed table
+### <u> Saving/caching processed table </u>
 You can save the processed file for future use with the ```Download Processed MS Table``` button. You can also save and download all the options you have selected with the ```Download Configs File``` button. You can upload the configs file in the future by pre-loading configs (Found on top right of the first tab).
 <br>
 
@@ -101,7 +101,7 @@ If you plan to continue using the processed table in this session, you can cache
 <br>
 
 ## Clustergram
-### <ins>Loading table and color scale options
+### <u> Loading table and color scale options </u>
 To begin, upload a ```processed table``` from previous sessions, or load a cached table.
 <br>
 
@@ -124,7 +124,7 @@ With the info, you can set the min/max value of the color scale, and choose a co
 
 <br>
 
-### <ins>Plotting tab
+### <u> Plotting tab </u>
 There are a few options you can specify on the plotting tab on the left hand side. While observations (rows) are automatically clustered, samples (columns) are not. You can specify whether you want to cluster samples either by themselves, or as grouped by replicates.
 <br>
 
@@ -135,12 +135,12 @@ You can also toggle tick labels on or off. After setting these options, click ``
 <br>
 
 ## Enrichment calculation / Volcano plot
-### <ins>Calculate enrichment & significance
+### <u> Calculate enrichment & significance </u>
 Start with uploading a processed table or loading a cached table.
 Then you have to specify options in ```select controls``` section for enrichment and significance calculations.
 <br>
 
-#### <ins>Control selection
+#### <u> Control selection </u>
 Manual vs. automatic control selection:<br>
 
 ```{eval-rst}
@@ -159,16 +159,20 @@ With ```manual selection of control samples```, there are two ways to adjust con
   * Control selection is saved column-wise: for example column C specifies controls for sample ‘T00’. The boolean value TRUE specifies that the selection will be used as a control. You can manually input TRUE/FALSE values in the Excel sheet. Once done, save the file. <br><br>
 ![image](./images/enrichment_one.png)
   * Upload the file to the ```Import a custom control matrix``` section. Clicking ```Apply upload matrix``` button will apply the custom settings.
+
+
 * In app control selection
-![image](./images/enrichment_three.png)
   * Check the samples you wish to edit on the top ```Samples to edit``` panel.
   * Select respective control samples for the checked samples on the bottom ```Select controls for the chosen samples``` panel.
   * Clicking the ```apply control selection``` button will save the changes.
 
+![image](./images/enrichment_three.png)
+<br>
+
 On the middle ```Review controls for a selected sample``` panel, you can review your control selections applied from either steps, or default settings with ```manual selection```. Just select a sample from the dropdown to review its controls.
 <br>
 
-#### <ins>Enrichment calculation and saving table
+#### <u> Enrichment calculation and saving table </u>
 Once all control selections are made, you can toggle whether to calculate enrichment in absolute values or relative (stdev) units in the ```Enrichment option``` panel. Then you can ```calculate enrichment``` with the respective button. The enrichment table will automatically be cached for use in the volcano plot tab.
 <br>
 
@@ -178,7 +182,7 @@ To save the enrichment table for future uses, you have two options. You can eith
 
 <br>
 
-### <ins>Loading data for hit-calling and volcano plot
+### <u> Loading data for hit-calling and volcano plot </u>
 
 If you made an enrichment/significance calculation on the first tab, it will automatically be cached and displayed as ready on the top left panel. In this case, select the ```Use calculated enrichment table``` option and click the ```Load Data``` button.
 <br>
@@ -190,7 +194,7 @@ If you have a saved ```enrichment table``` or ```hits table``` from previous ses
 
 Once the data table is loaded, proceed to either hit-calling or generating the volcano plot.
 
-### <ins>Hit-calling
+### <u> Hit-calling </u>
 The left-most ```Thresholding options``` panel is a toggle for either Hawaiian or Individual FDR thresholding. ```Hawaiian FDR``` overlays all the data and calculates FDR threshold for the cumulative set while ```Individual FDR``` calculates threshold for each sample.
 <br>
 ![image](./images/volcano_two.png)
@@ -204,8 +208,8 @@ The third panel is a button for ```Preview seeding FDR```. Pressing the button w
 Once the parameters are set, you can continue with the ```Call significant hits``` button. When the calculation is done, you have an option to download the ```hits table``` for future use in the volcano plot tab. Loading this table in the future will allow you to skip enrichment and hit-calling calculations and view the volcano plot straight away.
 
 
-### <ins>Volcano plot
-#### <ins>Plotting options
+### <u> Volcano plot </u>
+#### <u> Plotting options </u>
 Once the ```enrichment table``` or ```hits table``` is loaded and ready, you can generate the volcano plot. Just select a sample you would like to view, make a selection from several toggle options, and press the ```Plot volcano``` button.
 
 ![image](./images/volcano_three.png)
@@ -221,7 +225,7 @@ Once the ```enrichment table``` or ```hits table``` is loaded and ready, you can
 
 <br>
 
-#### <ins> Data selection within figure
+#### <u> Data selection within figure </u>
 You can use the rectangle or lasso selection tool in the Plotly figure menu to select a subset of data. The panels to the right of the figure provide some relevant information of the selected data: a display of selected markers by their labels and the total number of selected markers. Below the figure, you can also use the ```Download selection``` button to only download the data table for the selected. The selection made can also be used for GO analysis, described later.
 <br>
 
@@ -229,7 +233,7 @@ You can use the rectangle or lasso selection tool in the Plotly figure menu to s
 
 <br>
 
-### <ins>External annotations
+### <u>External annotations </u>
 <br>
 ![image](./images/volcano_seven.png)
 
@@ -243,7 +247,7 @@ You can upload any table with external annotations, as long as there is a connec
 
 <br>
 
-### <ins> Annotation enrichment analysis
+### <u> Annotation enrichment analysis </u>
 This tool displays summary enrichment of annotations for a sample in a from of strip chart or box plot. As such, linking of external annotation, selection in the ```Select annotations``` dropdown, and selection in the ```Select a sample``` are pre-requisites. Once the requirements are met, you can click the ```Analyze``` button, and you can also adjust the enrichment range and click the ```Adjust range``` button.
 <br>
 
@@ -251,7 +255,7 @@ This tool displays summary enrichment of annotations for a sample in a from of s
 
 <br>
 
-### <ins>Selection GO analysis
+### <u> Selection GO analysis </u>
 Once you generated a volcano plot and created a selection of a subset of data in the figure, you can make a GO enrichment analysis. The analysis utilizes Panther GO enrichment API, and compares the selection dataset to the entirety of the protein set in the uploaded ```enrichment table``` or ```hits table```.
 Analysis options are as follows:
 * ```Select a gene names column```: The panther API takes in gene names as a set, so you must choose a metadata column that corresponds to gene names.
@@ -270,8 +274,8 @@ With all the options selected, you can presss the ```GO analysis``` button, whic
 
 
 ## UMAP
-### <ins>Feature selection & UMAP calculation
-#### <ins>Upload table & feature selection
+### <u> Feature selection & UMAP calculation </u>
+#### <u> Upload table & feature selection </u>
 As with other visualization tools, start by loading a ```processed table```. You can also use the downloaded ```enrichment table``` from the enrichment calculation tool. Select features you want to be incorporated in the UMAP.
 
 <br>
@@ -283,7 +287,7 @@ Once you upload the table, the ```table dimensions``` will be updated. If you wi
 
 Then you can select all the features (samples) you would want to use in the UMAP on the panel on the right. The features are listed alphabetically.
 
-#### <ins> UMAP options
+#### <u> UMAP options </u>
 These are options to be specified when preparing the data table and initiating ```umap.UMAP``` class, in an interactive format.
 * ```Feature scaling```: UMAP performs best when the data is normalized or standardized, and the dropdown provides multiple options for the process.
 * ```Random State```: UMAP generation involves stochastic seeding in by K-nearest-neighbors. Specifying a random state, will lead the UMAP results to be reproducible given consistent data and options.
@@ -300,15 +304,15 @@ After the options are set press the ```Calculate UMAP``` button to calculate the
 
 <br>
 
-### <ins>Plotting UMAP
-#### <ins>Upload UMAP table / Link annotations
+### <u> Plotting UMAP </u>
+#### <u> Upload UMAP table / Link annotations </u>
 You can upload a previously downloaded ```UMAP table``` here without prior calculations or annotation linking. If you calculated the UMAP coordinates in the same session, the table will be cached and ready.
 
 On the right panel, you can link annotations as described previously: [<ins> Linking external annotations](#insexternal-annotations)
 
 <br>
 
-#### <ins>Figure options
+#### <u> Figure options </u>
 <br>
 
 ![image](./images/umap_three.png)
@@ -326,8 +330,8 @@ On the right panel, you can link annotations as described previously: [<ins> Lin
 
 ![image](./images/umap_four.png)
 
-#### <ins>Data selection within UMAP figure
-Refer to the previously explained content: [<ins> Data selection within figure](#ins-data-selection-within-figure)
+#### <u> Data selection within UMAP figure </u>
+Refer to the previously explained content: [<u> Data selection within figure </u>](#u-data-selection-within-figure-u)
 
-#### <ins>Selection GO analysis
-Refer to the previously explained content: [<ins>Selection GO analysis](#insselection-go-analysis)
+#### <u> Selection GO analysis </u>
+Refer to the previously explained content: [<u> Selection GO analysis </u>](#u-selection-go-analysis-u-1)
