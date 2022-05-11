@@ -14,6 +14,8 @@ and guide to the accompanying Pyseus explorer for mass-spec analysis workflows.
 
 
 .. toctree::
-   :titlesonly:
+
+   :includehidden:
+
    pyseus_doc
    pyseus_explorer
