@@ -15,6 +15,8 @@
     - [<ins>Plotting tab](#insplotting-tab)
   - [Enrichment calculation / Volcano plot](#enrichment-calculation--volcano-plot)
     - [<ins>Calculate enrichment & significance](#inscalculate-enrichment--significance)
+      - [<ins>Control selection](#inscontrol-selection)
+      - [<ins>Enrichment calculation and saving table](#insenrichment-calculation-and-saving-table)
     - [<ins>Loading data for hit-calling and volcano plot](#insloading-data-for-hit-calling-and-volcano-plot)
     - [<ins>Hit-calling](#inshit-calling)
     - [<ins>Volcano plot](#insvolcano-plot)
@@ -66,12 +68,18 @@ Examples: ```CZBSU_LAMP1_1``` or ```20211031_infected-24hr_2``` or ```LAMP1_1```
 <br>
 The underscores must be preserved for the separation of the categories. Use dashes for decorators.
 
+![image](./images/preprocess_rename.png)
+<br>
 
-When using regular expressions, make sure that the number of semi-colons in each entry is matching, and the regular expressions are space sensitive. The regular expression replacement is sequential - first entry will be replaced with first replacement, followed by the next ones after semi-colon, etc.
+There are two regular expression (RE) entries for renaming samples: ```search REs``` and ```replacement REs```. The entries are used to work similarly as a find/replace function. There can be multiple search/replace RE entries, split by ```semi-colons```. The regular expression replacement is sequential - first entry will be replaced with first replacement, followed by the next ones after semi-colon, etc.
+<br>
+When filling out the entries, make sure that the number of semi-colons in each entry is matching, and the regular expressions are space sensitive.
 
 <br>
 
 ### <ins>Processing options
+
+![image](./images/preprocess_opts.png)
 Select all options that you want for the processing of the raw table. Here are some caveats:
 
 * ```Filter rows``` only works for MaxQuant outputs
@@ -90,15 +98,25 @@ You can save the processed file for future use with the ```Download Processed MS
 
 If you plan to continue using the processed table in this session, you can cache it to one of the 3 available slots, using the ```Save processed table to an internal slot``` section. Cached tables only last for the duration of the webapp session, and will be wiped after you refresh the page or quit the tab. So please download the processed table if you plan to use it again in the future.
 
+<br>
 
 ## Clustergram
 ### <ins>Loading table and color scale options
-To begin, upload a processed table from previous sessions, or load a cached table.
+To begin, upload a ```processed table``` from previous sessions, or load a cached table.
 <br>
+
+
+<!-- ![image](./images/clustergram_1.png) -->
+```{eval-rst}
+.. image:: ./images/clustergram_1.png
+    :width: 300px
+```
 
 For the clustergram generator to function properly, you must select an index of unique identifiers (usually Protein IDs if using MaxQuant outputs), and a label to represent each data.
 Then, select all samples you would like represented on the clustergram.
 <br>
+
+![image](./images/clustergram_scale.png)
 
 You can standardize/normalize data using ```feature scaling``` options if you wish.
 Before you generate the clustergram, you need to tune the color scale for the clustergram. To assist you with this, the ```summary statistics``` table gives you essential numbers such as min, max, mean, and stdev of the data.
@@ -110,7 +128,9 @@ With the info, you can set the min/max value of the color scale, and choose a co
 There are a few options you can specify on the plotting tab on the left hand side. While observations (rows) are automatically clustered, samples (columns) are not. You can specify whether you want to cluster samples either by themselves, or as grouped by replicates.
 <br>
 
-You can also toggle tick labels on or off. After setting these options, click ```Create Plot``` button to display the clustergram.
+![image](./images/clustergram_mat.png)
+
+You can also toggle tick labels on or off. After setting these options, click ```Create Plot``` button to display the clustergram. The figure is fully interactive- you will be able to hover over to see marker labels and zoom in and out.
 
 <br>
 
@@ -120,16 +140,27 @@ Start with uploading a processed table or loading a cached table.
 Then you have to specify options in ```select controls``` section for enrichment and significance calculations.
 <br>
 
-Control selection mode:
-  * In most cases, you will use the ```manually select control samples``` option. The default control selection for a sample in this option is to have all other samples as controls.
+#### <ins>Control selection
+Manual vs. automatic control selection:<br>
+
+```{eval-rst}
+.. image:: ./images/enrichment_con.png
+    :width: 300px
+```
+<!-- ![image](./images/enrichment_con.png) -->
+  * In most cases, you will use the ```manually select control samples``` option. The default control selection for a sample in this option is to have all other samples as controls. This is the ```default setting``` if you opt not to customize any control selection.
+
   * ```Automatically calculate the null model``` uses the two-step bootstrap selection as described in the OpenCell manuscript and the Pyseus source code documentation. This is not recommended unless there are a lot of samples in the data.
 
 With ```manual selection of control samples```, there are two ways to adjust control selection: one is to use an editable control matrix file, or to use the web-app’s interface.
 * Editing a control matrix file:
+
   * Download the control matrix file (csv) and edit it in in excel.
-  * Control selection is saved column-wise: for example column C specifies controls for sample ‘T00’. The boolean value TRUE specifies that the selection will be used as a control. You can manually input TRUE/FALSE values in the Excel sheet. Once done, save the file.
+  * Control selection is saved column-wise: for example column C specifies controls for sample ‘T00’. The boolean value TRUE specifies that the selection will be used as a control. You can manually input TRUE/FALSE values in the Excel sheet. Once done, save the file. <br><br>
+![image](./images/enrichment_one.png)
   * Upload the file to the ```Import a custom control matrix``` section. Clicking ```Apply upload matrix``` button will apply the custom settings.
 * In app control selection
+![image](./images/enrichment_three.png)
   * Check the samples you wish to edit on the top ```Samples to edit``` panel.
   * Select respective control samples for the checked samples on the bottom ```Select controls for the chosen samples``` panel.
   * Clicking the ```apply control selection``` button will save the changes.
@@ -137,8 +168,11 @@ With ```manual selection of control samples```, there are two ways to adjust con
 On the middle ```Review controls for a selected sample``` panel, you can review your control selections applied from either steps, or default settings with ```manual selection```. Just select a sample from the dropdown to review its controls.
 <br>
 
-
+#### <ins>Enrichment calculation and saving table
 Once all control selections are made, you can toggle whether to calculate enrichment in absolute values or relative (stdev) units in the ```Enrichment option``` panel. Then you can ```calculate enrichment``` with the respective button. The enrichment table will automatically be cached for use in the volcano plot tab.
+<br>
+
+![image](./images/enrichment_four.png)
 
 To save the enrichment table for future uses, you have two options. You can either download it formatted for volcano table generator or UMAP table generator. These tables convey the same data but are formatted slightly differently for each page.
 
@@ -149,6 +183,8 @@ To save the enrichment table for future uses, you have two options. You can eith
 If you made an enrichment/significance calculation on the first tab, it will automatically be cached and displayed as ready on the top left panel. In this case, select the ```Use calculated enrichment table``` option and click the ```Load Data``` button.
 <br>
 
+![image](./images/volcano_one.png)
+
 If you have a saved ```enrichment table``` or ```hits table``` from previous sessions, you can upload it, choose the appropriate option and load the data. After the data is loaded, you have to ```select a marker label``` for the volcano plot. If gene names are in any column names, it will automatically be selected.
 <br>
 
@@ -157,6 +193,7 @@ Once the data table is loaded, proceed to either hit-calling or generating the v
 ### <ins>Hit-calling
 The left-most ```Thresholding options``` panel is a toggle for either Hawaiian or Individual FDR thresholding. ```Hawaiian FDR``` overlays all the data and calculates FDR threshold for the cumulative set while ```Individual FDR``` calculates threshold for each sample.
 <br>
+![image](./images/volcano_two.png)
 
 On the second panel are sliders to set the seeding ```offset``` and ```curvature``` for the threshold. Setting the right seeding parameters can improve how quickly the algorithm identifies the appropriate FDR threshold. Curvature is fixed for the FDR search algorithm, so changing this parameter  affect which outliers are included as hits or not.
 <br>
@@ -170,23 +207,47 @@ Once the parameters are set, you can continue with the ```Call significant hits`
 ### <ins>Volcano plot
 #### <ins>Plotting options
 Once the ```enrichment table``` or ```hits table``` is loaded and ready, you can generate the volcano plot. Just select a sample you would like to view, make a selection from several toggle options, and press the ```Plot volcano``` button.
+
+![image](./images/volcano_three.png)
+
 <br> Toggle options:
 * ```Display FDR curve and interactors```: The calculated FDR curve will be overlayed on the figure, and positively enriched interactors that lie beyond the curve will be color coded separately from rest of the data. If you're using the ```enrichment table```, toggling this option will lead to an error because interactions have not been called.
 * ```Display labels for interactors```: Called interactors will have text labels on the figure, displaying the ```marker label``` selected by the user.
 * ```Highlight external annotations```: Markers will be color coded by linked annotations, designated in the ```Select annotations``` dropdown.
-* ```Search``` bar and button to the right of the figure allows you to search for specific markers based on the ```marker label``` annotation designated by the user.Search term is case-insensitive, and partial match will work.
+* ```Search``` bar and button to the right of the figure allows you to search for specific markers based on the ```marker label``` annotation designated by the user.Search term is case-insensitive, and partial match will work. Example below:
+
+
+![image](./images/volcano_five.png)
+
 <br>
 
 #### <ins> Data selection within figure
 You can use the rectangle or lasso selection tool in the Plotly figure menu to select a subset of data. The panels to the right of the figure provide some relevant information of the selected data: a display of selected markers by their labels and the total number of selected markers. Below the figure, you can also use the ```Download selection``` button to only download the data table for the selected. The selection made can also be used for GO analysis, described later.
 <br>
 
+![image](./images/volcano_six.png)
+
+<br>
+
 ### <ins>External annotations
-You can upload any table with external annotations, as long as there is a connecting merge-key. Match the merge-key of the original table with that in the corresponding annotation table, and select the external annotation column you wish to link. You can choose to name the annotation, or else use the automatically filled annotation name. Clicking the ```Link``` button will join the two tables, and you will find the annotation option available on the ```Select annotations``` dropdown.
+<br>
+![image](./images/volcano_seven.png)
+
+<br>
+
+You can upload any table with external annotations, as long as there is a connecting merge-key. Match the merge-key of the original table with that in the corresponding annotation table, and select the external annotation column you wish to link. You can choose to name the annotation, or else use the automatically filled annotation name. Clicking the ```Link``` button will join the two tables, and you will find the annotation option available on the ```Select annotations``` dropdown. Below is an example of a volcano plot with the ```Highlight external annotations``` option from the linked organelle annotations.
+
+<br>
+
+![image](./images/volcano_four.png)
+
 <br>
 
 ### <ins> Annotation enrichment analysis
 This tool displays summary enrichment of annotations for a sample in a from of strip chart or box plot. As such, linking of external annotation, selection in the ```Select annotations``` dropdown, and selection in the ```Select a sample``` are pre-requisites. Once the requirements are met, you can click the ```Analyze``` button, and you can also adjust the enrichment range and click the ```Adjust range``` button.
+<br>
+
+![image](./images/volcano_nine.png)
 
 <br>
 
@@ -198,15 +259,25 @@ Analysis options are as follows:
 * ```p-val cutoff```: the cutoff p-value to filter the enriched terms analysis
 * ```enrichment cutoff```: the cutoff enrichment value to filter the enriched terms analysis
 
-With all the options selected, you can presss the ```GO analysis``` button, which will send the query to the Panther API. Once the analysis is done, top 10 enriched terms will be shown on the panel below the button. You can also down the full enriched GO-term table by pressing the ```Download GO table`` button.
+With all the options selected, you can presss the ```GO analysis``` button, which will send the query to the Panther API. Once the analysis is done, top 10 enriched terms will be shown on the panel below the button. You can also down the full enriched GO-term table by pressing the ```Download GO table``` button.
 
 <br>
+
+![image](./images/volcano_ten.png)
+
+<br>
+
 
 
 ## UMAP
 ### <ins>Feature selection & UMAP calculation
 #### <ins>Upload table & feature selection
 As with other visualization tools, start by loading a ```processed table```. You can also use the downloaded ```enrichment table``` from the enrichment calculation tool. Select features you want to be incorporated in the UMAP.
+
+<br>
+
+![image](./images/umap_one.png)
+<br>
 
 Once you upload the table, the ```table dimensions``` will be updated. If you wish to see the UMAP of the samples, you can ```transpose matrix```.
 
@@ -219,6 +290,9 @@ These are options to be specified when preparing the data table and initiating `
 * ```UMAP metric```: the distance metric to be used to determine the neighborhoods. Default: euclidean.
 * ```UMAP n_neighbors```: this parameter controls the size of local neighborhood UMAP will look at when attempting to learn the manifold structure of the data. Low values will force UMAP to concentrate on very local structure, while large vlues will push UMAP to look at larger neighborhoods of each point.
 * ```UMAP min_dist```: controls how tightly UMAP is allowed to pack points together by specifying minimum distance apart the points are allowed to be in.
+<br>
+
+![image](./images/umap_two.png)
 
 <br>
 
@@ -235,6 +309,11 @@ On the right panel, you can link annotations as described previously: [<ins> Lin
 <br>
 
 #### <ins>Figure options
+<br>
+
+![image](./images/umap_three.png)
+<br>
+
 * ```Data selection```: While the default plotting setting has UMAP coordinates on the x and y axis, you can customize to plot any feature for the scatter plot using the dropdown.
 * ```Clustering```: Cluster the data using K nearest neighbors and save to the annotations. You can specify # of clusters using the slider in the panel.
 * ```Unlabelled marker style```: Color and opacity selection for markers that are not annotated. The select color link opens the Google color picker that gives you hexcode for colors you specify.
@@ -242,6 +321,10 @@ On the right panel, you can link annotations as described previously: [<ins> Lin
 * ```Select a marker label```: Select a label for markers, if gene names column is present in the uploaded table, it will be automatically designated.
 * ```Select annotations```: Select any internal/external annotations or clustering for color mapping from the dropdown.
 * ```Search``` bar and button to the right of the figure allows you to search for specific markers based on the ```marker label``` annotation designated by the user.Search term is case-insensitive, and partial match will work.
+
+<br>
+
+![image](./images/umap_four.png)
 
 #### <ins>Data selection within UMAP figure
 Refer to the previously explained content: [<ins> Data selection within figure](#ins-data-selection-within-figure)

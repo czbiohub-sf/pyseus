@@ -1,8 +1,8 @@
-# Pyseus: Perseus in Python documentation
+# Pyseus: Perseus in Python
 
 ## Table of Contents
 
-- [Pyseus: Perseus in Python documentation](#pyseus-perseus-in-python-documentation)
+- [Pyseus: Perseus in Python](#pyseus-perseus-in-python)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [RawTables Class](#rawtables-class)
