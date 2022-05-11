@@ -88,6 +88,7 @@ setuptools
 simplejson==3.17.5
 six==1.16.0
 sklearn==0.0
+sphinx_rtd_theme
 statsmodels==0.12.2
 tenacity==8.0.1
 terminado==0.10.1
