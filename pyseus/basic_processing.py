@@ -169,6 +169,7 @@ class RawTables:
         for int_col in sample_cols:
             # if transformation is log2, convert 0s to nans
             # (faster in one apply step than 2)
+            filtered[int_col] = filtered[int_col].astype(float)
             if func == np.log2:
                 filtered[int_col] = filtered[int_col].apply(lambda x: np.nan
                     if x == 0 else func(x))
