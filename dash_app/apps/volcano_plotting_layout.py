@@ -182,7 +182,9 @@ def plotting_layout():
                         {'label': 'Hawaiian FDR (faster)',
                         'value': 'hawaii'},
                         {'label': 'Individual FDR',
-                        'value': 'indiv'}
+                        'value': 'indiv'},
+                        {'label': 'Manual FDR',
+                        'value': 'manual'}
                     ],
 
                     style={
@@ -191,24 +193,24 @@ def plotting_layout():
                         'marginLeft': '5%',
                         'marginTop': '3%'
                     },
-                    value='indiv'
+                    value='hawaii'
                 ),
                 html.P('Set FDR (%) threshold', style={'textAlign': 'center',
-                    'fontSize': 18, 'lineHeight': '15px', 'marginTop': '8%'}),
+                    'fontSize': 18, 'lineHeight': '15px', 'marginTop': '4%'}),
                 html.Div([
                     dcc.Slider(
                         id='fdr',
                         min=0,
-                        max=20,
+                        max=40,
                         step=0.5,
                         value=5,
                         tooltip={"placement": "bottom", "always_visible": True},
                         marks={
                             0: '0',
-                            5: '5',
                             10: '10',
-                            15: '15',
                             20: '20',
+                            30: '30',
+                            40: '40'
                         },
                     )
                 ],
@@ -236,7 +238,7 @@ def plotting_layout():
                     dcc.Slider(
                         id='offset',
                         min=0,
-                        max=10,
+                        max=15,
                         step=0.5,
                         value=2,
                         tooltip={"placement": "bottom", "always_visible": True},
@@ -244,6 +246,7 @@ def plotting_layout():
                             0: '0',
                             5: '5',
                             10: '10',
+                            15: '15'
                         },
                     )
                 ],
@@ -343,45 +346,37 @@ def plotting_layout():
         ], id='call_div', style={'display': 'none', 'marginTop': '1%'}),
 
         html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
-        html.P('Volcano plot',
-            style={'textAlign': 'left',
-                'marginLeft': '32%',
-                'fontSize': 24}),
-        html.Div([
-            dcc.Dropdown(id='volcano_dropdown_1',
-                placeholder='Select a sample',
-                style={
-                    'textAlign': 'center'
-                }
-            )
-        ], style={'display': 'inline-block', 'vertical-align': 'top',
-            'width': '25%', 'marginLeft': '10%', 'marginBottom': '1.5%'}),
-        html.Div([
-            html.Button('Plot!', id='volcano_button_1',
-                style={
-                    'marginLeft': '5%',
-                    'vertical-align': 'top',
-                    'width': '40%',
-                    'white-space': 'normal'
-                }
-            )
-        ], style={'display': 'inline-block',
-            'vertical-align': 'top',
-            'width': '50%',
-            'marginBottom': '1.5%'}),
 
 
         html.Div([
+
+            html.P('Volcano plot',
+                style={'textAlign': 'center',
+                    'fontSize': 28}),
+            html.Div([
+                dcc.Dropdown(id='volcano_dropdown_1',
+                    placeholder='Select a sample',
+                    style={
+                        'textAlign': 'center'
+                    }
+                )
+            ], style={'display': 'inline-block', 'vertical-align': 'top',
+                'width': '40%', 'marginLeft': '20%', 'marginBottom': '1%'}),
+            html.Div([
+                html.Button('Plot!', id='volcano_button_1',
+                    style={
+                        'marginLeft': '5%',
+                        'vertical-align': 'top',
+                        'width': '70%',
+                        'white-space': 'normal'
+                    }
+                )
+            ], style={'display': 'inline-block',
+                'vertical-align': 'top',
+                'width': '30%',
+                'marginBottom': '1.5%'}),
 
             dcc.Graph(id='matrix_fig_1', figure=fig, style={'height': '90%'}),
-
-
-            html.Button('Download selection', id='vol_download_subspace_button',
-                style={
-                    'marginTop': '1%',
-                    'marginLeft': '50%',
-                    'width': '50%',
-                    'white-space': 'normal'}),
 
 
 
@@ -389,7 +384,7 @@ def plotting_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '720px',
+                'height': '830px',
                 'width': '53%'}),
 
         html.Div([
@@ -398,7 +393,7 @@ def plotting_layout():
                 id='vol_search_plot',
                 type='text',
                 placeholder='Search label',
-                style={'width': '100%', 'marginTop': '3%'}
+                style={'width': '100%', 'marginTop': '20%'}
             ),
             html.Button('Search!', id='vol_search_button',
                 style={
@@ -422,7 +417,7 @@ def plotting_layout():
                 style_table={
                     'overflowY': 'auto',
                     'overflowX': 'auto',
-                    'height': '400px',
+                    'height': '480px',
                     'width': '100%',
                     'border': '0.5px #BDC3C7 solid',
                 },
@@ -433,17 +428,83 @@ def plotting_layout():
                     'fontSize': 16,
                     'marginTop': '15%'}),
 
+            html.Button('Download', id='vol_download_subspace_button',
+                style={
+                    'marginTop': '4%',
+                    'width': '100%',
+                    'white-space': 'normal'}),
+
 
 
         ], style={
             'vertical-align': 'top',
             'display': 'inline-block',
-            'height': '720px',
+            'height': '830px',
             'width': '12%'}),
 
         html.Div([
+            html.P('Set manual FDR on a sample',
+                style={'textAlign': 'center', 'fontSize': 20, 'marginTop': '0%'}),
+            html.P('Offset',
+                style={'textAlign': 'center',
+                    'fontSize': 16,
+                    'marginTop': '1%',
+                    'marginBottom': '1%'}),
+
+            html.Div([
+                dcc.Slider(
+                    id='man_offset',
+                    min=0,
+                    max=15,
+                    step=0.5,
+                    value=2,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                    marks={
+                        0: '0',
+                        5: '5',
+                        10: '10',
+                        15: '15'
+                    },
+                )
+            ],
+                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '1%'}
+            ),
+
+            html.P('Curvature',
+                style={'textAlign': 'center',
+                    'fontSize': 16,
+                    'marginTop': '1%',
+                    'marginBottom': '1%'}),
+
+            html.Div([
+                dcc.Slider(
+                    id='man_curvature',
+                    min=0,
+                    max=10,
+                    step=0.2,
+                    value=3,
+                    tooltip={"placement": "bottom", "always_visible": True},
+                    marks={
+                        0: '0',
+                        5: '5',
+                        10: '10',
+                    },
+                )
+            ],
+                style={'width': '90%', 'marginLeft': '5%', 'marginTop': '1%'}
+            ),
+
+            html.Button("Set FDR & plot", id='set_fdr_button',
+                style={
+                    'width': '60%',
+                    'marginLeft': '20%',
+                    'marginTop': '2%',
+                }),
+
+            html.Hr(style={'marginTop': '3%', 'marginBottom': '3%'}),
+
             html.P('Plot options',
-                style={'textAlign': 'center', 'fontSize': 20, 'marginTop': '6%'}),
+                style={'textAlign': 'center', 'fontSize': 20, 'marginTop': '1%'}),
 
             html.Div([
                 dcc.Checklist(
@@ -453,7 +514,7 @@ def plotting_layout():
                         {'label': 'Display labels for interactors', 'value': 'label'},
                         {'label': 'Highlight external annotations', 'value': 'ext'},
                     ],
-                    value=['fdr']),
+                    value=[]),
             ], style={
                 'marginLeft': '10%',
                 'fontSize': 15,
@@ -477,7 +538,7 @@ def plotting_layout():
                     'marginLeft': '10%',
                     'marginTop': '0.5%'}),
 
-            html.Hr(style={'marginTop': '5%', 'marginBottom': '5%'}),
+            html.Hr(style={'marginTop': '3%', 'marginBottom': '3%'}),
 
             html.P('External annotations', style={
                 'marginTop': '1%',
@@ -597,7 +658,7 @@ def plotting_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '720px',
+                'height': '830px',
                 'marginLeft': '1%',
                 'borderLeft': '1px #BDC3C7 solid',
                 'width': '32%'}),

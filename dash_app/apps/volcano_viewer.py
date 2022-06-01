@@ -727,6 +727,9 @@ def calculate_hits(hits_clicks, contents, thresh_opt,
     elif thresh_opt == 'indiv':
         vali.dynamic_fdr(perc=fdr, curvature=curvature, offset_seed=offset,
             experiment=False)
+    elif thresh_opt == 'manual':
+        vali.static_fdr(curvature=curvature, offset=offset)
+
 
     hits_table = vali.called_table.copy()
     # save hits table to cache
@@ -975,12 +978,19 @@ def fill_ext_options(style, ready_style, session_id):
     Output('preview', 'style'),
     Output('volcano_button_1', 'style'),
     Output('vol_search_button', 'style'),
+    Output('set_fdr_button', 'style'),
 
 
     Input('preview', 'n_clicks'),
 
     Input('volcano_button_1', 'n_clicks'),
     Input('vol_search_button', 'n_clicks'),
+
+    Input('man_offset', 'value'),
+    Input('man_curvature', 'value'),
+
+    Input('set_fdr_button', 'n_clicks'),
+
     State('vol_search_plot', 'value'),
     State('vol_search_button', 'style'),
 
@@ -994,15 +1004,15 @@ def fill_ext_options(style, ready_style, session_id):
     State('estimated_FDR', 'children'),
     State('preview', 'style'),
     State('volcano_button_1', 'style'),
-
-
+    State('set_fdr_button', 'style'),
 
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
+def plot_volcano(volc_click, click_1, search_click, offset_control,
+        curvature_control, fdr_clicks, search_term, search_style,
         checklist, sample, marker, annots, offset, curvature, estimate,
-        preview_style, volc_style, session_id):
+        preview_style, volc_style, fdr_style, session_id):
 
     hits_slot = session_id + 'hits'
     enriched_slot = session_id + 'enriched'
@@ -1024,6 +1034,8 @@ def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
     ctx = dash.callback_context
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+
+
     if button_id == 'vol_search_button':
         search_lower = search_term.lower()
         hits_table['interaction'] = hits_table[marker].map(lambda x: True if search_lower
@@ -1041,7 +1053,49 @@ def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
 
         search_style = cycle_style_colors(search_style)
 
-        return fig, estimate, preview_style, volc_style, search_style
+        return fig, estimate, preview_style, volc_style, search_style, fdr_style
+
+    # set manual FDR if triggered
+    elif button_id == 'set_fdr_button':
+
+        # override show FDR option to 'on'
+        checklist.append('fdr')
+        enriched = False
+
+        # if FDR has not been calculated in the hits table
+        # add the manual FDR globally
+        hit_cols = list(hits_table)
+        if 'fdr' not in hit_cols:
+            hits_table['fdr'] = None
+            hits_table['fdr'] = hits_table['fdr'].apply(
+                lambda x: [curvature_control, offset_control])
+
+            bait_pval = hits_table['pvals']
+            enrichment = hits_table['enrichment']
+            threshold = enrichment.apply(pa.calc_thresh, args=[curvature_control, offset_control])
+            hits_table['interaction'] = np.where((bait_pval > threshold), True, False)
+
+
+        # else save the FDR just for the target
+        else:
+            subset = hits_table[hits_table['target'] == sample].copy()
+            subset['fdr'] = subset['fdr'].apply(
+                lambda x: [curvature_control, offset_control])
+            bait_pval = subset['pvals']
+            enrichment = subset['enrichment']
+            threshold = enrichment.apply(pa.calc_thresh, args=[curvature_control, offset_control])
+            subset['interaction'] = np.where((bait_pval > threshold), True, False)
+
+            hits_table.update(subset)
+
+
+
+
+        # save hits table to cache
+        _ = saved_processed_table(hits_slot, hits_table, overwrite=True)
+
+        fdr_style = cycle_style_colors(fdr_style)
+
 
 
     # creating a preview for seed FDR
@@ -1081,7 +1135,7 @@ def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
 
         preview_style = cycle_style_colors(preview_style)
 
-        return fig, estimate, preview_style, volc_style, search_style
+        return fig, estimate, preview_style, volc_style, search_style, fdr_style
 
 
     # standard-context volcano plotting
@@ -1103,7 +1157,20 @@ def plot_volcano(volc_click, click_1, search_click, search_term, search_style,
     fig = pv.volcano_plot(hits_table, sample, marker_mode=label, fcd=fcd, marker=marker,
         plate='N/A', experiment=False, color=annot)
 
-    return fig, estimate, preview_style, volc_style, search_style
+    if button_id == 'man_offset' or button_id == 'man_curvature':
+
+        x1 = np.array(list(np.linspace(-12, -1 * offset_control - 0.001, 200))
+            + list(np.linspace(offset_control + 0.001, 12, 200)))
+        y1 = curvature_control / (abs(x1) - offset_control)
+
+        fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='temp',
+            line=dict(color='salmon', dash='dash')))
+        for trace in fig['data']:
+            if trace['name'] == 'temp':
+                trace['showlegend'] = False
+
+
+    return fig, estimate, preview_style, volc_style, search_style, fdr_style
 
 
 @app.callback(
