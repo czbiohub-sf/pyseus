@@ -467,7 +467,7 @@ def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_re
 def calc_thresh(enrich, curvature, offset):
     """simple function to get FCD thresh to recognize hits"""
 
-    if enrich < offset:
+    if enrich <= offset:
         return np.inf
 
     elif (enrich == 0) & (offset == 0):
