@@ -100,6 +100,8 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
 
 
     if fcd:
+        bait_vals['interaction'] = bait_vals['interaction'].astype(bool)
+
         hits = bait_vals[bait_vals['interaction']]
         # print("Number of Significant Hits: " + str(hits.shape[0]))
         no_hits = bait_vals[~bait_vals['interaction']]
