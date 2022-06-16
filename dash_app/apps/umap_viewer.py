@@ -739,6 +739,11 @@ def plot_umap(n_clicks, search_clicks, search_term, search_style, label, annot,
     if 'umap' not in x_val:
         fig.add_vline(x=0, line_width=1)
         fig.add_hline(y=0, line_width=1)
+        fig.update_yaxes(
+            scaleanchor='x',
+            scaleratio=1)
+        fig.update_xaxes(showgrid=True)
+        fig.update_yaxes(showgrid=True)
 
 
 
