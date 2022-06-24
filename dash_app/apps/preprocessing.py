@@ -47,7 +47,7 @@ layout = html.Div([
                 children=upload_layout()
             ),
             dcc.Tab(
-                label='Data processing',
+                label='Processing options',
                 value='process',
                 children=process_layout()
             ),
@@ -209,26 +209,50 @@ def parse_pp_raw_table(n_clicks, content, sep_type, num_skip_row, button_style, 
     Output('sample_pp_cols_checklist', 'value'),
     Output('apply_sample_re_button', 'style'),
     Input('apply_sample_re_button', 'n_clicks'),
+    Input('read_table_button', 'style'),
     State('sample_search_re', 'value'),
     State('all_pp_cols', 'children'),
     State('apply_sample_re_button', 'style'),
+    prevent_initial_call=True
 )
-def sample_cols_re_search(n_clicks, search_re, all_cols_json, button_style):
+def sample_cols_re_search(n_clicks, table_read_style, search_re, all_cols_json, button_style):
     """
     return columns that match regular expression search
     """
-    if n_clicks is None:
-        raise PreventUpdate
-    else:
-        button_style = cycle_style_colors(button_style)
-        all_cols = json.loads(all_cols_json)
-        selected_sample_cols = []
-        for col in all_cols:
-            # check if col name matches with regular expression
-            if re.search(search_re, col):
-                selected_sample_cols.append(col)
 
-        return selected_sample_cols, button_style
+    if n_clicks is not None:
+        button_style = cycle_style_colors(button_style)
+    all_cols = json.loads(all_cols_json)
+    selected_sample_cols = []
+    for col in all_cols:
+        # check if col name matches with regular expression
+        if re.search(search_re, col):
+            selected_sample_cols.append(col)
+
+    return selected_sample_cols, button_style
+
+
+@app.callback(
+    Output('save-cols-button', 'n_clicks'),
+    Output('meta_pp_cols_checklist', 'value'),
+    Input('read_table_button', 'style'),
+    State('all_pp_cols', 'children'),
+    prevent_initial_call=True
+)
+def mq_meta_search(table_read_style, all_cols_json):
+    """
+    return columns that match regular expression search
+    """
+
+    all_cols = json.loads(all_cols_json)
+    selected_sample_cols = []
+    for col in all_cols:
+        # check if col name matches with regular expression
+        if col in ['Protein IDs', 'Majority protein IDs', 'Gene names']:
+            selected_sample_cols.append(col)
+
+
+    return 1, selected_sample_cols
 
 
 @app.callback(
@@ -264,6 +288,7 @@ def update_meta_number(checked_list):
     State('sample_pp_cols_checklist', 'value'),
     State('meta_pp_cols_checklist', 'value'),
     State('save-cols-button', 'style'),
+    prevent_initial_call=True
 )
 def select_cols(n_clicks, sample_cols, meta_cols, button_style):
     if n_clicks is None:

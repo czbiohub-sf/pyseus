@@ -327,7 +327,8 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
     simple and two-step bootstrap calculations """
 
     df = df.copy()
-    excluded = exclusion.copy()
+    if simple:
+        excluded = exclusion.copy()
 
     # # initiate other variables required for the fx
     # gene_list = df[('metadata', 'Protein IDs')].tolist()
@@ -429,7 +430,7 @@ def get_pvals(x, control_df, std_enrich, mean=False, bagging=False, bootstrap_re
         # bootstrap sampling
         bagged_means = []
         bagged_stds = []
-        for _ in bootstrap_rep:
+        for _ in np.arange(bootstrap_rep):
             bagged_con = np.random.choice(dropped_con, size=orig_len)
             bagged_means.append(np.mean(bagged_con))
             bagged_stds.append(np.std(bagged_con))
