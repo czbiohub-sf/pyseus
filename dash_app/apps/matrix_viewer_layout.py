@@ -168,7 +168,7 @@ def calculation_layout():
                 style={
                     'overflowY': 'auto',
                     'overflowX': 'auto',
-                    'height': '220px',
+                    'height': '300px',
                     'marginLeft': '10%',
                     'width': '80%',
                     'border': '0.5px #BDC3C7 solid'}),
@@ -176,7 +176,7 @@ def calculation_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '450px',
+                'height': '550px',
                 'marginTop': '1%',
                 'width': '29%',
                 'borderRight': '1px #A6ACAF solid'}),
@@ -272,7 +272,7 @@ def calculation_layout():
                     'fontSize': 18}),
 
             html.Div([
-                html.P('Minimum Value',
+                html.P('Minimum',
                     style={'textAlign': 'center',
                         'marginBottom': '0.5%',
                         'fontSize': 15}),
@@ -287,11 +287,31 @@ def calculation_layout():
 
             ], style={
                 'vertical-align': 'top',
+                'marginLeft': '12.5%',
                 'display': 'inline-block',
-                'width': '22.5%'}),
+                'width': '25%'}),
 
             html.Div([
-                html.P('Maximum Value',
+                html.P('Mid-point (diverging)',
+                    style={'textAlign': 'center',
+                        'marginBottom': '0.5%',
+                        'fontSize': 15}),
+
+                dcc.Input(
+                    id='colorscale_mid',
+                    type='number',
+                    value=0,
+                    style={'width': '80%',
+                        'marginLeft': '10%'}),
+
+
+            ], style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'width': '25%'}),
+
+            html.Div([
+                html.P('Maximum',
                     style={'textAlign': 'center',
                         'marginBottom': '0.5%',
                         'fontSize': 15}),
@@ -306,7 +326,9 @@ def calculation_layout():
             ], style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'width': '22.5%'}),
+                'width': '25%'}),
+
+            html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
 
             html.Div([
                 html.P('Color map',
@@ -321,7 +343,10 @@ def calculation_layout():
                         {'label': 'Cividis', 'value': 'Cividis'},
                         {'label': 'Plasma', 'value': 'Plasma'},
                         {'label': 'Blues', 'value': 'Blues'},
-                        {'label': 'YellowGreen', 'value': 'YlGn'}
+                        {'label': 'YellowGreen', 'value': 'YlGn'},
+                        {'label': 'Diverging-RdBu', 'value': 'RdBu'},
+                        {'label': 'Diverging-Temps', 'value': 'Temps'},
+                        {'label': 'Diverging-Tropic', 'value': 'Tropic'}
                     ],
                     value='perseus',
                     style={
@@ -332,8 +357,28 @@ def calculation_layout():
 
             ], style={
                 'vertical-align': 'top',
+                'marginLeft': '17.5%',
                 'display': 'inline-block',
                 'width': '22.5%'}),
+            html.Div([
+                dcc.RadioItems(id='reverse_opt',
+                    options=[
+                        {'label': 'Regular',
+                        'value': 'reg'},
+                        {'label': 'Reverse',
+                        'value': 'reverse'}],
+
+                    style={
+                        'textAlign': 'left',
+                        'width': '80%',
+                        'marginTop': '5%',
+                        'marginLeft': '10%'},
+                    value='reg'
+                ),
+            ], style={
+                'vertical-align': 'top',
+                'display': 'inline-block',
+                'width': '15%'}),
 
             html.Div([
                 html.Button('Apply options!', id='color_button',
@@ -343,7 +388,7 @@ def calculation_layout():
             ], style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'width': '32.5%'}),
+                'width': '25%'}),
 
             dcc.Graph(id='color_bar', style={
                 'height': '50px',
@@ -356,7 +401,7 @@ def calculation_layout():
             style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '450px',
+                'height': '550px',
                 'width': '70%'}
         ),
 

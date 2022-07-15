@@ -184,6 +184,9 @@ def upload_layout():
                 'background-color': '#e8e8e8',
                 'fontSize': 18}),
 
+        dcc.Download(id="download-ms-table-csv"),
+        dcc.Download(id="download-configs-csv"),
+
         html.Div([
             html.Div([
                 dcc.Input(
@@ -808,8 +811,7 @@ def process_layout():
             id='sample_pp_cols', style={'display': 'none'}),
         html.Div(
             id='meta_pp_cols', style={'display': 'none'}),
-        dcc.Download(id="download-ms-table-csv"),
-        dcc.Download(id="download-configs-csv"),
+
         # html.Div(
         #     id='renamed_sample_pp_cols', children=None, style={'display': 'none'}),
         # html.Div(

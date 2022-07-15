@@ -493,13 +493,12 @@ def process_table(n_clicks, sample_cols_json,
     Output('download-ms-table-csv', 'data'),
     Output('download_table', 'style'),
     Input('download_table', 'n_clicks'),
-    State('pp_processed_table', 'children'),
     State('ms_save_name', 'value'),
     State('download_table', 'style'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
-def download_ms_table(n_clicks, table_json, save_name, button_style, session_id):
+def download_ms_table(n_clicks, save_name, button_style, session_id):
     """
     load table from the frontend json format, and save in a csv
     """

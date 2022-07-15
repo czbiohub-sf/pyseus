@@ -1,5 +1,6 @@
 import base64
 import datetime
+from pickle import FALSE
 import markdown
 import io
 import json
@@ -110,6 +111,8 @@ def display_upload_ms_filename(filename, style):
     Output('features_checklist', 'value'),
     Output('label_select', 'options'),
     Output('index_select', 'options'),
+    Output('label_select', 'value'),
+    Output('index_select', 'value'),
     Output('data_metrics', 'data'),
     Output('color_button', 'n_clicks'),
     Output('mat_read_table_button', 'style'),
@@ -181,6 +184,14 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
     labels = list(raw_table['metadata'])
     labels.sort()
 
+    index_val = None
+    label_val = None
+    if 'Protein IDs' in labels:
+        index_val = 'Protein IDs'
+    if 'Gene names' in labels:
+        label_val = 'Gene names'
+
+
     # feature checklist options
     features_opts = [{'label': feature, 'value': feature}
         for feature in features]
@@ -210,7 +221,8 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
     }]
 
     return features_opts, features,\
-        label_opts, label_opts, metrics, color_clicks, button_style, preload_style
+        label_opts, label_opts, label_val, index_val, metrics,\
+        color_clicks, button_style, preload_style
 
 
 
@@ -219,13 +231,19 @@ def parse_raw_table(n_clicks, preload_clicks, content, button_style, color_click
     Input('scale_data_button', 'n_clicks'),
     Input('color_button', 'n_clicks'),
     State('colorscale_min', 'value'),
+    State('colorscale_mid', 'value'),
     State('colorscale_max', 'value'),
-    State('colormap', 'value')
+    State('colormap', 'value'),
+    State('reverse_opt', 'value')
 )
 def generate_colormap(scale_data_clicks, color_clicks,
-        min, max, colormap):
+        min, mid, max, colormap, reverse_opt):
 
-    fig, _ = ph.color_map(min, max, colors=colormap)
+    reverse = False
+    if reverse_opt == 'reverse':
+        reverse = True
+
+    fig, _ = ph.color_map(min, mid, max, colors=colormap, reverse=reverse)
     return fig
 
 
@@ -239,8 +257,10 @@ def generate_colormap(scale_data_clicks, color_clicks,
     State('index_select', 'value'),
 
     State('colorscale_min', 'value'),
+    State('colorscale_mid', 'value'),
     State('colorscale_max', 'value'),
     State('colormap', 'value'),
+    State('reverse_opt', 'value'),
 
     State('cluster_checks', 'value'),
     State('tick_checks', 'value'),
@@ -251,13 +271,19 @@ def generate_colormap(scale_data_clicks, color_clicks,
     prevent_initial_call=True
 )
 def generate_clustergram(n_clicks, features, label, index,
-        zmin, zmax, colormap, cluster_checks, tick_checks, button_style, session_id):
+        zmin, zmid, zmax, colormap, reverse_opt, cluster_checks, tick_checks,
+        button_style, session_id):
     """
     returns plotly figure of cluster heatmap
     """
 
     if n_clicks is None:
         raise PreventUpdate
+
+    # colorscale reverse option
+    reverse = False
+    if reverse_opt == 'reverse':
+        reverse = True
 
     button_style = cycle_style_colors(button_style)
 
@@ -267,7 +293,7 @@ def generate_clustergram(n_clicks, features, label, index,
 
 
     # generate the color map
-    _, hexmap = ph.color_map(zmin, zmax, colormap)
+    _, hexmap = ph.color_map(zmin, zmid, zmax, colormap)
 
 
     # default bait clustering variables
@@ -284,8 +310,8 @@ def generate_clustergram(n_clicks, features, label, index,
         verbose=False)
 
     heatmap = ph.dendro_heatmap(processed_table, prey_leaves, hexmap,
-        zmin, zmax, label, features, index_id=index, bait_leaves=bait_leaves, bait_clust=bait_clust,
-        verbose=False)
+        zmin, zmid, zmax, label, features, index_id=index, bait_leaves=bait_leaves,
+        bait_clust=bait_clust, reverse=reverse, verbose=False)
 
     x_tick = False
     y_tick = False

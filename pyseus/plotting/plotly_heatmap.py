@@ -150,7 +150,7 @@ def bait_leaves(imputed_df, features, method='average', distance='cosine',
     return bait_leaves
 
 
-def prey_leaves(imputed_df, features, method='average', distance='euclidean', grouped=True,
+def prey_leaves(imputed_df, features, method='average', distance='cosine', grouped=True,
         index_id='Protein IDs', verbose=True):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
@@ -191,8 +191,8 @@ def prey_leaves(imputed_df, features, method='average', distance='euclidean', gr
     return prey_leaves
 
 
-def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features, index_id='Protein IDs',
-     bait_leaves=None, bait_clust=False, verbose=True):
+def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmid, zmax, label, features,
+        index_id='Protein IDs', bait_leaves=None, bait_clust=False, reverse=False, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -221,11 +221,20 @@ def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmax, label, features,
     if bait_clust:
         plot_df = plot_df[bait_leaves]
 
+    if hexmap in ['RdBu', 'Temps', 'Tropic']:
+        # force vals in zmin and zmax range because plotly doesnt allow zmid with zmin/zmax
+        mask = plot_df.copy()
+        mask = mask.applymap(lambda x: x if x >= zmin else zmin)
+        mask = mask.applymap(lambda x: x if x <= zmax else zmax)
 
 
-    # Generate the heatmap
-    heatmap = go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=plot_df.values.tolist(),
-        colorscale=hexmap, zmin=zmin, zmax=zmax)
+        heatmap = go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=mask.values.tolist(),
+            colorscale=hexmap, zmid=zmid, reversescale=reverse)
+
+    else:
+        # Generate the heatmap
+        heatmap = go.Heatmap(x=list(plot_df), y=list(plot_df.index), z=plot_df.values.tolist(),
+            colorscale=hexmap, zmin=zmin, zmax=zmax, reversescale=reverse)
 
     if verbose:
         end_time = np.round(time.time() - start_time, 2)
@@ -244,7 +253,7 @@ def df_min_max(df):
     return min(all_vals), max(all_vals)
 
 
-def color_map(zmin, zmax, colors='perseus'):
+def color_map(zmin, zmid, zmax, colors='perseus', reverse=False):
     """generate a color map, zmin, and zmax that the heatmap function will use
     Will add customization features in the future"""
 
@@ -264,9 +273,17 @@ def color_map(zmin, zmax, colors='perseus'):
     # a range list from zmin to zmax
     y = [0]*len(z)
     # plot colorscale
-    fig = go.Figure(go.Heatmap(x=z, y=y, z=z, zmin=zmin, zmax=zmax,
-        colorscale=hexmap, showscale=False),
-        layout=go.Layout(yaxis={'showticklabels': False}))
+    if colors in ['RdBu', 'Temps', 'Tropic']:
+
+        # apply zmin and zmax
+        fig = go.Figure(go.Heatmap(x=z, y=y, z=z, zmid=zmid,
+            colorscale=hexmap, showscale=False, reversescale=reverse),
+            layout=go.Layout(yaxis={'showticklabels': False}))
+
+    else:
+        fig = go.Figure(go.Heatmap(x=z, y=y, z=z, zmin=zmin, zmax=zmax,
+            colorscale=hexmap, showscale=False, reversescale=reverse),
+            layout=go.Layout(yaxis={'showticklabels': False}))
     fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
     return fig, hexmap
 
