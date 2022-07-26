@@ -263,6 +263,7 @@ def generate_colormap(scale_data_clicks, color_clicks,
     State('reverse_opt', 'value'),
 
     State('cluster_checks', 'value'),
+    State('obs_cluster_checks', 'value'),
     State('tick_checks', 'value'),
 
     State('generate_matrix', 'style'),
@@ -271,8 +272,8 @@ def generate_colormap(scale_data_clicks, color_clicks,
     prevent_initial_call=True
 )
 def generate_clustergram(n_clicks, features, label, index,
-        zmin, zmid, zmax, colormap, reverse_opt, cluster_checks, tick_checks,
-        button_style, session_id):
+        zmin, zmid, zmax, colormap, reverse_opt, cluster_checks, rows_clust_check,
+        tick_checks, button_style, session_id):
     """
     returns plotly figure of cluster heatmap
     """
@@ -300,18 +301,27 @@ def generate_clustergram(n_clicks, features, label, index,
     bait_leaves = None
     bait_clust = False
 
+    # cluster rows
+    if 'prey_clust' in rows_clust_check:
+        prey_clust = True
+        prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
+            verbose=False)
+    else:
+        prey_clust = False
+        prey_leaves = None
+
+
     # cluster samples
     if 'bait_clust' in cluster_checks:
         bait_leaves = ph.bait_leaves(processed_table, features, grouped=False,
             verbose=False)
         bait_clust = True
 
-    prey_leaves = ph.prey_leaves(processed_table, features, index_id=index, grouped=False,
-        verbose=False)
+
 
     heatmap = ph.dendro_heatmap(processed_table, prey_leaves, hexmap,
         zmin, zmid, zmax, label, features, index_id=index, bait_leaves=bait_leaves,
-        bait_clust=bait_clust, reverse=reverse, verbose=False)
+        bait_clust=bait_clust, reverse=reverse, prey_clust=prey_clust, verbose=False)
 
     x_tick = False
     y_tick = False

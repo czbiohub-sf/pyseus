@@ -425,11 +425,6 @@ def plotting_layout():
                     'fontSize': 15,
                     'marginBottom': '1%'}),
 
-            html.P('Observations are automatically clustered',
-                style={'textAlign': 'center',
-                    'fontSize': 13,
-                    'marginBottom': '4%'}),
-
 
             dcc.Checklist(
                 id='cluster_checks',
@@ -439,6 +434,21 @@ def plotting_layout():
                 ],
                 value=[]
             ),
+
+            html.Hr(style={'marginTop': '8%', 'marginBottom': '8%'}),
+
+            html.P('Row clustering',
+                style={'textAlign': 'center',
+                    'fontSize': 15,
+                    'marginBottom': '1%'}),
+            dcc.Checklist(
+                id='obs_cluster_checks',
+                options=[
+                    {'label': 'Cluster rows', 'value': 'prey_clust'},
+                ],
+                value=['prey_clust']
+            ),
+
 
             html.Hr(style={'marginTop': '8%', 'marginBottom': '8%'}),
 

@@ -192,7 +192,8 @@ def prey_leaves(imputed_df, features, method='average', distance='cosine', group
 
 
 def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmid, zmax, label, features,
-        index_id='Protein IDs', bait_leaves=None, bait_clust=False, reverse=False, verbose=True):
+        index_id='Protein IDs', bait_leaves=None, bait_clust=False, reverse=False, verbose=True,
+        prey_clust=False):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -208,8 +209,9 @@ def dendro_heatmap(imputed_df, prey_leaves, hexmap, zmin, zmid, zmax, label, fea
     # Set index to Protein IDs to match the dendro leaves
     plot_df.set_index(index_id, inplace=True)
 
-    # Correctly order the plot df according to dendro leaves
-    plot_df = plot_df.T[prey_leaves].T
+    if prey_clust:
+        # Correctly order the plot df according to dendro leaves
+        plot_df = plot_df.T[prey_leaves].T
 
     # Reset index to set label
     plot_df.set_index(label, inplace=True)
