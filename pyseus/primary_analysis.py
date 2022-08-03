@@ -12,7 +12,7 @@ import re
 import pandas as pd
 import numpy as np
 import os
-# from pyseus import basic_processing as pys
+from pyseus import basic_processing as bp
 from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -37,6 +37,7 @@ class AnalysisTables:
             root=None,
             analysis=None,
             imputed_table=None,
+            grouped_table=None,
             exclusion_matrix=None):
 
         # initiate class that cover essential metadata and imputed table
@@ -46,6 +47,23 @@ class AnalysisTables:
         self.analysis = analysis
         self.imputed_table = imputed_table
         self.exclusion_matrix = exclusion_matrix
+
+        # if the preprocessed table is not grouped, use group function
+        if grouped_table:
+            self.grouped_table = grouped_table
+        else:
+            # use RawTables class to group replicates
+            features = list(imputed_table['sample'])
+            labels = list(imputed_table['metadata'])
+            processing = bp.RawTables(file_designated=True)
+            processing.transformed_table = imputed_table
+            processing.sample_cols = features
+            processing.info_cols = labels
+            processing.group_replicates(reg_exp=r'(.*)_\d+$')
+            processing.generate_export_bait_matrix()
+
+            self.grouped_table = processing.grouped_table.copy()
+            self.exclusion_matrix = processing.bait_matrix.copy()
 
     def restore_default_exclusion_matrix(self):
         """
@@ -130,12 +148,15 @@ class AnalysisTables:
         self.exclusion_matrix = exclusion
 
 
-    def simple_pval_enrichment(self, std_enrich=True, mean=False):
+    def simple_pval_enrichment(self, std_enrich=True, mean=False, exclusion_mat=None):
         """
         Calculate enrichment and pvals for each bait, no automatic removal
         """
-        imputed = self.imputed_table.copy()
-        exclusion = self.exclusion_matrix.copy()
+        imputed = self.grouped_table.copy()
+        if exclusion_mat:
+            exclusion = exclusion_mat.copy()
+        else:
+            exclusion = self.exclusion_matrix.copy()
 
         imputed.reset_index(drop=True, inplace=True)
         # iterate through each cluster to generate neg con group
@@ -183,7 +204,7 @@ class AnalysisTables:
         calculation. Uses multi-processing for faster runtime
         """
 
-        imputed = self.imputed_table.copy()
+        imputed = self.grouped_table.copy()
         imputed.reset_index(drop=True, inplace=True)
         bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
         bait_list = list(set(bait_list))
