@@ -47,7 +47,7 @@ class Validation():
         self.localization_table = localization_table
         self.interaction_table = interaction_table
 
-    def static_fdr(self, curvature, offset):
+    def static_fdr(self, curvature, offset, negative=False):
         """
         Call significant interactors from standard hits table with user input
         offset and curvature for thresholding
@@ -58,7 +58,10 @@ class Validation():
         hits['fdr'] = hits['fdr'].apply(lambda x: [curvature, offset])
 
         bait_pval = hits['pvals']
-        enrichment = hits['enrichment']
+        if negative:
+            enrichment = hits['enrichment'].apply(np.abs)
+        else:
+            enrichment = hits['enrichment']
 
         threshold = enrichment.apply(pa.calc_thresh, args=[curvature, offset])
         hits['interaction'] = np.where((bait_pval > threshold), True, False)
