@@ -143,6 +143,79 @@ class SpatialTables():
         return max, res, n_neighbor
 
 
+    def grouped_reference_testing(self, labels, condition='-infected',
+            merge_col='Gene names', label_col='organelle'):
+        """
+        Using the enrichment table, test the organellar difference between
+        a contrast and control group, return a pval/enrichment table.
+        """
+
+        enrichment = self.enrichment_table.copy()
+        labels = labels[[merge_col, label_col]].copy()
+
+        # parse samples that are experiment controls
+        samples = list(enrichment['sample'])
+        control_samples = [x for x in samples if condition not in x]
+        condition_samples = [x for x in samples if condition in x]
+        control_samples.sort()
+
+        # control-experiment pair dictionary
+        sample_dict = {}
+        for sample in control_samples:
+            condition_pair = [x for x in condition_samples if sample in x][0]
+            sample_dict[sample] = condition_pair
+
+        # merge enrichment table with labels
+        enrichment = enrichment.droplevel(0, axis=1)
+        merged = enrichment.merge(labels, on=merge_col, how='left')
+
+        # get unique labels except nans
+        orgs = merged[label_col].unique[1:]
+        pvals = pd.DataFrame()
+        pvals['organelle'] = orgs
+
+        # find t-test significance by each organelle
+        for sample in sample_dict.keys():
+            cond_sample = sample_dict[sample]
+
+            control = merged[[sample, label_col]].copy()
+            conditioned = merged[[cond_sample, label_col]].copy()
+
+            pvs = []
+            for org in orgs:
+                control_orgs = control[control[label_col] == org]
+                condition_orgs = conditioned[conditioned[label_col] == org]
+                pval = scipy.stats.ttest_ind(
+                    control_orgs[sample], condition_orgs[cond_sample])[1]
+                pval = np.round(-1 * np.log10(pval), 2)
+                pvs.append(pval)
+
+            pvals[sample] = pvs
+
+        self.ref_pvals_table = pvals
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class RForestScoring():
     """
     This is a class for scoring of a dataset based on default RandomForest

@@ -290,7 +290,6 @@ class AnalysisTables:
         self.enrichment_table = enrichs
 
 
-
     def convert_to_standard_table(self, metrics=['pvals', 'enrichment'],
             experiment=True, simple_analysis=True, perseus=True):
         """
