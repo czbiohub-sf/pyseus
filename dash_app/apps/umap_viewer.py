@@ -44,6 +44,19 @@ from dapp import app
 from dapp import saved_processed_table, cycle_style_colors, query_panther, collapsible_style
 
 
+def multiple_searches(value, search_str):
+    """
+    simple function for carrying out search functions in UMAP viewer
+    """
+    search_list = search_str.split(';')
+    value = str(value).lower()
+    for search in search_list:
+        term = search.lower()
+        if term in value:
+            return search
+    return None
+
+
 # App Layout
 layout = html.Div([
     # Header tags
@@ -718,12 +731,12 @@ def plot_umap(n_clicks, search_clicks, search_term, search_style, label, annot,
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == 'search_button':
-        search_lower = search_term.lower()
-        umap_table[search_term] = umap_table[label].map(lambda x: search_term if search_lower
-            in str(x).lower() else None)
+
+        umap_table['searches'] = umap_table[label].apply(
+            lambda x: multiple_searches(x, search_term))
 
         # umap generation
-        fig = pu.interaction_umap(umap_table, node_name=label, cluster=search_term,
+        fig = pu.interaction_umap(umap_table, node_name=label, cluster='searches',
             unlabelled_color=marker_color, unlabelled_opacity=opacity * 0.5, x=x_val, y=y_val,
             unlabelled_hover=False, search=True)
         search_style = cycle_style_colors(search_style)

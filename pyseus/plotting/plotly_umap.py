@@ -79,6 +79,7 @@ def interaction_umap(
     else:
         labelling = matrix[cluster].isna()
         labelled = matrix[~labelling]
+        labelled[cluster] = labelled[cluster].astype(str)
         unlabelled = matrix[labelling]
         unlabelled[cluster] = 'unlabelled'
 
@@ -103,40 +104,28 @@ def interaction_umap(
         if not unlabelled_hover:
             fig2.update_traces(hoverinfo='skip', hovertemplate=None)
 
-        if search:
-            fig = fig2
-            fig.add_trace(
-                go.Scattergl(x=labelled[x], y=labelled[y], mode='markers', name='search',
-                    hoverinfo='text', hovertext=labelled[node_name],
-                    customdata=labelled['index'].apply(lambda x: [x]),
-                    opacity=0.8, marker=dict(opacity=0.9, line_width=1, color='#EF553B'))
-            )
-
-
-        else:
-
-            fig1 = px.scatter(
-                labelled,
-                x=x,
-                y=y,
-                labels={
-                    x: label_x,
-                    y: label_y
-                },
-                hover_name=node_name,
-                color=cluster,
-                color_continuous_scale=px.colors.cyclical.mygbm[: -1],
-                opacity=opacity,
-                hover_data=hover_data,
-                custom_data=['index'],
-                template='simple_white')
-            fig1.update_traces(marker=dict(size=5.5))
-            fig1.update(layout_coloraxis_showscale=False)
+        fig1 = px.scatter(
+            labelled,
+            x=x,
+            y=y,
+            labels={
+                x: label_x,
+                y: label_y
+            },
+            hover_name=node_name,
+            color=cluster,
+            color_continuous_scale=px.colors.cyclical.mygbm[: -1],
+            opacity=opacity,
+            hover_data=hover_data,
+            custom_data=['index'],
+            template='simple_white')
+        fig1.update_traces(marker=dict(size=5.5))
+        fig1.update(layout_coloraxis_showscale=False)
 
 
 
 
-            fig = go.Figure(data=fig2.data + fig1.data)
+        fig = go.Figure(data=fig2.data + fig1.data)
 
 
         # if highlight:
