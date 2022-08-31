@@ -764,7 +764,7 @@ def plotting_layout():
                         min=0,
                         max=1,
                         step=0.05,
-                        value=0.3,
+                        value=0.15,
                         tooltip={"placement": "bottom", "always_visible": True},
                         marks={
                             0: '0',

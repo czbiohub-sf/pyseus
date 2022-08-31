@@ -43,7 +43,7 @@ def scale_table(matrix, method):
 
 
 def interaction_umap(
-        matrix, node_name, cluster, x='umap_1', y='umap_2', opacity=0.8,
+        matrix, node_name, cluster, x='umap_1', y='umap_2', opacity=0.95,
         width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
         unlabelled_opacity=0.1, hover_data=None, unlabelled_hover=True, search=False):
 
@@ -119,14 +119,13 @@ def interaction_umap(
             hover_data=hover_data,
             custom_data=['index'],
             template='simple_white')
-        fig1.update_traces(marker=dict(size=5.5))
+        fig1.update_traces(marker=dict(size=6))
         fig1.update(layout_coloraxis_showscale=False)
 
 
 
 
         fig = go.Figure(data=fig2.data + fig1.data)
-
 
         # if highlight:
         #     labelled = matrix[matrix[node_name].isin(highlight)]
