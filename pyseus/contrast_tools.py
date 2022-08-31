@@ -34,31 +34,14 @@ class ContrastTables(pa.AnalysisTables):
     Inherits AnalysisTables class in primary_analysis module
     """
 
-    def __init__(self,
-            root=None,
-            analysis=None,
-            imputed_table=None,
-            exclusion_matrix=None,
-            exp_condition='-infected'):
-        """
-        adds on exp_condition (string value) that specifies a sample's experiment tag
-        """
-
-        self.root = root
-        self.analysis = analysis
-        self.imputed_table = imputed_table
-        self.exclusion_matrix = exclusion_matrix
-        self.exp_condition = exp_condition
-
-
-    def set_up_contrast_matrix(self):
+    def set_up_contrast_matrix(self, condition='-infected'):
         """
         set up the contrast matrix to only include experiment condition vs controls
         """
 
         # exclusion matrix and condition label
         mat = self.exclusion_matrix.copy()
-        condition = self.exp_condition
+        self.exp_condition = condition
 
         # get a list of samples in the exp-condition
         samples = list(mat)
@@ -103,12 +86,13 @@ class ContrastTables(pa.AnalysisTables):
         """
 
         # run simple pval with the custom contrast matrix
-        self.simple_pval_enrichment(std_enrich=std_enrich, exclusion_mat=self.contrast_matrix)
-        # standardize
+        self.simple_pval_enrichment(std_enrich=std_enrich, custom=True,
+            exclusion_mat=self.contrast_matrix)
+        # standardizec
         self.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
 
 
-    def call_hits(self, curvature=2.6, offset=1):
+    def call_hits(self, curvature=2.6, offset=1, negative=True):
         """
         Use Validations class to call hits by given parameters and save the table
         """
@@ -116,7 +100,7 @@ class ContrastTables(pa.AnalysisTables):
         vali = va.Validation(hit_table=self.standard_hits_table, target_col='target',
             prey_col='Gene names')
         # call hits based on a set curvature and offset
-        vali.static_fdr(curvature=curvature, offset=offset)
+        vali.static_fdr(curvature=curvature, offset=offset, negative=negative)
         self.hits_table = vali.called_table.copy()
         self.interaction_table = vali.interaction_table.copy()
 

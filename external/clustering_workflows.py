@@ -26,10 +26,6 @@ try:
 except ImportError:
     pass
 
-from .model_results import SCATTERPLOT_COLORS
-from . import ground_truth_labels
-from ..external import complex_comparison
-
 
 class ClusteringWorkflow:
 
@@ -79,6 +75,7 @@ class ClusteringWorkflow:
         sc.pp.neighbors(
             self.adata,
             method='umap',
+            use_rep='X',
             metric=metric,
             n_neighbors=n_neighbors,
             n_pcs=n_pcs,
@@ -167,7 +164,8 @@ class ClusteringWorkflow:
 
 
     def calculate_kclique_metrics(
-        self, drop_largest=False, max_clique=2, n_random_states=3
+        self, drop_largest=False, max_clique=2, n_random_states=3, ground_truth_labels=None,
+        complex_comparison=None, SCATTERPLOT_COLORS=None
     ):
         '''
         Calculate k-clique metrics at a range of Leiden resolutions
@@ -224,7 +222,7 @@ class ClusteringWorkflow:
         n_umap_components=10,
         linkage='ward',
         affinity='euclidean',
-        key_added='agg_cluster_id'
+        key_added='agg_cluster_id',
     ):
         '''
         Implements an unconventional clustering method:
@@ -264,7 +262,8 @@ class ClusteringWorkflow:
         predicted_label,
         ground_truth_label_order=None,
         predicted_label_order=None,
-        flip=False
+        flip=False,
+        SCATTERPLOT_COLORS=None
     ):
 
         obs = self.adata.obs.copy()
