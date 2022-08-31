@@ -45,15 +45,21 @@ from dapp import saved_processed_table, cycle_style_colors, query_panther, colla
 
 
 def multiple_searches(value, search_str):
-    """
-    simple function for carrying out search functions in UMAP viewer
-    """
+    search_str = search_str.replace(',', ';')
+    search_str = search_str.replace(' ', '')
     search_list = search_str.split(';')
     value = str(value).lower()
     for search in search_list:
         term = search.lower()
-        if term in value:
-            return search
+        if '*' in term:
+            term = term[:-1]
+            if term in value:
+                return search
+        else:
+            vals = value.split(';')
+            for val in vals:
+                if term == val:
+                    return search
     return None
 
 
