@@ -1,3 +1,4 @@
+from curses import reset_shell_mode
 import multiprocessing
 import sys
 import itertools
@@ -7,7 +8,8 @@ import re
 import pandas as pd
 import numpy as np
 import anndata as ad
-
+from multiprocessing import Pool
+from itertools import repeat
 
 from pyseus import basic_processing as bp
 from pyseus import primary_analysis as pa
@@ -18,8 +20,6 @@ from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-from itertools import repeat
-from multiprocessing import Pool
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import percentileofscore
 from sklearn.metrics.pairwise import cosine_similarity
@@ -35,16 +35,25 @@ class SpatialTables():
     that enhance the datasets
     """
 
-    def __init__(self, hit_table, target_col='target', prey_col='prey',
-            control_mat=None):
+    def __init__(self, preprocessed_table=None, hit_table=None, enrichment_table=None,
+            target_col='target', prey_col='prey', control_mat=None):
         """
         initiate class with a standard hit table
         """
+        self.preprocessed_table = preprocessed_table
         self.hit_table = hit_table
         self.target = target_col
         self.prey = prey_col
-        self.control_mat = control_mat
-        self.create_enrichment_table()
+        self.enrichment_table = enrichment_table
+
+        if (hit_table) and (enrichment_table is None):
+            self.create_enrichment_table()
+
+        # generate a control mat
+        if control_mat is None:
+            self.create_default_con_mat()
+        else:
+            self.control_mat = control_mat
 
     def create_enrichment_table(self):
         """
@@ -53,13 +62,38 @@ class SpatialTables():
         """
 
         # create an AnalysisTables class which handles the enrichment conversion
-        analysis = pa.AnalysisTables()
+        analysis = pa.AnalysisTables(auto_group=False)
+
         analysis.simple_pval_table = self.hit_table
         analysis.convert_to_enrichment_table(enrichment='enrichment', simple_analysis=True)
 
+        self.control_mat = analysis.exclusion_matrix.copy()
         self.enrichment_table = analysis.enrichment_table.copy()
 
-    def enrichment_corr_control_mat(self, corr=0.4):
+
+    def create_default_con_mat(self):
+        """
+        generate a default exclusion matrix from the enrichment table
+        """
+
+        enrichments = self.enrichment_table.copy()
+
+        baits = list(enrichments['sample'])
+        baits.sort()
+        bait_df = pd.DataFrame()
+        bait_df['Samples'] = baits
+        bait_df.reset_index(drop=True, inplace=True)
+
+        # Create a boolean table
+        for bait in baits:
+            bait_bools = [True if x != bait else False for x in baits]
+            bait_df[bait] = bait_bools
+
+        self.control_mat = bait_df.copy()
+
+
+
+    def enrichment_corr_control_mat(self, corr=0.4, low_filter=False):
         """
         create a control matrix that has a correlation filter between samples,
         effectively removing samples that are closely related for pval-calculations
@@ -84,7 +118,10 @@ class SpatialTables():
         new_mat = control_mat.copy()
         for col in cols:
             truths = []
-            passing_corrs = sample_corrs[col][sample_corrs[col] <= corr]
+            if low_filter:
+                passing_corrs = sample_corrs[col][sample_corrs[col] >= corr]
+            else:
+                passing_corrs = sample_corrs[col][sample_corrs[col] <= corr]
             for sample in mat_samples:
                 if sample in passing_corrs:
                     truths.append(True)
@@ -92,11 +129,100 @@ class SpatialTables():
                     truths.append(False)
             new_mat[col] = truths
 
+        self.corr = corr
         self.corr_mat = new_mat
+        self.raw_corrs = sample_corrs
 
 
-    def calc_max_ari(self, labels,
-            n_neighbors=[2, 5, 10, 20, 50], def_res=None):
+    def new_corr_ARI(self, labels, reference, repeat=5, quant_cols=None,
+            balance_num=68, just_enrichment=False, table_provided=False, def_res=None,
+            n_neighbors=None):
+        """
+        this method is a mess. Need to clean up later.
+        """
+
+        if table_provided is False:
+            # calculate pvals
+            analysis = pa.AnalysisTables(imputed_table=self.preprocessed_table,
+                auto_group=True, exclusion_matrix=self.corr_mat)
+
+            # remove all other samples not necesary for pval table
+            grouped = analysis.grouped_table.copy()
+            samples = list(self.corr_mat)
+            samples.remove('Samples')
+            grouped = grouped[samples + ['metadata']]
+            analysis.grouped_table = grouped
+
+
+            analysis.simple_pval_enrichment()
+            analysis.convert_to_enrichment_table(enrichment='enrichment', simple_analysis=True)
+            enrichments = analysis.enrichment_table.copy()
+            self.corr_pval_table = analysis.simple_pval_table.copy()
+            self.corr_enrichment_table = enrichments
+            if just_enrichment:
+                return
+        else:
+            enrichments = self.enrichment_table.copy()
+
+        maxes = []
+        reses = []
+        neighbors = []
+        for i in np.arange(repeat):
+            metadata = enrichments['metadata'].copy()
+
+            # balance labels
+            new_labels = []
+            label_counts = labels['organelle'].value_counts()
+
+            for label in reference:
+                label_sampling = labels[labels['organelle'] == label]
+                if label_counts[label] > balance_num:
+                    label_sampling = label_sampling.sample(balance_num)
+                new_labels.append(label_sampling)
+
+            new_labels = pd.concat(new_labels).reset_index(drop=True)
+
+
+            enrichments.rename({'Gene names': 'gene_names'}, axis=1, inplace=True)
+            metadata = enrichments['metadata'].copy()
+
+            # merge organelle labels by finding all matching proteins in proteingroups
+            organelles = []
+            for _, row in metadata.iterrows():
+                # combinations of gene names are attached by semicolons
+                genes = str(row.gene_names).split(';')
+                label_match = new_labels[new_labels['protein'].isin(genes)]
+                if label_match.shape[0] > 0:
+                    # take (usually only) matching organelle
+                    organelles.append(label_match['organelle'].iloc[0])
+                else:
+                    organelles.append('none')
+
+            metadata['organelles'] = organelles
+
+            enrichments.reset_index(drop=True, inplace=True)
+            metadata.reset_index(drop=True, inplace=True)
+
+
+            max, res, neighbor = self.max_ari_summary(enrichments, metadata,
+                quant_cols=quant_cols, def_res=def_res, n_neighbors=n_neighbors)
+            if def_res is None:
+                def_res = res
+            if n_neighbors is None:
+                n_neighbors = [neighbor]
+            maxes.append(max)
+            reses.append(res)
+            neighbors.append(neighbor)
+
+        summary_table = pd.DataFrame()
+        summary_table[str(self.corr) + '_max_ARI'] = maxes
+        summary_table[str(self.corr) + '_res'] = reses
+        summary_table[str(self.corr) + '_neighbors'] = neighbors
+
+        self.summary_table = summary_table.copy()
+
+    def max_ari_summary(self, enrichments, metadata, quant_cols=None,
+            n_neighbors=None, def_res=None):
         """
         calculate the max ARI given organelle ground truths, and
         UMAP-embedding + leiden clustering.
@@ -105,42 +231,91 @@ class SpatialTables():
         Input labels is a dataframe and assumes merge key is in gene names
         """
 
-        enrichments = self.enrichment_table.copy()
-        enrichments.rename({'Gene names': 'gene_names'}, axis=1, inplace=True)
 
-        metadata = enrichments['metadata'].copy()
+        quants = enrichments['sample'].copy()
+        if quant_cols is not None:
+            quants = quants[quant_cols].copy()
+        if n_neighbors is None:
+            n_neighbors = [2, 5, 10, 20, 50]
 
-        # merge organelle labels by finding all matching proteins in proteingroups
-        organelles = []
-        for _, row in metadata.iterrows():
-            # combinations of gene names are attached by semicolons
-            genes = str(row.gene_names).split(';')
-            label_match = labels[labels['protein'].isin(genes)]
-            if label_match.shape[0] > 0:
-                # take (usually only) matching organelle
-                organelles.append(label_match['organelle'].iloc[0])
-            else:
-                organelles.append('none')
-
-        metadata['organelles'] = organelles
-
-        enrichments.reset_index(drop=True, inplace=True)
-        metadata.reset_index(drop=True, inplace=True)
-
-        adata = ad.AnnData(enrichments['sample'], obs=enrichments['metadata'])
+        adata = ad.AnnData(quants, obs=metadata)
         aris = []
         resolutions = []
-        for n in n_neighbors:
-            output = clustering_workflows.calculate_max_ari(
-                adata, n, 'organelles', res=0.4, n_random_states=2, def_res=def_res)
+        if len(n_neighbors) == 1:
+            output = calculate_max_ari(
+                adata, n_neighbors[0], 'organelles', res=0.4, n_random_states=1, def_res=def_res)
             aris.append(output[0])
             resolutions.append(output[1])
+        else:
+            p = Pool()
+            multiargs = zip(repeat(adata), n_neighbors, repeat('organelles'),
+                repeat(0.4), repeat(2), repeat(def_res))
+            outputs = p.starmap(calculate_max_ari, multiargs)
+            p.close()
+            p.join()
+            aris = [x[0] for x in outputs]
+            resolutions = [x[1] for x in outputs]
+
         max = np.max(aris)
         max_idx = aris.index(max)
         res = resolutions[max_idx]
         n_neighbor = n_neighbors[max_idx]
 
         return max, res, n_neighbor
+
+
+    def grouped_reference_testing(self, labels, condition='-infected',
+            merge_col='Gene names', label_col='organelle'):
+        """
+        Using the enrichment table, test the organellar difference between
+        a contrast and control group, return a pval/enrichment table.
+        """
+
+        enrichment = self.enrichment_table.copy()
+        labels = labels[[merge_col, label_col]].copy()
+
+        # parse samples that are experiment controls
+        samples = list(enrichment['sample'])
+        control_samples = [x for x in samples if condition not in x]
+        condition_samples = [x for x in samples if condition in x]
+        control_samples.sort()
+        print(condition_samples)
+
+        # control-experiment pair dictionary
+        sample_dict = {}
+        for sample in control_samples:
+            condition_pair = [x for x in condition_samples if sample in x]
+            if len(condition_pair) > 0:
+                sample_dict[sample] = condition_pair[0]
+
+        # merge enrichment table with labels
+        enrichment = enrichment.droplevel(0, axis=1)
+        merged = enrichment.merge(labels, on=merge_col, how='left')
+
+        # get unique labels except nans
+        orgs = merged[label_col].unique()[1:]
+        pvals = pd.DataFrame()
+        pvals['organelle'] = orgs
+
+        # find t-test significance by each organelle
+        for sample in sample_dict.keys():
+            cond_sample = sample_dict[sample]
+
+            control = merged[[sample, label_col]].copy()
+            conditioned = merged[[cond_sample, label_col]].copy()
+
+            pvs = []
+            for org in orgs:
+                control_orgs = control[control[label_col] == org]
+                condition_orgs = conditioned[conditioned[label_col] == org]
+                pval = scipy.stats.ttest_ind(
+                    control_orgs[sample], condition_orgs[cond_sample])[1]
+                pval = np.round(-1 * np.log10(pval), 2)
+                pvs.append(pval)
+
+            pvals[sample] = pvs
+
+        self.ref_pvals_table = pvals
 
 
 class RForestScoring():
@@ -156,7 +331,7 @@ class RForestScoring():
         self.quant_cols = quant_cols
 
 
-    def multiclass_balance_scale_split_predict(self, max_sample=150):
+    def multiclass_balance_scale_split_predict(self, max_sample=150, predict=False):
         # initiate variables
         table = self.table.copy()
         ref_col = self.ref_col
@@ -166,6 +341,11 @@ class RForestScoring():
         table = table[all_cols]
 
         # find value counts of a label
+        if predict:
+            table2 = table.copy()
+            X_all = table2[quant_cols].values
+
+
         table.dropna(inplace=True)
         num_labels = table[ref_col].nunique()
         refs = table[ref_col].unique()
@@ -194,6 +374,7 @@ class RForestScoring():
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
+
         y = balanced['label'].values
 
         # split and standard scale
@@ -204,15 +385,26 @@ class RForestScoring():
         classifier = RandomForestClassifier()
         classifier.fit(X_train, y_train)
 
-        y_pred = classifier.predict(X_test)
-
         # Reverse factorizers
         reversefactor = dict(zip(range(num_labels), definitions))
+
+        # return predictions
+        if predict:
+            X_all_scaled = scaler.fit_transform(X_all)
+
+            y_pred = classifier.predict(X_all_scaled)
+            y_predicted = np.vectorize(reversefactor.get)(y_pred)
+            return y_predicted
+
+        y_pred = classifier.predict(X_test)
+
+
 
         y_tested = np.vectorize(reversefactor.get)(y_test)
         y_predicted = np.vectorize(reversefactor.get)(y_pred)
 
-        return y_tested, y_predicted
+
+        return y_tested, y_predicted, classifier
 
 
     def one_balance_scale_split_predict(self, ref):
@@ -221,8 +413,10 @@ class RForestScoring():
         ref_col = self.ref_col
         quant_cols = self.quant_cols.copy()
 
-        table.dropna(inplace=True)
+        table.dropna(subset=quant_cols, inplace=True)
         refs = table[ref_col].unique()
+        # remove nan
+        refs = refs[1:]
         refs.sort()
 
         # count sample size for the reference being tested
@@ -240,6 +434,8 @@ class RForestScoring():
         definitions = labels[1]
 
         balanced['label'] = labels[0]
+
+
 
         X = balanced[quant_cols].values
         scaler = StandardScaler()
@@ -274,11 +470,11 @@ class RForestScoring():
         predictions = []
 
         # repeat random forest prediction tests and save prediction results
-        for i in np.arange(repeats):
+        for _ in np.arange(repeats):
             if one_vs_all:
-                y_tested, y_predicted = self.one_balance_scale_split_predict(ref=ref)
+                y_tested, y_predicted, _ = self.one_balance_scale_split_predict(ref=ref)
             else:
-                y_tested, y_predicted = self.multiclass_balance_scale_split_predict(
+                y_tested, y_predicted, _ = self.multiclass_balance_scale_split_predict(
                     max_sample=max_sample)
             tests.append(y_tested)
             predictions.append(y_predicted)
@@ -294,11 +490,14 @@ class RForestScoring():
         return recall_table, precision_table
 
 
-    def confusion_precision_recall(tests, predictions, exp=''):
+    def confusion_precision_recall(self, tests, predictions, exp=''):
         """
         class method to create confusion chart from the output of repeat_collect_tests
         function
         """
+
+        tests = tests
+        predictions = predictions
         cross_recall = pd.crosstab(
             tests, predictions, rownames=['Actual Compartment'],
             colnames=['Predicted Compartment']).apply(
@@ -320,3 +519,26 @@ class RForestScoring():
         precision_table = pd.DataFrame(precision_table, index=[exp])
 
         return recall_table, precision_table
+
+
+def calculate_max_ari(adata, n_neighbors, ground_truth_label, res, n_random_states, def_res=None):
+    """
+    Calculate max ARI using leiden clustering and UMAP n-neighbor metric
+    """
+    adata = adata.copy()
+
+    # start clusteringworkflow class / preprocessing
+    cluster = clustering_workflows.ClusteringWorkflow(adata=adata)
+    cluster.preprocess(n_pcs=None)
+    # umap neighbor calculation and ARI calculation
+    cluster.calculate_neighbors(n_pcs=None, n_neighbors=n_neighbors)
+    ari_table = cluster.calculate_ari(ground_truth_label=ground_truth_label,
+        res=res, n_random_states=n_random_states, def_res=def_res)
+
+    # find max ARI, and corresponding resolution
+    res_groups = ari_table.groupby('resolution').mean()
+    max_ari = res_groups['ari'].max()
+    # resolution where ARI is max
+    ari_res = res_groups['ari'].idxmax()
+
+    return [max_ari, ari_res]

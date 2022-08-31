@@ -38,7 +38,8 @@ class AnalysisTables:
             analysis=None,
             imputed_table=None,
             grouped_table=None,
-            exclusion_matrix=None):
+            exclusion_matrix=None,
+            auto_group=False):
 
         # initiate class that cover essential metadata and imputed table
         # from RawTables class.
@@ -51,19 +52,40 @@ class AnalysisTables:
         # if the preprocessed table is not grouped, use group function
         if grouped_table:
             self.grouped_table = grouped_table
-        else:
+        elif auto_group:
             # use RawTables class to group replicates
             features = list(imputed_table['sample'])
             labels = list(imputed_table['metadata'])
             processing = bp.RawTables(file_designated=True)
-            processing.transformed_table = imputed_table
+            processing.transformed_table = imputed_table.droplevel(0, axis=1)
             processing.sample_cols = features
             processing.info_cols = labels
             processing.group_replicates(reg_exp=r'(.*)_\d+$')
             processing.generate_export_bait_matrix()
 
             self.grouped_table = processing.grouped_table.copy()
-            self.exclusion_matrix = processing.bait_matrix.copy()
+            self.generate_export_bait_matrix()
+
+
+    def generate_export_bait_matrix(self):
+        """
+        Generates and saves a Boolean bait matrix that will be used for control
+        exclusion in p-val and enrichment analysis.
+        """
+        grouped = self.grouped_table.copy()
+        baits = list(set(grouped.columns.get_level_values('Samples').to_list()))
+        baits.remove('metadata')
+        baits.sort()
+        bait_df = pd.DataFrame()
+        bait_df['Samples'] = baits
+        bait_df.reset_index(drop=True, inplace=True)
+
+        # Create a boolean table
+        for bait in baits:
+            bait_bools = [True if x != bait else False for x in baits]
+            bait_df[bait] = bait_bools
+
+        self.exclusion_matrix = bait_df.copy()
 
     def restore_default_exclusion_matrix(self):
         """
@@ -148,20 +170,26 @@ class AnalysisTables:
         self.exclusion_matrix = exclusion
 
 
-    def simple_pval_enrichment(self, std_enrich=True, mean=False, exclusion_mat=None):
+    def simple_pval_enrichment(self, std_enrich=True, mean=False, custom=False, exclusion_mat=None):
         """
         Calculate enrichment and pvals for each bait, no automatic removal
         """
         imputed = self.grouped_table.copy()
-        if exclusion_mat:
+        if custom:
             exclusion = exclusion_mat.copy()
         else:
             exclusion = self.exclusion_matrix.copy()
 
+
         imputed.reset_index(drop=True, inplace=True)
-        # iterate through each cluster to generate neg con group
-        bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
-        bait_list = list(set(bait_list))
+
+        if custom:
+            bait_list = list(exclusion)
+            bait_list.remove('Samples')
+        else:
+            # iterate through each cluster to generate neg con group
+            bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
+            bait_list = list(set(bait_list))
 
         multi_args = zip(bait_list, repeat(imputed),
         repeat(exclusion), repeat(std_enrich), repeat(mean), repeat(True))
@@ -288,7 +316,6 @@ class AnalysisTables:
         enrichs.columns = pd.MultiIndex.from_tuples(new_cols)
 
         self.enrichment_table = enrichs
-
 
 
     def convert_to_standard_table(self, metrics=['pvals', 'enrichment'],
