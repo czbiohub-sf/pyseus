@@ -535,7 +535,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
         if control_opt == 'manual':
             control_matrix = pd.read_json(control_matrix_json)
 
-            analysis = pa.AnalysisTables(imputed_table=grouped,
+            analysis = pa.AnalysisTables(grouped_table=grouped,
                 exclusion_matrix=control_matrix)
             analysis.simple_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=True, perseus=False)
@@ -545,7 +545,7 @@ def calculate_significance(n_clicks, load_clicks, control_opt,
 
 
         elif control_opt == 'automatic':
-            analysis = pa.AnalysisTables(imputed_table=grouped)
+            analysis = pa.AnalysisTables(grouped_table=grouped)
             analysis.two_step_bootstrap_pval_enrichment(std_enrich=enrichment_opt)
             analysis.convert_to_standard_table(experiment=False, simple_analysis=False, perseus=False)
 
@@ -823,6 +823,7 @@ def populate_volcano_samples(hits_button, loads_button, session_id):
 
 
 @app.callback(
+    Output('vol_internal_annot', 'value'),
     Output('vol_annot_table_upload', 'children'),
     Output('vol_annot_table_upload', 'style'),
     Input('vol_annot_table_upload', 'filename'),
@@ -833,23 +834,30 @@ def display_merge_filename(filename, style):
         raise PreventUpdate
     else:
         style = cycle_style_colors(style)
-        return filename, style
+        return 'nots', filename, style
 
 
 @app.callback(
     Output('vol_merge_key_annot', 'options'),
     Output('vol_external_annot', 'options'),
+    Input('vol_internal_annot', 'value'),
     Input('vol_annot_table_upload', 'contents'),
-    State('vol_annot_table_upload', 'filename')
+    State('vol_annot_table_upload', 'filename'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
 
 )
-def fill_external_keys(content, filename):
+def fill_external_keys(internal, content, filename, session_id):
     """
     populate dropdown options from uploaded annotation table
     """
-    if content is None:
-        raise PreventUpdate
-    else:
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Condition for processing uploaded table
+    if button_id == 'annot_table_upload':
+
         # parse txt (tsv) file as pd df from upload
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
@@ -860,6 +868,17 @@ def fill_external_keys(content, filename):
 
         cols = list(annot_table)
         # feature checklist options
+        opts = [{'label': feature, 'value': feature}
+            for feature in cols if "Unnamed" not in feature]
+
+        return opts, opts
+
+    elif button_id == 'vol_internal_annot':
+        if internal == 'manu':
+            annot_table = saved_processed_table(session_id + 'manu')
+        elif internal == 'itzhak':
+            annot_table = saved_processed_table(session_id + 'itzhak')
+        cols = list(annot_table)
         opts = [{'label': feature, 'value': feature}
             for feature in cols if "Unnamed" not in feature]
 
@@ -876,11 +895,12 @@ def fill_external_keys(content, filename):
     State('vol_external_annot', 'value'),
     State('vol_annot_label', 'value'),
     State('vol_merge_button', 'style'),
+    State('vol_internal_annot', 'value'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
 def merge_tables(n_clicks, content, filename,
-        feature_key, annot_key, annot_col, annot_label, button_style, session_id):
+        feature_key, annot_key, annot_col, annot_label, button_style, internal, session_id):
     """
     Load umap table from cache, and merge it with external annotation table.
     Save merged series to client-side.
@@ -890,15 +910,21 @@ def merge_tables(n_clicks, content, filename,
         raise PreventUpdate
 
     button_style = cycle_style_colors(button_style)
+    # load pre-loaded tables
+    if internal == 'manu':
+        annot_table = saved_processed_table(session_id + 'manu')
+    elif internal == 'itzhak':
+        annot_table = saved_processed_table(session_id + 'itzhak')
+    # load uploaded table
+    else:
+        # parse txt (tsv) file as pd df from upload
+        content_type, content_string = content.split(',')
+        decoded = base64.b64decode(content_string)
 
-    # parse txt (tsv) file as pd df from upload
-    content_type, content_string = content.split(',')
-    decoded = base64.b64decode(content_string)
-
-    if 'csv' in filename:
-        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-    elif 'tsv' in filename or 'txt' in filename:
-        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
+        if 'csv' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif 'tsv' in filename or 'txt' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
 
     annot_table = annot_table[[annot_key, annot_col]]
 

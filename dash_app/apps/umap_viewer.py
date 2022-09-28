@@ -359,6 +359,7 @@ def return_feature_selections(transpose_clicks, um_features_json,
 
 
 @app.callback(
+    Output('internal_annot', 'value'),
     Output('annot_table_upload', 'children'),
     Output('annot_table_upload', 'style'),
     Input('annot_table_upload', 'filename'),
@@ -369,23 +370,30 @@ def display_merge_filename(filename, style):
         raise PreventUpdate
     else:
         style = cycle_style_colors(style)
-        return filename, style
+        return 'nots', filename, style
 
 
 @app.callback(
     Output('merge_key_annot', 'options'),
     Output('external_annot', 'options'),
+    Input('internal_annot', 'value'),
     Input('annot_table_upload', 'contents'),
-    State('annot_table_upload', 'filename')
+    State('annot_table_upload', 'filename'),
+    State('session_id', 'data'),
+    prevent_initial_call=True
 
 )
-def fill_external_keys(content, filename):
+def fill_external_keys(internal, content, filename, session_id):
     """
     populate dropdown options from uploaded annotation table
     """
-    if content is None:
-        raise PreventUpdate
-    else:
+    # get the context of the callback trigger
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Condition for processing uploaded table
+    if button_id == 'annot_table_upload':
+
         # parse txt (tsv) file as pd df from upload
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
@@ -401,6 +409,20 @@ def fill_external_keys(content, filename):
 
         return opts, opts
 
+    elif button_id == 'internal_annot':
+        if internal == 'manu':
+            annot_table = saved_processed_table(session_id + 'manu')
+        elif internal == 'itzhak':
+            annot_table = saved_processed_table(session_id + 'itzhak')
+        cols = list(annot_table)
+        opts = [{'label': feature, 'value': feature}
+            for feature in cols if "Unnamed" not in feature]
+
+        return opts, opts
+
+
+
+
 
 @app.callback(
     Output('merge_button', 'style'),
@@ -412,11 +434,12 @@ def fill_external_keys(content, filename):
     State('external_annot', 'value'),
     State('annot_label', 'value'),
     State('merge_button', 'style'),
+    State('internal_annot', 'value'),
     State('session_id', 'data'),
     prevent_initial_call=True
 )
 def merge_tables(n_clicks, content, filename,
-        feature_key, annot_key, annot_col, annot_label, button_style, session_id):
+        feature_key, annot_key, annot_col, annot_label, button_style, internal, session_id):
     """
     Load umap table from cache, and merge it with external annotation table.
     Save merged series to client-side.
@@ -427,14 +450,21 @@ def merge_tables(n_clicks, content, filename,
 
     button_style = cycle_style_colors(button_style)
 
-    # parse txt (tsv) file as pd df from upload
-    content_type, content_string = content.split(',')
-    decoded = base64.b64decode(content_string)
+    # load pre-loaded tables
+    if internal == 'manu':
+        annot_table = saved_processed_table(session_id + 'manu')
+    elif internal == 'itzhak':
+        annot_table = saved_processed_table(session_id + 'itzhak')
+    # load uploaded table
+    else:
+        # parse txt (tsv) file as pd df from upload
+        content_type, content_string = content.split(',')
+        decoded = base64.b64decode(content_string)
 
-    if 'csv' in filename:
-        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-    elif 'tsv' in filename or 'txt' in filename:
-        annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
+        if 'csv' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif 'tsv' in filename or 'txt' in filename:
+            annot_table = pd.read_csv(io.StringIO(decoded.decode('utf-8')), sep='\t')
 
     annot_table = annot_table[[annot_key, annot_col]]
 

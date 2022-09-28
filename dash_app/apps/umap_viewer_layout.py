@@ -517,6 +517,37 @@ def plotting_layout():
                     'fontSize': 13,
                     'textAlign': 'center'
                 }),
+            html.Hr(style={'marginTop': '0%', 'marginBottom': '0%'}),
+            html.Div([
+                html.P('or use pre-loaded labels',
+                    style={
+                        'textAlign': 'right',
+                        'marginTop': '3.5%',
+                        'vertical-align': 'top',
+                        'width': '35%',
+                        'fontSize': 16,
+                        'display': 'inline-block'}),
+                dcc.Dropdown(id='internal_annot',
+                    placeholder='Choose annots',
+                    options=[
+                        {'label': 'Manu_truths_2.4', 'value': 'manu'},
+                        {'label': 'Itzhak_ground_truths', 'value': 'itzhak'},
+                        {'label': 'not using pre-load', 'value': 'nots'}],
+                    style={
+                        # 'marginLeft': '2%',
+                        'marginTop': '1.5%',
+                        'vertical-align': 'center',
+                        'textAlign': 'center',
+                        'width': '65%',
+                        'display': 'inline-block'})],
+
+                style={
+                    'marginLeft': '5%',
+                    'vertical-align': 'top',
+                    'display': 'inline-block',
+                    'width': '90%'}),
+
+            html.Hr(style={'marginTop': '1%', 'marginBottom': '0%'}),
             html.Div([
                 html.P('Merge-key: feature table',
                     style={
@@ -598,7 +629,7 @@ def plotting_layout():
         ], style={
             'vertical-align': 'top',
             'display': 'inline-block',
-            'height': '300px',
+            'height': '340px',
             'width': '47%'}),
 
 

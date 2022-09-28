@@ -8,8 +8,11 @@ import re
 import pandas as pd
 import numpy as np
 import anndata as ad
+import ternary
 from multiprocessing import Pool
 from itertools import repeat
+import matplotlib.pyplot as plt
+
 
 from pyseus import basic_processing as bp
 from pyseus import primary_analysis as pa
@@ -134,9 +137,10 @@ class SpatialTables():
         self.raw_corrs = sample_corrs
 
 
-    def new_corr_ARI(self, labels, reference, repeat=5, quant_cols=None,
+    def new_corr_ARI(self, labels, reference, repeat=5, label_col='organelle',
+            merge_col='protein', quant_cols=None, gene_col='Gene names',
             balance_num=68, just_enrichment=False, table_provided=False, def_res=None,
-            n_neighbors=None):
+            n_neighbors=None, std_enrich=True):
         """
         this method is a mess. Need to clean up later.
         """
@@ -154,7 +158,7 @@ class SpatialTables():
             analysis.grouped_table = grouped
 
 
-            analysis.simple_pval_enrichment()
+            analysis.simple_pval_enrichment(std_enrich=std_enrich)
             analysis.convert_to_enrichment_table(enrichment='enrichment', simple_analysis=True)
             enrichments = analysis.enrichment_table.copy()
             self.corr_pval_table = analysis.simple_pval_table.copy()
@@ -172,10 +176,10 @@ class SpatialTables():
 
             # balance labels
             new_labels = []
-            label_counts = labels['organelle'].value_counts()
+            label_counts = labels[label_col].value_counts()
 
             for label in reference:
-                label_sampling = labels[labels['organelle'] == label]
+                label_sampling = labels[labels[label_col] == label]
                 if label_counts[label] > balance_num:
                     label_sampling = label_sampling.sample(balance_num)
                 new_labels.append(label_sampling)
@@ -183,7 +187,7 @@ class SpatialTables():
             new_labels = pd.concat(new_labels).reset_index(drop=True)
 
 
-            enrichments.rename({'Gene names': 'gene_names'}, axis=1, inplace=True)
+            enrichments.rename({gene_col: 'gene_names'}, axis=1, inplace=True)
             metadata = enrichments['metadata'].copy()
 
             # merge organelle labels by finding all matching proteins in proteingroups
@@ -191,10 +195,10 @@ class SpatialTables():
             for _, row in metadata.iterrows():
                 # combinations of gene names are attached by semicolons
                 genes = str(row.gene_names).split(';')
-                label_match = new_labels[new_labels['protein'].isin(genes)]
+                label_match = new_labels[new_labels[merge_col].isin(genes)]
                 if label_match.shape[0] > 0:
                     # take (usually only) matching organelle
-                    organelles.append(label_match['organelle'].iloc[0])
+                    organelles.append(label_match[label_col].iloc[0])
                 else:
                     organelles.append('none')
 
@@ -519,6 +523,271 @@ class RForestScoring():
         precision_table = pd.DataFrame(precision_table, index=[exp])
 
         return recall_table, precision_table
+
+
+class InfectedViz():
+    """
+    This is a class used for visualisations of TIC at organelle,
+    N/O/C, and whole cell level.
+    """
+
+    def __init__(self, diff_table=None, whole_cell=None, whole_medians=None, nocs=None,
+            query_prot=None):
+        self.diff_table = diff_table
+        self.whole_cell = whole_cell
+        self.whole_meds = whole_medians
+        self.nocs = nocs
+        self.query = query_prot
+
+    def single_prot_orgip_bars(self, pval_thresh=2, wt=False,
+            ylim=[-8, 4], figsize=(10, 5), style='ggplot'):
+        """
+        create a bar chart for a single protein's enrichment/depletion in org_IPs
+        """
+        diffs = self.diff_table.copy()
+
+        # query org_ip rows with the matching target name
+        search = diffs[diffs['Gene names'] == self.query]
+
+        # methods if there is no exact match
+        if search.shape[0] == 0:
+            search = diffs[diffs['Gene names'].apply(lambda x: self.query in x)]
+
+            if search.shape[0] == 0:
+                print("no exact or similar match found, try another search.")
+                return
+        else:
+            # if there is more than one match
+            found_preys = search['Gene names'].unique()
+            if len(found_preys) > 1:
+                print('Multiple gene names found in that search, try one of the following:')
+                print(found_preys)
+                return
+
+        search.reset_index(drop=True, inplace=True)
+
+        if wt is False:
+            # remove WTs
+            samples = search[~search['target'].apply(lambda x: 'WT' in x)].copy()
+        else:
+            samples = search.copy()
+
+        samples['target'] = samples['target'].apply(lambda x: x.split('-')[1])
+
+        # find org-IPs where the protein was significantly and save the data
+        sigs = samples[samples['pvals'] >= pval_thresh]
+        sig_pts = []
+        for i, row in sigs.iterrows():
+            idx = row.name
+            enrich = row.enrichment
+            sig_pts.append([idx, enrich])
+
+        # generate figure
+        plt.style.use(style)
+        fig = samples.plot.bar(x='target', y='enrichment', figsize=figsize)
+        fig.set_ylim(ylim)
+        fig.set_ylabel('Differential Abundance (log2)', fontsize=14)
+        fig.set_xlabel('Org-IP Pulldown', fontsize=14)
+        plt.yticks(fontsize=13)
+        _ = plt.xticks(rotation=45, fontsize=12)
+        fig.get_legend().remove()
+        sig_lim = 10 ** (-1 * pval_thresh)
+        fig.annotate('* : p-val < ' + str(sig_lim), xy=(0.8, 0.95), xycoords='figure fraction',
+                    size=14, ha='right', va='top',
+                    bbox=dict(boxstyle='round', fc='w'))
+
+        for sig in sig_pts:
+            if sig[1] > 0:
+                _ = plt.text(x=sig[0] - .15, y=sig[1] + .2, s='*', fontsize=20)
+            if sig[1] < 0:
+                _ = plt.text(x=sig[0] - .15, y=sig[1] - 1, s='*', fontsize=20)
+
+        return fig
+
+    def whole_cell_protein_metrics(self, show=True):
+        """
+        return bar plots and histograms on whole cell abundances of the
+        specific protein
+        """
+        whole = self.whole_cell.copy()
+
+        # query org_ip rows with the matching target name
+        search = whole[whole['Gene names'] == self.query]
+
+        # methods if there is no exact match
+        if search.shape[0] == 0:
+            search = whole[whole['Gene names'].apply(lambda x: self.query in x)]
+
+            if search.shape[0] == 0:
+                print("no exact or similar match found, try another search.")
+                return
+        else:
+            # if there is more than one match
+            found_preys = search['Gene names'].unique()
+            if len(found_preys) > 1:
+                print('Multiple gene names found in that search, try one of the following:')
+                print(found_preys)
+                return
+        search.reset_index(drop=True, inplace=True)
+
+        # this is a very hacky way of finding infected vs uninfected
+        # will address later
+        infecteds = [x for x in list(search) if x[:3] == 'inf']
+        uninfs = [x for x in list(search) if x[:3] == 'uni']
+
+        infected = search[infecteds].T.stack().values
+        uninfected = search[uninfs].T.stack().values
+
+        inf_mean = np.mean(infected)
+        inf_std = np.std(infected)
+        uninf_mean = np.mean(uninfected)
+        uninf_std = np.std(uninfected)
+
+        # save the calculations for uses in other methods
+        self.whole_cell_infected_mean = inf_mean
+        self.whole_cell_infected_std = inf_std
+        self.whole_cell_uninfected_mean = uninf_mean
+        self.whole_cell_uninfected_std = uninf_std
+
+        means = [uninf_mean, inf_mean]
+        errs = [uninf_std, inf_std]
+
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(figsize=(4, 5))
+        barlist = ax.bar([0, 1], means, yerr=errs, align='center',
+            alpha=0.9, ecolor='black', capsize=10, width=0.5)
+
+        barlist[0].set_color('#00a5ff')
+        barlist[1].set_color('#dc0000b2')
+
+        ax.yaxis.grid(True)
+
+        # Save the figure and show
+        plt.title(self.query + ' Abundance')
+        plt.ylabel('Abundance (log2 intensity)', fontsize=13)
+        plt.xticks([0, 1], ['Uninfected', 'Infected'], fontsize=14)
+        plt.xlim(-0.5, 1.5)
+        plt.ylim([0, 30])
+        plt.tight_layout()
+        if show is False:
+            plt.close(fig)
+
+        return fig
+
+    def whole_prot_vs_hists(self, diffs=False):
+        """
+        plot the single protein data on top of the proteome histogram
+        """
+        whole_meds = self.whole_meds.copy()
+        inf_mean = self.whole_cell_infected_mean
+        uninf_mean = self.whole_cell_uninfected_mean
+
+        if diffs is True:
+            fig = whole_meds['diffs'].plot.hist(bins=200, alpha=0.6, density=True,
+                figsize=(9, 5), color='#8491b4b2', label='All proteins')
+            plt.xlim(-8, 8)
+            plt.title('Distribution of the Infected vs Control abundance')
+            plt.ylabel('Frequency', fontsize=14)
+            plt.yticks([])
+            plt.xlabel('Difference (log2)', fontsize=14)
+            plt.xticks(fontsize=14)
+            plt.axvline(inf_mean - uninf_mean,
+                color='#dc0000b2', label='Diff. in ' + self.query, linewidth=3)
+            _ = plt.legend(fontsize=13)
+            return fig
+
+        else:
+            fig = whole_meds['uninfected-whole'].plot.hist(bins=70, alpha=0.8, density=True,
+                figsize=(9, 5), color='#8491b4b2', label='Uninfected')
+            plt.title('Intensity distribution of the HEK293 proteome')
+            plt.ylabel('Frequency', fontsize=14)
+            plt.yticks([])
+            plt.xlabel('Abundance (log2 intensity)', fontsize=14)
+            plt.axvline(inf_mean, color='#dc0000b2', label=self.query + ' - infected', linewidth=3)
+            plt.axvline(uninf_mean, color='#00a5ff', label=self.query + ' - uninfected', linewidth=3)
+            plt.legend(fontsize=13)
+            _ = plt.xticks(fontsize=14)
+
+            return fig
+
+    def ternary_prot(self):
+
+        nocs = self.nocs.copy()
+        # query org_ip rows with the matching target name
+        search = nocs[nocs['Gene names'] == self.query]
+
+        # methods if there is no exact match
+        if search.shape[0] == 0:
+            search = nocs[nocs['Gene names'].apply(lambda x: self.query in x)]
+
+            if search.shape[0] == 0:
+                print("no exact or similar match found, try another search.")
+                return
+        else:
+            # if there is more than one match
+            found_preys = search['Gene names'].unique()
+            if len(found_preys) > 1:
+                print('Multiple gene names found in that search, try one of the following:')
+                print(found_preys)
+                return
+        search.reset_index(drop=True, inplace=True)
+
+        # get nocs for uninfected and infected
+        uninf_nocs = search[['NOC2-cytosolic', 'NOC2-organellar',
+            'NOC2-nuclear']].T.stack().values
+        inf_nocs = search[['NOC2-infected-cytosolic', 'NOC2-infected-organellar',
+            'NOC2-infected-nuclear']].T.stack().values
+
+        plt.style.use('default')
+        # Boundary and Gridlines
+        scale = 1
+        figure, tax = ternary.figure(scale=scale)
+
+
+        figure.set_figheight(6)
+        figure.set_figwidth(6.6)
+
+        tax.boundary(linewidth=2.0)
+        tax.gridlines(color="black", multiple=0.2, linewidth=1)
+        tax.gridlines(color="black", multiple=0.1, linewidth=0.25)
+
+        # Set ticks
+        tax.ticks(axis='lbr', multiple=0.2, linewidth=2, offset=0.03,
+        tick_formats="%.1f", fontsize=14)
+
+        fontsize = 16
+        # axis labels
+        tax.left_axis_label("1K Fraction", fontsize=fontsize, position=[-.12, 0.22, 0.4])
+        tax.right_axis_label("24K Fraction", fontsize=fontsize, position=[0.06, 1.12, 0])
+        tax.bottom_axis_label("Supernatant", fontsize=fontsize, position=[1, -.055, 0.5])
+        tax._redraw_labels()
+
+        # scatterplot C, N, O
+        tax.scatter([uninf_nocs], s=140, color='#8491b4b2', label='Uninfected', alpha=1)
+        tax.scatter([inf_nocs], s=140, color='#e64b35b2', label='Infected', alpha=1)
+
+        # legend
+        tax.legend(loc='upper left', fontsize=12)
+
+        # organellar line
+        p1 = (0.15, 0.3, 0)
+        p2 = (0, 0.3, 0)
+        tax.line(p1, p2, linewidth=3, linestyle='--')
+        p3 = (0.15, 0.85, 0)
+        p4 = (0.15, 0.3, 0)
+
+        tax.line(p3, p4, linewidth=3, linestyle='--')
+
+        # nuclear line
+        tax.right_parallel_line(0.85, linewidth=3, color='#dc0000b2', linestyle='--')
+        tax.left_parallel_line(0.85, linewidth=3, color='#7cae00', linestyle='--')
+
+        plt.box(on=None)
+        tax.clear_matplotlib_ticks()
+
+        return tax
+
+
 
 
 def calculate_max_ari(adata, n_neighbors, ground_truth_label, res, n_random_states, def_res=None):

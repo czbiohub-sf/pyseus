@@ -39,9 +39,12 @@ layout = html.Div([
     html.Hr(),
     html.P('This web-app package includes data exploratory tools specific for mass-spec outputs.\
         Please use the drop-down menu on the top-right to navigate to different tools.\
-        For documentation on how to use the tools, please visit here.',
+        For documentation on how to use the tools, please visit here:',
         style={'textAlign': 'center', 'fontSize': 18, 'marginTop': '2%',
             'marginBottom': '1%', 'marginLeft': '15%', 'width': '70%'}),
+    dcc.Link('Pyseus Read-the-docs', href='https://pyseus-czb.readthedocs.io/en/main/',
+        style={'textAlign': 'center', 'fontSize': 18,
+            'marginBottom': '1%', 'marginLeft': '65%', 'width': '35%'}),
 
     html.Hr(style={'marginTop': '2%', 'marginBottom': '2%'}),
 

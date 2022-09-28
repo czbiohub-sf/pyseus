@@ -50,7 +50,7 @@ class AnalysisTables:
         self.exclusion_matrix = exclusion_matrix
 
         # if the preprocessed table is not grouped, use group function
-        if grouped_table:
+        if grouped_table is not None:
             self.grouped_table = grouped_table
         elif auto_group:
             # use RawTables class to group replicates
@@ -186,6 +186,17 @@ class AnalysisTables:
         if custom:
             bait_list = list(exclusion)
             bait_list.remove('Samples')
+
+            # select only cols in the custom exclusion mat
+            all_cols = []
+            for col in list(imputed):
+                if col[0] == 'metadata':
+                    all_cols.append(col)
+                elif col[0] in bait_list:
+                    all_cols.append(col)
+
+            imputed = imputed[all_cols].copy()
+
         else:
             # iterate through each cluster to generate neg con group
             bait_list = [col[0] for col in list(imputed) if col[0] != 'metadata']
@@ -433,6 +444,8 @@ def calculate_pval(bait, df, exclusion, std_enrich=True, mean=False,
         excluded = excluded[['Samples', bait]]
         excluded = excluded[~excluded[bait]]
 
+
+
         if excluded.shape[0] > 0:
             exclude_list = excluded['Samples'].to_list()
 
@@ -562,3 +575,27 @@ def calc_thresh(enrich, curvature, offset):
 
     else:
         return curvature / (abs(enrich) - offset)
+
+
+def standard_to_wide_table(df, metric='enrichment', bait='target',
+        metadata=['Protein IDs', 'Gene names']):
+
+    df = df.copy()
+    targets = df[bait].unique()
+    targets.sort()
+
+    to_concat = []
+    for i, target in enumerate(targets):
+        selection = df[df[bait] == target]
+        # save metadata
+        if i == 0:
+            meta = selection[metadata].reset_index(drop=True).copy()
+            to_concat.append(meta)
+        series = selection[[metric]].reset_index(drop=True).copy()
+        series.rename(columns={metric: target}, inplace=True)
+        to_concat.append(series)
+
+    new_wide = pd.concat(to_concat, axis=1)
+    new_wide.reset_index(drop=True, inplace=True)
+
+    return new_wide

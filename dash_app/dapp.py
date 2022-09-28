@@ -30,7 +30,6 @@ cache = Cache(app.server, config={
 })
 
 
-
 @cache.memoize(args_to_ignore=['processed_table'])
 def save_processed_table(session_id, processed_table):
     """

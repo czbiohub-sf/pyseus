@@ -6,6 +6,7 @@ import uuid
 import base64
 
 from dapp import app
+from dapp import saved_processed_table
 
 
 import pandas as pd
@@ -110,6 +111,15 @@ app.validation_layout = html.Div([
     volc_plot_layout,
     home.layout
 ])
+
+# open and cache preload ground truths
+itzhak = pd.read_csv('preload_annots/dan_organelle_truths_20220707.csv')
+manu = pd.read_csv('preload_annots/MLgroup_organelle_curation_2.4.csv')
+
+saved_processed_table(session_id + 'itzhak', itzhak)
+saved_processed_table(session_id + 'manu', manu)
+
+
 
 
 @app.callback(Output('page-content', 'children'),
