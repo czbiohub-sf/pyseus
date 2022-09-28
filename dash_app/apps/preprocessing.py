@@ -504,6 +504,8 @@ def download_ms_table(n_clicks, save_name, button_style, session_id):
     """
     if n_clicks is None:
         raise PreventUpdate
+    if save_name is None:
+        save_name = 'unnamed_preprocessed_table.csv'
 
     slot_id = session_id + 'processed'
     download = saved_processed_table(slot_id)
