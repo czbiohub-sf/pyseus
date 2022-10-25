@@ -44,6 +44,12 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 from dapp import app
 from dapp import saved_processed_table, cycle_style_colors, query_panther, collapsible_style
 
+
+# open and cache preload ground truths
+itzhak = pd.read_csv(head + '/dash_app/preload_annots/dan_organelle_truths_20220707.csv')
+manu = pd.read_csv(head + '/dash_app/preload_annots/MLgroup_organelle_curation_2.5.csv')
+
+
 # App Layout
 layout = html.Div([
     # Header tags
@@ -875,9 +881,9 @@ def fill_external_keys(internal, content, filename, session_id):
 
     elif button_id == 'vol_internal_annot':
         if internal == 'manu':
-            annot_table = saved_processed_table(session_id + 'manu')
+            annot_table = manu.copy()
         elif internal == 'itzhak':
-            annot_table = saved_processed_table(session_id + 'itzhak')
+            annot_table = itzhak.copy()
         cols = list(annot_table)
         opts = [{'label': feature, 'value': feature}
             for feature in cols if "Unnamed" not in feature]
@@ -912,9 +918,9 @@ def merge_tables(n_clicks, content, filename,
     button_style = cycle_style_colors(button_style)
     # load pre-loaded tables
     if internal == 'manu':
-        annot_table = saved_processed_table(session_id + 'manu')
+        manu.copy()
     elif internal == 'itzhak':
-        annot_table = saved_processed_table(session_id + 'itzhak')
+        itzhak.copy()
     # load uploaded table
     else:
         # parse txt (tsv) file as pd df from upload

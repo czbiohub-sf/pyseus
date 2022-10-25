@@ -43,6 +43,10 @@ transposed_annots = ('sample')
 from dapp import app
 from dapp import saved_processed_table, cycle_style_colors, query_panther, collapsible_style
 
+# open and cache preload ground truths
+itzhak = pd.read_csv(head + '/dash_app/preload_annots/dan_organelle_truths_20220707.csv')
+manu = pd.read_csv(head + '/dash_app/preload_annots/MLgroup_organelle_curation_2.5.csv')
+
 
 def multiple_searches(value, search_str):
     search_str = search_str.replace(',', ';')
@@ -411,9 +415,9 @@ def fill_external_keys(internal, content, filename, session_id):
 
     elif button_id == 'internal_annot':
         if internal == 'manu':
-            annot_table = saved_processed_table(session_id + 'manu')
+            annot_table = manu.copy()
         elif internal == 'itzhak':
-            annot_table = saved_processed_table(session_id + 'itzhak')
+            annot_table = itzhak.copy()
         cols = list(annot_table)
         opts = [{'label': feature, 'value': feature}
             for feature in cols if "Unnamed" not in feature]
@@ -452,9 +456,9 @@ def merge_tables(n_clicks, content, filename,
 
     # load pre-loaded tables
     if internal == 'manu':
-        annot_table = saved_processed_table(session_id + 'manu')
+        annot_table = manu.copy()
     elif internal == 'itzhak':
-        annot_table = saved_processed_table(session_id + 'itzhak')
+        annot_table = itzhak.copy()
     # load uploaded table
     else:
         # parse txt (tsv) file as pd df from upload
@@ -743,13 +747,14 @@ def populate_options(input_1, input_2, input_3, input_4, features_json, session_
     State('opacity', 'value'),
     State('x_select', 'value'),
     State('y_select', 'value'),
+    State('annot_cat', 'value'),
     State('plot_button', 'style'),
     State('session_id', 'data'),
 
     prevent_initial_call=True
 )
 def plot_umap(n_clicks, search_clicks, search_term, search_style, label, annot,
-        marker_color, opacity, x_val, y_val, button_style, session_id):
+        marker_color, opacity, x_val, y_val, annot_cat, button_style, session_id):
 
     umap_slot = session_id + 'completed'
     if n_clicks is None and search_clicks is None:
@@ -779,9 +784,15 @@ def plot_umap(n_clicks, search_clicks, search_term, search_style, label, annot,
 
 
     else:
+        if annot_cat == 'cat':
+            annot_cat = True
+        else:
+            annot_cat = False
+
         # umap generation
         fig = pu.interaction_umap(umap_table, node_name=label, cluster=annot,
-            unlabelled_color=marker_color, unlabelled_opacity=opacity, x=x_val, y=y_val)
+            unlabelled_color=marker_color, unlabelled_opacity=opacity, x=x_val, y=y_val,
+            categorical=annot_cat)
 
         button_style = cycle_style_colors(button_style)
 

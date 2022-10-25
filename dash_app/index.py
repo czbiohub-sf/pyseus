@@ -114,7 +114,7 @@ app.validation_layout = html.Div([
 
 # open and cache preload ground truths
 itzhak = pd.read_csv('preload_annots/dan_organelle_truths_20220707.csv')
-manu = pd.read_csv('preload_annots/MLgroup_organelle_curation_2.4.csv')
+manu = pd.read_csv('preload_annots/MLgroup_organelle_curation_2.5.csv')
 
 saved_processed_table(session_id + 'itzhak', itzhak)
 saved_processed_table(session_id + 'manu', manu)
