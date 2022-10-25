@@ -45,7 +45,8 @@ def scale_table(matrix, method):
 def interaction_umap(
         matrix, node_name, cluster, x='umap_1', y='umap_2', opacity=0.95,
         width=800, height=600, highlight=None, unlabelled_color='#D0D3D4',
-        unlabelled_opacity=0.1, hover_data=None, unlabelled_hover=True, search=False):
+        unlabelled_opacity=0.1, hover_data=None, unlabelled_hover=True, search=False,
+        categorical=True):
 
     matrix = matrix.copy()
     matrix.reset_index(inplace=True, drop=False)
@@ -79,12 +80,12 @@ def interaction_umap(
     else:
         labelling = matrix[cluster].isna()
         labelled = matrix[~labelling]
-        labelled[cluster] = labelled[cluster].astype(str)
+        if categorical:
+            labelled[cluster] = labelled[cluster].astype(str)
         unlabelled = matrix[labelling]
         unlabelled[cluster] = 'unlabelled'
 
         labelled.sort_values(by=cluster, inplace=True)
-
 
         fig2 = px.scatter(
             unlabelled,
@@ -124,8 +125,10 @@ def interaction_umap(
 
 
 
-
-        fig = go.Figure(data=fig2.data + fig1.data)
+        if categorical:
+            fig = go.Figure(data=fig2.data + fig1.data)
+        else:
+            fig = go.Figure(data=fig1.data)
 
         # if highlight:
         #     labelled = matrix[matrix[node_name].isin(highlight)]

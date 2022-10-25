@@ -478,7 +478,7 @@ def plotting_layout():
 
         ], style={
             'display': 'inline-block',
-            'height': '280px',
+            'height': '360px',
             'borderRight': '1px #A6ACAF solid',
             'marginLeft': '5%',
             'width': '45%',
@@ -629,7 +629,7 @@ def plotting_layout():
         ], style={
             'vertical-align': 'top',
             'display': 'inline-block',
-            'height': '340px',
+            'height': '360px',
             'width': '47%'}),
 
 
@@ -637,6 +637,7 @@ def plotting_layout():
             id='label_section', style={
                 'border': '0px',
                 'width': '80%',
+                'marginTop': '1%',
                 'marginLeft': '10%',
                 'background-color': '#e8e8e8',
                 'fontSize': 18}),
@@ -747,7 +748,7 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '160px',
+                    'height': '180px',
                     'marginLeft': '2%',
                     'width': '34%',
                     'borderRight': '1px #A6ACAF solid'}),
@@ -817,7 +818,7 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '160px',
+                    'height': '180px',
                     'marginTop': '1%',
                     'width': '40%',
                     'borderRight': '1px #A6ACAF solid'}),
@@ -839,7 +840,7 @@ def plotting_layout():
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '160px',
+                    'height': '180px',
                     'marginTop': '1%',
                     'marginLeft': '1%',
                     'width': '22%'}),
@@ -864,8 +865,8 @@ def plotting_layout():
             'display': 'inline-block',
             'verticalAlign': 'top',
             'marginTop': '2%',
-            'width': '35%',
-            'marginLeft': '15%'}),
+            'width': '30%',
+            'marginLeft': '10%'}),
 
         html.Div([
             html.P('Select annotations',
@@ -884,8 +885,24 @@ def plotting_layout():
             'display': 'inline-block',
             'marginTop': '2%',
             'verticalAlign': 'top',
-            'width': '35%'}),
+            'width': '30%'}),
+        html.Div([
+            html.P('Annotation category',
+                style={'textAlign': 'center', 'fontSize': 16, 'marginLeft': '10%',
+                    'marginBottom': '1%', 'marginTop': '1%', 'width': '80%'}),
 
+            dcc.RadioItems(id='annot_cat', options=[
+                {'label': 'Categorical', 'value': 'cat'},
+                {'label': 'Numerical', 'value': 'num'},
+            ], labelStyle={'display': 'inline-block'},
+                value='cat',
+                style={'marginLeft': '22%', 'width': '60%', 'marginBottom': '2%',
+                    'fontSize': 14}),
+        ], style={
+            'display': 'inline-block',
+            'marginTop': '2%',
+            'verticalAlign': 'top',
+            'width': '20%'}),
 
         html.Hr(style={'marginTop': '1%', 'marginBottom': '1%'}),
 

@@ -411,28 +411,45 @@ class RForestScoring():
         return y_tested, y_predicted, classifier
 
 
-    def one_balance_scale_split_predict(self, ref):
+    def one_balance_scale_split_predict(self, ref, return_x_y=False, balance_multiplier=1,
+            max_sample=100):
         # initiate variables
         table = self.table.copy()
         ref_col = self.ref_col
         quant_cols = self.quant_cols.copy()
 
-        table.dropna(subset=quant_cols, inplace=True)
-        refs = table[ref_col].unique()
-        # remove nan
-        refs = refs[1:]
-        refs.sort()
-
         # count sample size for the reference being tested
-        sample = table[table[ref_col] == ref]
-        sample_size = sample.shape[0]
+        ref_sample = table[table[ref_col] == ref]
+        sample_size = ref_sample.shape[0]
 
         # balance reference with all other samples
-        others = table[table[ref_col] != ref]
-        others = others.sample(sample_size)
+        # balance other samples by annotation too
+        rest = table[table[ref_col] != ref]
+        rest = rest.dropna(subset=[ref_col])
+
+        # balance the rest of the annotations for training/test
+        refs = rest[ref_col].unique()
+        refs.sort()
+
+        # limit samples to max number alloted, this is semi-balancing
+        samples = []
+        for ref in refs:
+            sample = rest[rest[ref_col] == ref]
+            if sample.shape[0] <= max_sample:
+                samples.append(sample)
+            else:
+                random_sample = sample.sample(max_sample)
+                samples.append(random_sample)
+
+        # concat all the reference samples
+        others_balanced = pd.concat(samples).reset_index(drop=True)
+
+
+
+        others = others_balanced.sample(sample_size * balance_multiplier)
         others[ref_col] = 'Others'
 
-        balanced = pd.concat([sample, others]).reset_index(drop=True)
+        balanced = pd.concat([ref_sample, others]).reset_index(drop=True)
 
         labels = pd.factorize(balanced[ref_col])
         definitions = labels[1]
@@ -440,12 +457,14 @@ class RForestScoring():
         balanced['label'] = labels[0]
 
 
-
         X = balanced[quant_cols].values
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
         y = balanced['label'].values
+
+        if return_x_y:
+            return X_scaled, y, definitions
 
         # split and standard scale
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2)
