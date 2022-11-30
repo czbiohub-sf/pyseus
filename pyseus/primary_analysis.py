@@ -187,15 +187,6 @@ class AnalysisTables:
             bait_list = list(exclusion)
             bait_list.remove('Samples')
 
-            # select only cols in the custom exclusion mat
-            all_cols = []
-            for col in list(imputed):
-                if col[0] == 'metadata':
-                    all_cols.append(col)
-                elif col[0] in bait_list:
-                    all_cols.append(col)
-
-            imputed = imputed[all_cols].copy()
 
         else:
             # iterate through each cluster to generate neg con group

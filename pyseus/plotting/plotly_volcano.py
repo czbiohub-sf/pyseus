@@ -137,17 +137,6 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
             )
 
         else:
-            # FCD curve calculation
-            if fcd_curve:
-                fcd1 = bait_vals.iloc[0]['fdr']
-
-                x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
-                    + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
-                y1 = fcd1[0] / (abs(x1) - fcd1[1])
-
-                fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='fcd_line',
-                    line=dict(color='DarkSlateGrey', dash='dash')))
-
 
 
             # add significant hits
@@ -161,6 +150,19 @@ def volcano_plot(v_df, bait, plate, marker='prey', marker_mode=True, width=None,
 
 
             fig = go.Figure(data=fig2.data + fig1.data)
+
+            # FCD curve calculation
+            if fcd_curve:
+                fcd1 = bait_vals.iloc[0]['fdr']
+
+                x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
+                    + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
+                y1 = fcd1[0] / (abs(x1) - fcd1[1])
+
+                fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines', name='fcd_line',
+                    line=dict(color='DarkSlateGrey', dash='dash')))
+
+
 
 
 

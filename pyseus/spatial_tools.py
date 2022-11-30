@@ -160,9 +160,12 @@ class SpatialTables():
 
             analysis.simple_pval_enrichment(std_enrich=std_enrich)
             analysis.convert_to_enrichment_table(enrichment='enrichment', simple_analysis=True)
+            analysis.convert_to_standard_table(experiment=False, perseus=False)
+
             enrichments = analysis.enrichment_table.copy()
             self.corr_pval_table = analysis.simple_pval_table.copy()
             self.corr_enrichment_table = enrichments
+            self.corr_standard_table = analysis.standard_hits_table.copy()
             if just_enrichment:
                 return
         else:
@@ -559,7 +562,7 @@ class InfectedViz():
         self.query = query_prot
 
     def single_prot_orgip_bars(self, pval_thresh=2, wt=False,
-            ylim=[-8, 4], figsize=(10, 5), style='ggplot'):
+            ylim=[-8, 4], figsize=(10, 5), full_name=False, style='ggplot'):
         """
         create a bar chart for a single protein's enrichment/depletion in org_IPs
         """
@@ -591,7 +594,8 @@ class InfectedViz():
         else:
             samples = search.copy()
 
-        samples['target'] = samples['target'].apply(lambda x: x.split('-')[1])
+        if not full_name:
+            samples['target'] = samples['target'].apply(lambda x: x.split('-')[1])
 
         # find org-IPs where the protein was significantly and save the data
         sigs = samples[samples['pvals'] >= pval_thresh]
