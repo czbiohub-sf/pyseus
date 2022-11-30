@@ -918,9 +918,9 @@ def merge_tables(n_clicks, content, filename,
     button_style = cycle_style_colors(button_style)
     # load pre-loaded tables
     if internal == 'manu':
-        manu.copy()
+        annot_table = manu.copy()
     elif internal == 'itzhak':
-        itzhak.copy()
+        annot_table = itzhak.copy()
     # load uploaded table
     else:
         # parse txt (tsv) file as pd df from upload
