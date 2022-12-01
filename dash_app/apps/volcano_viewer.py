@@ -862,7 +862,7 @@ def fill_external_keys(internal, content, filename, session_id):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     # Condition for processing uploaded table
-    if button_id == 'annot_table_upload':
+    if button_id == 'vol_annot_table_upload':
 
         # parse txt (tsv) file as pd df from upload
         content_type, content_string = content.split(',')
