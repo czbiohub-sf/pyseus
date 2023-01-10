@@ -21,7 +21,7 @@ class RawTables:
     # initiate raw table by importing from data directory
     def __init__(self, experiment_dir='', analysis='', pg_file='proteinGroups.txt', info_cols=None,
             sample_cols=None, intensity_type='Intensity ', proteingroup=None,
-            file_designated=False):
+            file_designated=True):
         # set up root folders for the experiment and standard for comparison
         self.root = experiment_dir
         self.intensity_type = intensity_type
@@ -58,7 +58,7 @@ class RawTables:
         with open(file_dir, 'wb') as file_:
             pickle.dump(self, file_, -1)
 
-    def filter_table(self, select_intensity=True, verbose=True):
+    def filter_table(self, select_intensity=True, skip_filter=False, verbose=True):
         """filter rows that do not meet the QC (contaminants, reverse seq, only identified by site)
         Also filter non-intensity columns that will not be used for further processing"""
 
@@ -68,22 +68,23 @@ class RawTables:
             # if table has not been renamed use the raw pg table
             ms_table = self.pg_table.copy()
 
-        pre_filter = ms_table.shape[0]
+        if not skip_filter:
+            pre_filter = ms_table.shape[0]
 
-        # remove rows with potential contaminants
-        ms_table = ms_table[ms_table['Potential contaminant'].isna()]
+            # remove rows with potential contaminants
+            ms_table = ms_table[ms_table['Potential contaminant'].isna()]
 
-        # remove rows only identified by site
-        ms_table = ms_table[ms_table['Only identified by site'].isna()]
+            # remove rows only identified by site
+            ms_table = ms_table[ms_table['Only identified by site'].isna()]
 
-        # remove rows that are reverse seq
-        ms_table = ms_table[ms_table['Reverse'].isna()]
+            # remove rows that are reverse seq
+            ms_table = ms_table[ms_table['Reverse'].isna()]
 
-        filtered = pre_filter - ms_table.shape[0]
-        if verbose:
-            print("Filtered " + str(filtered) + ' of '
-                + str(pre_filter) + ' rows. Now '
-                + str(ms_table.shape[0]) + ' rows.')
+            filtered = pre_filter - ms_table.shape[0]
+            if verbose:
+                print("Filtered " + str(filtered) + ' of '
+                    + str(pre_filter) + ' rows. Now '
+                    + str(ms_table.shape[0]) + ' rows.')
 
         # select necessary columns
         if select_intensity:
@@ -406,23 +407,29 @@ class RawTables:
             index=False)
 
         # Create a boolean table
+        bools = []
         for bait in baits:
             bait_bools = [True if x != bait else False for x in baits]
-            bait_df[bait] = bait_bools
+            temp_bools = pd.DataFrame()
+            temp_bools[bait] = bait_bools
+            bools.append(temp_bools)
+        bait_df = pd.concat([bait_df] + bools, axis=1)
         self.bait_matrix = bait_df.copy()
         if export:
             self.bait_matrix.to_csv(self.root + self.analysis + '/analysis_exclusion_matrix.csv',
                 index=False)
 
 
-def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
-        intensity_type='LFQ intensity', bait_impute=True, distance=1.8, width=0.3,
-        thresh=100, local=True):
+def opencell_initial_processing(root, analysis, pg_file='proteinGroups.txt',
+        intensity_type='LFQ intensity', impute='bait', distance=1.8, width=0.3,
+        thresh=100, local=True, group_regexp=r'(P\d{3})(?:.\d{2})?(_.*)_\d{2}'):
 
     """
     wrapper script for all the pre-processing up to imputation using
     PyseusRawTables Class. Saves and returns the PyseusRawTables in the
     designated analysis directory
+
+    impute options: 'bait',
     """
     # make directory for analysis folder
     analysis_dir = root + analysis
@@ -435,11 +442,11 @@ def czb_initial_processing(root, analysis, pg_file='proteinGroups.txt',
         intensity_type=intensity_type, pg_file=pg_file)
     pyseus_tables.filter_table()
     pyseus_tables.transform_intensities(func=np.log2)
-    pyseus_tables.group_replicates(reg_exp=r'(.*_.*)_\d+$')
+    pyseus_tables.group_replicates(reg_exp=group_regexp)
     pyseus_tables.remove_invalid_rows()
-    if bait_impute:
+    if impute == 'bait':
         pyseus_tables.bait_impute(distance=distance, width=width, local=local)
-    else:
+    elif impute == 'prey':
         pyseus_tables.prey_impute(distance=distance, width=width, thresh=thresh)
     pyseus_tables.generate_export_bait_matrix()
     # pyseus_tables.save()
@@ -453,7 +460,7 @@ def load_raw_tables(file_dir):
     return pickle.load(open(file_dir, 'rb', -1))
 
 
-def select_intensity_cols(orig_cols, intensity_type):
+def select_intensity_cols(orig_cols, intensity_type, spacer=' '):
     """from table column names, return a list of only intensity cols
     rtype: intensity_cols list """
     # new list of intensity cols
@@ -470,7 +477,7 @@ def select_intensity_cols(orig_cols, intensity_type):
 
         # check if col name has intensity str
         if re.search(re_intensity, col):
-            sample = re.search(re_intensity + ' (.*)', col).groups()[1]
+            sample = re.search(re_intensity + spacer + '(.*)', col).groups()[1]
 
             intensity_cols.append(col)
             rename_cols.append(sample)
@@ -575,26 +582,28 @@ def median_replicates(imputed_df, mean=False, save_info=True, col_str=''):
     # retrieve bait names
     bait_names = [col[0] for col in list(imputed_df) if col[0] != 'metadata']
     bait_names = list(set(bait_names))
-    # initiate a new df for medians
-    median_df = pd.DataFrame()
+
 
     # for each bait calculate medain across replicates and add
     # to the new df
+    medians = []
     for bait in bait_names:
+        # initiate a new df for medians
+        median_cut = pd.DataFrame()
         if mean:
             bait_median = imputed_df[bait].mean(axis=1)
         else:
             bait_median = imputed_df[bait].median(axis=1)
         new_col_name = col_str + bait
-        median_df[new_col_name] = bait_median
+        median_cut[new_col_name] = bait_median
+        medians.append(median_cut)
+
+    median_df = pd.concat(medians, axis=1)
 
     if save_info:
         # get info columns into the new df
         info = imputed_df['metadata']
-        info_cols = list(info)
-
-        for col in info_cols:
-            median_df[col] = info[col]
+        median_df = pd.concat([median_df, info], axis=1)
 
     return median_df
 

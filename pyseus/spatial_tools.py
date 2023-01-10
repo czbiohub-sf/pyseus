@@ -147,8 +147,8 @@ class SpatialTables():
 
         if table_provided is False:
             # calculate pvals
-            analysis = pa.AnalysisTables(imputed_table=self.preprocessed_table,
-                auto_group=True, exclusion_matrix=self.corr_mat)
+            analysis = pa.AnalysisTables(grouped_table=self.preprocessed_table,
+                auto_group=False, exclusion_matrix=self.corr_mat)
 
             # remove all other samples not necesary for pval table
             grouped = analysis.grouped_table.copy()
