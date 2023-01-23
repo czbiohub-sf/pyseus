@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 from pyseus import basic_processing as bp
 from pyseus import primary_analysis as pa
 from pyseus import validation_analysis as va
+from pyseus import contrast_tools as ct
+from pyseus.plotting import plotly_heatmap as ph
 from external import clustering_workflows
 
 from multiprocessing import Queue
@@ -28,6 +30,7 @@ from scipy.stats import percentileofscore
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import NearestNeighbors as nns
 
 
 
@@ -911,6 +914,83 @@ class InfectedViz():
         return tax
 
 
+    def calculate_orgIP_nearest_neighbors(self, n_neighbors=21):
+
+        wide_diffs = standard_to_wide_table(self.diff_table)
+        head_diffs = ct.standard_pyseus_headers(wide_diffs)
+        self.head_diffs = head_diffs.copy()
+
+        quants = head_diffs['sample'].copy()
+        no_wts = [x for x in list(quants) if 'WT' not in x]
+
+        quants = quants[no_wts].copy()
+        nearest = nns(n_neighbors=n_neighbors)
+        nearest.fit(quants)
+
+        nearests = nearest.kneighbors(quants)
+
+        infected_nns = pd.DataFrame(nearests[1])
+        infected_nns['Gene names'] = wide_diffs['Gene names'].to_list()
+
+        self.infected_nns = infected_nns.copy()
+        self.n_neighbors = n_neighbors
+
+    def plot_orgIP_nearest_neighbors(self, query='GOLPH3L', zmin=-6, zmax=6):
+
+        try:
+            self.infected_nns.copy()
+
+        except AttributeError:
+            print("calculate nearest neighbors first!")
+
+        nn_df = self.infected_nns.copy()
+        selection = nn_df[nn_df['Gene names'] == query]
+        selected_nns = selection[np.arange(0, self.n_neighbors)].T.stack().tolist()
+
+        head_diffs = self.head_diffs.copy()
+        selected = head_diffs.loc[head_diffs.index[
+            selected_nns]].reset_index(drop=True)
+
+        # plotting
+        table = selected.droplevel(0, axis=1).copy()
+        features = list(selected['sample'])
+        prey_leaves = None
+        bait_leaves = ph.bait_leaves(table, features, grouped=False, verbose=False)
+        _, colormap = ph.color_map(zmin=zmin, zmid=0, zmax=zmax, colors='RdBu')
+
+        heatmap = ph.dendro_heatmap(table, prey_leaves=prey_leaves, hexmap=colormap,
+            zmin=zmin, zmid=0, zmax=zmax, label='Gene names', features=features, bait_leaves=bait_leaves,
+            bait_clust=True)
+
+        return heatmap
+
+
+
+def standard_to_wide_table(df, metric='enrichment', bait='target',
+        metadata=['Protein IDs', 'Gene names']):
+    """
+    turning enrichment/pval table to a wide table
+    """
+
+    df = df.copy()
+    targets = df[bait].unique()
+    targets.sort()
+
+    to_concat = []
+    for i, target in enumerate(targets):
+        selection = df[df[bait] == target]
+        # save metadata
+        if i == 0:
+            meta = selection[metadata].reset_index(drop=True).copy()
+            to_concat.append(meta)
+        series = selection[[metric]].reset_index(drop=True).copy()
+        series.rename(columns={metric: target}, inplace=True)
+        to_concat.append(series)
+
+    new_wide = pd.concat(to_concat, axis=1)
+    new_wide.reset_index(drop=True, inplace=True)
+
+    return new_wide
 
 
 def calculate_max_ari(adata, n_neighbors, ground_truth_label, res, n_random_states, def_res=None):
