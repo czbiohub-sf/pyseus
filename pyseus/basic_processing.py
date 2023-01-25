@@ -439,7 +439,7 @@ def opencell_initial_processing(root, analysis, pg_file='proteinGroups.txt',
 
     # Run all the processing methods
     pyseus_tables = RawTables(experiment_dir=root,
-        intensity_type=intensity_type, pg_file=pg_file)
+        intensity_type=intensity_type, pg_file=pg_file, file_designated=False)
     pyseus_tables.filter_table()
     pyseus_tables.transform_intensities(func=np.log2)
     pyseus_tables.group_replicates(reg_exp=group_regexp)
