@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 from pyseus import basic_processing as bp
 from pyseus import primary_analysis as pa
 from pyseus import validation_analysis as va
+from pyseus import contrast_tools as ct
+from pyseus.plotting import plotly_heatmap as ph
 from external import clustering_workflows
 
 from multiprocessing import Queue
@@ -28,6 +30,7 @@ from scipy.stats import percentileofscore
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import NearestNeighbors as nns
 
 
 
@@ -41,13 +44,26 @@ class SpatialTables():
     def __init__(self, preprocessed_table=None, hit_table=None, enrichment_table=None,
             target_col='target', prey_col='prey', control_mat=None):
         """
-        initiate class with a standard hit table
+        initiate class with a standard enrichment table
+
+        preprocessed_table: df, the standard output of imputed table from
+        either basic_processing.py or DashWebapp pre-processing
+
+        hit_table: df, SQL-style output table with p-values and enrichments
+        enrichment_table: df, wide-style table of enrichments
+
+        target_col: str, column name for the bait or the sample pulldown
+        prey_col: str, column name for the prey (usually gene names)
+
+
+
         """
         self.preprocessed_table = preprocessed_table
         self.hit_table = hit_table
         self.target = target_col
         self.prey = prey_col
         self.enrichment_table = enrichment_table
+        self.corr = None
 
         if (hit_table) and (enrichment_table is None):
             self.create_enrichment_table()
@@ -142,11 +158,53 @@ class SpatialTables():
             balance_num=68, just_enrichment=False, table_provided=False, def_res=None,
             n_neighbors=None, std_enrich=True):
         """
-        this method is a mess. Need to clean up later.
+
+        this is a wrapper function for two main functions:
+        1) creating an enrichment table with a given correlation filter matrix (see functions above)
+        2) calculating ARI of the enrichment table.
+        The ARI is calculated by umap-nearest neighbors matrix generation, leiden clustering,
+        and calculating grid-search ARI maximum
+
+        Theoretically it should be divided into two separate functions, but the two parts
+        are separated but the boolean table_provided.
+
+        labels: df, the ground truth table to be used
+
+        reference: list of strs, all the ground truth labels from the reference table
+            to be used in the ARI scoring.
+
+
+        repeat: int, number of repetitions for ARI calculationß
+
+        label_col: str, column name of the reference table that contain the ground truth labels
+        merge_col: str, column name of the reference table that contain the gene name identifier
+
+        quant_cols: list of strs, the features (or samples) that are used in leiden clustering and
+        subsequent ARI clustering
+
+        gene_col: str, column name of the enrichment table that contain the gene name identifier
+
+        balance_num: int, a cap for how many total observations a ground truth label can have.
+            this is used for 'semi-balancing'
+
+        just_enrichment: boolean, if True, just return the enrichment table after correlation filter
+            enrichment/pval calculation
+
+        table_provided: skips the corr-filter enrichment/pval calculation as enrichment talbe is provided
+
+        def_res: float, for cases where resolution of leiden clustering is specified by the user,
+            skipping part of the grid search
+
+        n_neighbors: list of ints, includes the list of n_neighbors parameter to try in the grid search
+
+        std_enrich: boolean, in corr-filter enrichment calculation, designates whether
+            absolute/relative enrichment to calculate
+
+
         """
 
         if table_provided is False:
-            # calculate pvals
+            # calculate pvals, load the calculated correlation filter matrix
             analysis = pa.AnalysisTables(grouped_table=self.preprocessed_table,
                 auto_group=False, exclusion_matrix=self.corr_mat)
 
@@ -158,6 +216,7 @@ class SpatialTables():
             analysis.grouped_table = grouped
 
 
+            # run the pval/enrichment steps
             analysis.simple_pval_enrichment(std_enrich=std_enrich)
             analysis.convert_to_enrichment_table(enrichment='enrichment', simple_analysis=True)
             analysis.convert_to_standard_table(experiment=False, perseus=False)
@@ -166,14 +225,22 @@ class SpatialTables():
             self.corr_pval_table = analysis.simple_pval_table.copy()
             self.corr_enrichment_table = enrichments
             self.corr_standard_table = analysis.standard_hits_table.copy()
+
+            # end function
             if just_enrichment:
                 return
         else:
             enrichments = self.enrichment_table.copy()
+            # drop NA, as some future steps require absence of NaN values
+            q_cols = [x for x in list(enrichments) if x[1] in quant_cols]
+            enrichments = enrichments.dropna(subset=q_cols)
 
+        # empty lists to fill in through the for loop
         maxes = []
         reses = []
         neighbors = []
+
+        # for loop for repetition of the ground truth sampling + grid search +  max ARI calculation
         for i in np.arange(repeat):
             metadata = enrichments['metadata'].copy()
 
@@ -184,12 +251,13 @@ class SpatialTables():
             for label in reference:
                 label_sampling = labels[labels[label_col] == label]
                 if label_counts[label] > balance_num:
+                    # this is the semi balancing to cap the number of labels
                     label_sampling = label_sampling.sample(balance_num)
                 new_labels.append(label_sampling)
 
             new_labels = pd.concat(new_labels).reset_index(drop=True)
 
-
+            # change enrichment table's gene_col to a standard name for merge
             enrichments.rename({gene_col: 'gene_names'}, axis=1, inplace=True)
             metadata = enrichments['metadata'].copy()
 
@@ -205,64 +273,99 @@ class SpatialTables():
                 else:
                     organelles.append('none')
 
+            # hard coding label name for subsequent functions
             metadata['organelles'] = organelles
 
             enrichments.reset_index(drop=True, inplace=True)
             metadata.reset_index(drop=True, inplace=True)
 
 
+            # calculate the max ARI resolution
             max, res, neighbor = self.max_ari_summary(enrichments, metadata,
                 quant_cols=quant_cols, def_res=def_res, n_neighbors=n_neighbors)
+
+            # after the first grid search, it is very unlikely the discovered parameters
+            # will change, save those parameters for the next repetitions
             if def_res is None:
                 def_res = res
             if n_neighbors is None:
                 n_neighbors = [neighbor]
+
+            # append max_ari and parameters to the list
             maxes.append(max)
             reses.append(res)
             neighbors.append(neighbor)
 
+        corr_str = ''
+        if self.corr is not None:
+            corr_str = str(self.corr) + '_'
+
+        # wrap the results in a dataframe
         summary_table = pd.DataFrame()
-        summary_table[str(self.corr) + '_max_ARI'] = maxes
-        summary_table[str(self.corr) + '_res'] = reses
-        summary_table[str(self.corr) + '_neighbors'] = neighbors
+        summary_table[corr_str + 'max_ARI'] = maxes
+        summary_table[corr_str + 'res'] = reses
+        summary_table[corr_str + 'neighbors'] = neighbors
 
         self.summary_table = summary_table.copy()
+
 
     def max_ari_summary(self, enrichments, metadata, quant_cols=None,
             n_neighbors=None, def_res=None):
         """
-        calculate the max ARI given organelle ground truths, and
-        UMAP-embedding + leiden clustering.
-        cycles through a given list of n_neighbors for the UMAP algorithm.
+        This is a script to generate AnnData from the enrichment table
+        and the metadata table, and search through n_neighbors parameter
+        to find the maximum ARI.
 
-        Input labels is a dataframe and assumes merge key is in gene names
+        enrichments: df, standard enrichment table from pyseus output
+        metadata: df, metadata selection from the enrichment table
+
+        quant_cols: list of strs, the features (or samples) that are used in leiden clustering and
+        subsequent ARI clustering
+
+        n_neighbors: list of ints, includes the list of n_neighbors parameter to try
+            in the grid search
+
+        def_res: float, for cases where resolution of leiden clustering is specified by the user,
+            skipping part of the grid search
+
         """
 
 
         quants = enrichments['sample'].copy()
         if quant_cols is not None:
             quants = quants[quant_cols].copy()
+
+        # if n_neighbors is unspecified, use the default list given below
         if n_neighbors is None:
             n_neighbors = [2, 5, 10, 20, 50]
 
         adata = ad.AnnData(quants, obs=metadata)
+
+
+        # outputs to save in the for loop
         aris = []
         resolutions = []
+
+        # if there is only one element in n_neighbor, process it without parallel pool
         if len(n_neighbors) == 1:
             output = calculate_max_ari(
                 adata, n_neighbors[0], 'organelles', res=0.4, n_random_states=1, def_res=def_res)
             aris.append(output[0])
             resolutions.append(output[1])
         else:
+            # multiprocessing Pool to search through n_neighbors parameter
             p = Pool()
+            # note the hard coded 'organelles' as the reference column from new_corr_ARI() function
             multiargs = zip(repeat(adata), n_neighbors, repeat('organelles'),
                 repeat(0.4), repeat(2), repeat(def_res))
+            # using calculate_max_ari function for the pool
             outputs = p.starmap(calculate_max_ari, multiargs)
             p.close()
             p.join()
             aris = [x[0] for x in outputs]
             resolutions = [x[1] for x in outputs]
 
+        # find the max ARI and the corresponding n_neighbor / leiden resolution
         max = np.max(aris)
         max_idx = aris.index(max)
         res = resolutions[max_idx]
@@ -811,11 +914,99 @@ class InfectedViz():
         return tax
 
 
+    def calculate_orgIP_nearest_neighbors(self, n_neighbors=21):
+
+        wide_diffs = standard_to_wide_table(self.diff_table)
+        head_diffs = ct.standard_pyseus_headers(wide_diffs)
+        self.head_diffs = head_diffs.copy()
+
+        quants = head_diffs['sample'].copy()
+        no_wts = [x for x in list(quants) if 'WT' not in x]
+
+        quants = quants[no_wts].copy()
+        nearest = nns(n_neighbors=n_neighbors)
+        nearest.fit(quants)
+
+        nearests = nearest.kneighbors(quants)
+
+        infected_nns = pd.DataFrame(nearests[1])
+        infected_nns['Gene names'] = wide_diffs['Gene names'].to_list()
+
+        self.infected_nns = infected_nns.copy()
+        self.n_neighbors = n_neighbors
+
+    def plot_orgIP_nearest_neighbors(self, query='GOLPH3L', zmin=-6, zmax=6):
+
+        try:
+            self.infected_nns.copy()
+
+        except AttributeError:
+            print("calculate nearest neighbors first!")
+
+        nn_df = self.infected_nns.copy()
+        selection = nn_df[nn_df['Gene names'] == query]
+        selected_nns = selection[np.arange(0, self.n_neighbors)].T.stack().tolist()
+
+        head_diffs = self.head_diffs.copy()
+        selected = head_diffs.loc[head_diffs.index[
+            selected_nns]].reset_index(drop=True)
+
+        # plotting
+        table = selected.droplevel(0, axis=1).copy()
+        features = list(selected['sample'])
+        prey_leaves = None
+        bait_leaves = ph.bait_leaves(table, features, grouped=False, verbose=False)
+        _, colormap = ph.color_map(zmin=zmin, zmid=0, zmax=zmax, colors='RdBu')
+
+        heatmap = ph.dendro_heatmap(table, prey_leaves=prey_leaves, hexmap=colormap,
+            zmin=zmin, zmid=0, zmax=zmax, label='Gene names', features=features, bait_leaves=bait_leaves,
+            bait_clust=True)
+
+        return heatmap
+
+
+
+def standard_to_wide_table(df, metric='enrichment', bait='target',
+        metadata=['Protein IDs', 'Gene names']):
+    """
+    turning enrichment/pval table to a wide table
+    """
+
+    df = df.copy()
+    targets = df[bait].unique()
+    targets.sort()
+
+    to_concat = []
+    for i, target in enumerate(targets):
+        selection = df[df[bait] == target]
+        # save metadata
+        if i == 0:
+            meta = selection[metadata].reset_index(drop=True).copy()
+            to_concat.append(meta)
+        series = selection[[metric]].reset_index(drop=True).copy()
+        series.rename(columns={metric: target}, inplace=True)
+        to_concat.append(series)
+
+    new_wide = pd.concat(to_concat, axis=1)
+    new_wide.reset_index(drop=True, inplace=True)
+
+    return new_wide
 
 
 def calculate_max_ari(adata, n_neighbors, ground_truth_label, res, n_random_states, def_res=None):
     """
     Calculate max ARI using leiden clustering and UMAP n-neighbor metric
+
+    adata: AnnData of the enrichment table from Pyseus
+
+    n_neighbors: int, number of neighbors to use for nearest neighbor matrix generation
+
+    ground_truth_label: str, column name in AnnData that contain ground truth labels
+
+    res: float, parameter used to generate range of resolutions to search for max ARI
+
+    n_random_states: specific number of random_states to test for in leiden clustering
+
     """
     adata = adata.copy()
 
