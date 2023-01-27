@@ -303,29 +303,60 @@ def parse_um_raw_table(n_clicks, preload_clicks, content,
 
 
 @app.callback(
+    Output('feature_num', 'children'),
+    Input('um_features_checklist', 'value'),
+    prevent_initial_call=True
+)
+def feature_num_string(features):
+    # dimension string formatting
+    dim_string = f'{len(features)} features selected'
+
+    return dim_string
+
+
+@app.callback(
     Output('feature_dims', 'children'),
     Output('um_features_checklist', 'options'),
     Output('um_features_checklist', 'value'),
     Output('transpose_button', 'style'),
     Input('transpose_button', 'n_clicks'),
     Input('um_features', 'children'),
+    Input('um_all_features', 'n_clicks'),
+    Input('um_no_features', 'n_clicks'),
     State('um_annots', 'children'),
     State('table_dims', 'children'),
     State('transpose_button', 'style'),
+    State('um_features_checklist', 'options'),
     prevent_initial_call=True
 )
 def return_feature_selections(transpose_clicks, um_features_json,
-        annots_json, dims_json, button_style):
+        all_clicks, none_clicks, annots_json, dims_json, button_style,
+        existing_opts):
     """
     From the data extracted from processed table, populate options for
     features, labels, annots, etc.
     """
+
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
 
     if um_features_json is None and transpose_clicks is None:
         raise PreventUpdate
 
     if transpose_clicks is None:
         transpose_clicks = 0
+
+
+    if button_id in ['um_all_features', 'um_no_features']:
+        try:
+            len(existing_opts)
+        except AttributeError:
+            raise PreventUpdate
+
+        if transpose_clicks % 2 != 0:
+            raise PreventUpdate
+        um_features_opts = existing_opts
 
     # for non transposed option
     if transpose_clicks % 2 == 0:
@@ -337,9 +368,14 @@ def return_feature_selections(transpose_clicks, um_features_json,
         dim_string = f'{dims[1]} features X {dims[0]} observations, \
             {len(annots)} annotations'
 
-        # feature checklist options
-        um_features_opts = [{'label': feature, 'value': feature}
-            for feature in um_features]
+        if button_id == 'um_all_features':
+            pass
+        elif button_id == 'um_no_features':
+            um_features = []
+        else:
+            # feature checklist options
+            um_features_opts = [{'label': feature, 'value': feature}
+                for feature in um_features]
 
 
         button_style['background-color'] = 'white'

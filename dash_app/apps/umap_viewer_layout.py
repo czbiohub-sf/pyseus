@@ -165,11 +165,23 @@ def customize_layout():
                     'marginLeft': '20%'}
                 ),
 
+                html.P('Selected # of features',
+                    style={'textAlign': 'center',
+                        'fontSize': 20,
+                        'marginBottom': '0%',
+                        'marginTop': '13%'}),
+
+                html.P('0 features selected',
+                    id='feature_num',
+                    style={'textAlign': 'center',
+                        'fontSize': 18,
+                        'marginBottom': '0%',
+                        'marginTop': '1%'}),
 
             ], style={
                 'vertical-align': 'top',
                 'display': 'inline-block',
-                'height': '290px',
+                'height': '340px',
                 'marginLeft': '10%',
                 'marginTop': '1%',
                 'width': '35%',
@@ -190,17 +202,31 @@ def customize_layout():
                         'marginLeft': '10%',
                         'width': '80%',
                         'border': '0.5px #BDC3C7 solid',
+                        'marginBottom': '2%'
+                    }),
+                html.Button('Select all',
+                    id='um_all_features',
+                    style={
+                        'marginLeft': '12.5%',
+                        'width': '35%',
+                    }),
+                html.Button('Unselect all',
+                    id='um_no_features',
+                    style={
+                        'marginLeft': '5%',
+                        'width': '35%',
                     }),
             ],
                 style={
                     'vertical-align': 'top',
                     'display': 'inline-block',
-                    'height': '290px',
+                    'height': '340px',
                     'marginLeft': '3%',
                     'marginTop': '1%',
                     'width': '45%'}
 
             ),
+
         ], id='feature_div', style={'display': 'none', 'marginTop': '0.5%'}),
 
 

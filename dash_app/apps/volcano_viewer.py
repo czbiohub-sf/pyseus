@@ -676,6 +676,8 @@ def check_enrichment_status(load_style, calculate_style, style, session_id):
         options.append(option)
         if 'gene' in col.lower():
             label_val = col
+        elif 'prey' in col.lower():
+            label_val = col
 
 
     if enrichment:
