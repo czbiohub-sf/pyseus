@@ -189,9 +189,15 @@ class Validation():
         self.called_table = interaction_table
         self.interaction_table = interaction_table[interaction_table['interaction']]
 
-    def convert_to_unique_interactions(self, target_match=False, get_edge=False, edge='pvals'):
+    def convert_to_unique_interactions(self, target_match=False, get_edge=False, edge='pvals',
+            return_table=False):
         """
         convert bait/prey interactions to unique, directionless interactions using gene names
+
+        target_match: bool, if False remove if two nodes are identical
+        get_edge: bool, If True, find the max value to represent as an edge
+        edge: str, column name of edge to use if get_edge is True
+
         """
         dataset = self.interaction_table.copy()
         target_col = self.target
@@ -200,7 +206,7 @@ class Validation():
         # remove interactions where target and prey are the same proteins
         if not target_match:
             dataset = dataset[dataset[target_col] != dataset[prey_col]]
-        original = self.interaction_table.copy()
+        original = dataset.copy()
 
         # combine values from two columns to a list and sort alphabetically
         dataset = dataset[[target_col, prey_col]]
@@ -235,12 +241,73 @@ class Validation():
                 prots = [prot_1, prot_2]
                 selection = original[
                     (original[target_col].isin(prots)) & original[prey_col].isin(prots)]
+                # excluse matching proteins for getting max value if target_match is on
+                if target_match and (prot_1 != prot_2):
+                    selection = selection[selection[target_col] != selection[prey_col]].copy()
                 max_edge = selection[edge].max()
                 vals.append(max_edge)
             interactions[edge] = vals
         interactions.reset_index(drop=True, inplace=True)
 
         self.unique_interaction_table = interactions
+        if return_table:
+            return interactions.copy()
+
+
+    def return_circle_uniques(self, major_circle=0.2, major_val=10, minor_circle=0.05,
+            minor_val=4, rest_val=0.2, unique=False):
+        """make circle parameters for all hits table for clustering purposes
+
+        major_circle: float, threshold for interaction stoichiometry for the strict
+            'circle' of the most stable interactions
+        major_val: float/int, edge value for all edges that reside in the major circle
+
+        minor_circle: float, threshold for the interaction stoichiometry for the broader
+            circle for interactions with intermediate stability
+        minor_val: float/int, edge value for all edges that reside outside the major circle
+            but inside the minor circle
+
+        rest_val: float/int edge value for all other edges
+
+        """
+
+        all_hits = self.interaction_table.copy()
+
+
+        # Check if stoichiometries reside in the major circle and assign major val
+        all_hits['circle'] = (all_hits['abundance_stoi'] > 0.1) & (
+            all_hits['abundance_stoi'] < 10) & (
+            all_hits['interaction_stoi'] > major_circle)
+
+        all_hits['circle'] = all_hits['circle'].apply(lambda x:
+            major_val if x else 0)
+
+
+        # check if stoichiometries reside in the minor circle and assign minor val
+        all_hits['lg_circle'] = (all_hits['abundance_stoi'] > 0.1) & (
+            all_hits['abundance_stoi'] < 10) & (
+            all_hits['interaction_stoi'] > minor_circle) & (
+            all_hits['interaction_stoi'] < major_circle)
+        all_hits['lg_circle'] = all_hits['lg_circle'].apply(lambda x:
+            minor_val if x else 0)
+
+        # for all other values assign rest_val
+        all_hits['circle_stoi'] = all_hits['circle'] + all_hits['lg_circle']
+        all_hits['circle_stoi'] = all_hits['circle_stoi'].apply(
+            lambda x: rest_val if x == 0 else x)
+
+        final_table = self.interaction_table.copy()
+        final_table['circle_stoi'] = all_hits['circle_stoi'].to_list()
+
+        if unique:
+            self.interaction_table = final_table.copy()
+            circle = self.convert_to_unique_interactions(get_edge=True,
+                edge='circle_stoi', return_table=True)
+
+            self.circle_table = circle.copy()
+
+        else:
+            self.circle_table = final_table.copy()
 
 
     def corum_interaction_coverage(self, distance=False, directional=False):
